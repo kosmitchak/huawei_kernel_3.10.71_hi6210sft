@@ -40,6 +40,9 @@
 #include "hwcam_compat32.h"
 #include "hwisp_intf.h"
 #include "ovisp2.3/isp_ops.h"
+
+#define CREATE_TRACE_POINTS
+#include "trace_hwisp.h"
 /*
 typedef struct _tag_hwisp_stream
 {
@@ -210,6 +213,7 @@ hwisp_stream_buf_done(
     list_for_each_entry_safe(entry, tmp, &stm->bufq_busy, node) {
         if (entry == vb) {
             list_move_tail(&entry->node, &stm->bufq_done);
+            trace_hwisp_stream_buf_done(vb); 
             rc = 0;
             break;
         }

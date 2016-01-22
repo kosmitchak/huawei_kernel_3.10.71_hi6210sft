@@ -744,8 +744,12 @@ void TEEK_Encode(
 
             cli_context->params[param_cnt].memref.buffer
                 = (char *)operation->params[param_cnt].tmpref.buffer;
+            cli_context->params[param_cnt].memref.buffer_h_addr
+                = ((unsigned long)operation->params[param_cnt].tmpref.buffer)>>32;
             cli_context->params[param_cnt].memref.size_addr
                 = (char *)&operation->params[param_cnt].tmpref.size;
+            cli_context->params[param_cnt].memref.size_h_addr
+                = ((unsigned long)&operation->params[param_cnt].tmpref.size)>>32;
         } else if ((param_type[param_cnt] == TEEC_MEMREF_WHOLE)
             || (param_type[param_cnt] == TEEC_MEMREF_PARTIAL_INPUT)
             || (param_type[param_cnt] == TEEC_MEMREF_PARTIAL_OUTPUT)
@@ -756,20 +760,29 @@ void TEEK_Encode(
                 cli_context->params[param_cnt].memref.offset = 0;
                 cli_context->params[param_cnt].memref.size_addr
                     = (char *)&operation->params[param_cnt].memref.parent->size;
+                cli_context->params[param_cnt].memref.size_h_addr
+                    = ((unsigned long)&operation->params[param_cnt].memref.parent->size)>>32;
             } else {
                 cli_context->params[param_cnt].memref.offset
                     = operation->params[param_cnt].memref.offset;
                 cli_context->params[param_cnt].memref.size_addr
                     = (char *)&operation->params[param_cnt].memref.size;
+                cli_context->params[param_cnt].memref.size_h_addr
+                    = ((unsigned long)&operation->params[param_cnt].memref.size)>>32;
             }
 
             if (operation->params[param_cnt].memref.parent->is_allocated) {
                 cli_context->params[param_cnt].memref.buffer
                     = (char *)operation->params[param_cnt].memref.parent->buffer;
+                cli_context->params[param_cnt].memref.buffer_h_addr
+                    = ((unsigned long)operation->params[param_cnt].memref.parent->buffer)>>32;
             } else {
                 cli_context->params[param_cnt].memref.buffer
                     = (char *)operation->params[param_cnt].memref.parent->buffer
                     + operation->params[param_cnt].memref.offset;
+                cli_context->params[param_cnt].memref.buffer_h_addr
+                    = (unsigned long)(operation->params[param_cnt].memref.parent->buffer
+                    + operation->params[param_cnt].memref.offset)>>32;
                 cli_context->params[param_cnt].memref.offset = 0;
             }
             /* translate the paramType to know the driver */
@@ -798,9 +811,13 @@ void TEEK_Encode(
             || (param_type[param_cnt] == TEEC_VALUE_INOUT)) {
 
             cli_context->params[param_cnt].value.a_addr
-                = (uint32_t *)&operation->params[param_cnt].value.a;
+                = (char *)&operation->params[param_cnt].value.a;
+            cli_context->params[param_cnt].value.a_h_addr
+                = ((unsigned long)&operation->params[param_cnt].value.a)>>32;
             cli_context->params[param_cnt].value.b_addr
-                = (uint32_t *)&operation->params[param_cnt].value.b;
+                = (char *)&operation->params[param_cnt].value.b;
+            cli_context->params[param_cnt].value.b_h_addr
+                = ((unsigned long)&operation->params[param_cnt].value.b)>>32;
         } else {
             /* if type is none, ignore it */
         }

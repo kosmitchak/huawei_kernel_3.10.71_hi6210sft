@@ -709,7 +709,7 @@ long balong_ade_ioctl(struct file* file, unsigned int ioctlCode,  unsigned long 
             break;
     }
     up(&balong_fb_overlay_sem);
-    //sigprocmask(SIG_SETMASK, &oldmask, NULL);
+    sigprocmask(SIG_SETMASK, &oldmask, NULL);
     return ret;
 }
 

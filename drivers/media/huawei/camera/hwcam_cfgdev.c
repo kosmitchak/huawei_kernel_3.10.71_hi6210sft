@@ -27,11 +27,13 @@
 #include <linux/fs.h>
 #include <linux/debugfs.h>
 #include <linux/hisi/hisi_ion.h>
+#include <linux/hisi/hisi-iommu.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/sched.h>
 #include <linux/errno.h>
 #include <linux/freezer.h>
+#include <linux/pid.h>
 #include <linux/slab.h>
 #include <linux/videodev2.h>
 #include <media/media-device.h>
@@ -45,6 +47,9 @@
 #include "cam_log.h"
 #include "hwcam_compat32.h"
 #include <huawei_platform/dsm/dsm_pub.h>
+
+#define CREATE_TRACE_POINTS
+#include "trace_hwcam.h"
 
 struct dsm_client_ops ops2={
 	.poll_state = NULL,
@@ -68,18 +73,24 @@ typedef struct _tag_hwcam_cfgdev_vo
     struct video_device*                        vdev;
     struct media_device*                        mdev;
 
-    struct mutex                                lock4ion; 
-    struct ion_client*                          ion;
-
     struct dentry*                              debug_root;
-    hwcam_user_intf_t *                         notify_user;
 	struct v4l2_fh                              rq;
-    struct list_head                            pipelines;
-    __u8                                            sbuf[64];
+    __u8                                        sbuf[64];
 } hwcam_cfgdev_vo_t;
 
+typedef enum _tag_hwcam_cfgsvr_flags 
+{
+    HWCAM_CFGSVR_FLAG_UNPLAYED = 0, 
+    HWCAM_CFGSVR_FLAG_PLAYING = 1, 
+} hwcam_cfgsvr_flags_t; 
+
+static DEFINE_MUTEX(s_cfgdev_lock);
 static hwcam_cfgdev_vo_t s_cfgdev;
-DEFINE_MUTEX(s_cfgdev_lock);
+
+static DEFINE_MUTEX(s_cfgsvr_lock);
+static DECLARE_WAIT_QUEUE_HEAD(s_wait_cfgsvr);
+static struct pid* s_pid_cfgsvr;
+static struct ion_client* s_ion_client;
 
 void
 hwcam_cfgdev_lock(void)
@@ -93,12 +104,13 @@ hwcam_cfgdev_unlock(void)
     mutex_unlock(&s_cfgdev_lock);
 }
 
-static atomic_t s_sequence = ATOMIC_INIT(0);
-
-static void hwcam_cfgdev_work(struct work_struct* w);
 static DEFINE_SPINLOCK(s_ack_queue_lock);
+static atomic_t s_sequence = ATOMIC_INIT(0);
+static hwcam_cfgsvr_flags_t s_cfgsvr_flags = HWCAM_CFGSVR_FLAG_UNPLAYED; 
 static struct list_head s_ack_queue = LIST_HEAD_INIT(s_ack_queue);
 static DECLARE_WAIT_QUEUE_HEAD(s_wait_ack);
+
+static void hwcam_cfgdev_work(struct work_struct* w);
 static DECLARE_DELAYED_WORK(s_cfgdev_work, hwcam_cfgdev_work);
 
 
@@ -167,15 +179,16 @@ int
 hwcam_cfgdev_queue_ack(
         struct v4l2_event* ev)
 {
-    unsigned long flags = 0;
     hwcam_cfgack_t* ack = NULL;
     hwcam_cfgreq_t* req = (hwcam_cfgreq_t*)ev->u.data;
+
     if (req->one_way) {
         HWCAM_CFG_ERR("need NOT acknowledge an one way "
                 "request(0x%p, 0x%08x, %u)! \n",
                 req->intf, (*(unsigned*)(req + 1)), req->seq);
         return -EINVAL;
     }
+
     ack = kzalloc(sizeof(hwcam_cfgack_t), GFP_KERNEL);
     if (ack == NULL) {
         HWCAM_CFG_ERR("out of memory for ack! \n");
@@ -184,14 +197,15 @@ hwcam_cfgdev_queue_ack(
     ack->ev = *ev;
     ack->release = hwcam_cfgdev_release_ack;
 
-    spin_lock_irqsave(&s_ack_queue_lock, flags);
+    spin_lock(&s_ack_queue_lock);
     list_add_tail(&ack->node, &s_ack_queue);
     wake_up_all(&s_wait_ack);
-    spin_unlock_irqrestore(&s_ack_queue_lock, flags);
+    spin_unlock(&s_ack_queue_lock);
+
     return 0;
 }
 
-bool
+static bool
 hwcam_cfgdev_check_ack(
         hwcam_cfgreq_t* req,
         hwcam_cfgack_t** ppack)
@@ -200,9 +214,9 @@ hwcam_cfgdev_check_ack(
     hwcam_cfgack_t* ack = NULL;
     hwcam_cfgack_t* tmp = NULL;
     hwcam_cfgreq_t* back = NULL;
-    unsigned long flags = 0;
 
-    spin_lock_irqsave(&s_ack_queue_lock, flags);
+    spin_lock(&s_ack_queue_lock);
+    ret = s_cfgsvr_flags == HWCAM_CFGSVR_FLAG_UNPLAYED; 
     list_for_each_entry_safe(ack, tmp, &s_ack_queue, node) {
         back = (hwcam_cfgreq_t*)ack->ev.u.data;
         if (req->user == back->user
@@ -214,13 +228,31 @@ hwcam_cfgdev_check_ack(
             break;
         }
     }
-    spin_unlock_irqrestore(&s_ack_queue_lock, flags);
+    spin_unlock(&s_ack_queue_lock);
     return ret;
+}
+
+
+static void
+hwcam_cfgdev_flush_ack_queue(void)
+{
+    hwcam_cfgack_t* ack = NULL;
+    hwcam_cfgack_t* tmp = NULL;
+
+    spin_lock(&s_ack_queue_lock);
+    s_cfgsvr_flags = HWCAM_CFGSVR_FLAG_UNPLAYED; 
+    list_for_each_entry_safe(ack, tmp, &s_ack_queue, node) {
+        list_del(&ack->node);
+        ack->release(ack); 
+    }
+    wake_up_all(&s_wait_ack);
+    spin_unlock(&s_ack_queue_lock);
 }
 
 enum
 {
     HWCAM_WAIT4ACK_TIME                         =   10000,   // 10s
+    HWCAM_WAIT4CFGSVR_TIME                      =   3000,    // 3s
 };
 
 static int
@@ -237,10 +269,14 @@ hwcam_cfgdev_wait_ack(
     if (ret) { *ret = -EINVAL; }
 
     while (true) {
-        hwcam_user_intf_wait_begin(user);
+        if (user) {
+            hwcam_user_intf_wait_begin(user);
+        }
         rc = wait_event_freezable_timeout(s_wait_ack,
                 hwcam_cfgdev_check_ack(req, &ack), timeout); /*lint !e666 */
-        hwcam_user_intf_wait_end(user);
+        if (user) {
+            hwcam_user_intf_wait_end(user);
+        }
 
         if (ack != NULL) {
             rc = 0; 
@@ -290,6 +326,17 @@ hwcam_cfgdev_thermal_guard(struct v4l2_event* ev)
 	return 0;
 }
 
+static int
+hwcam_cfgdev_ion_available(hwcam_ionsize_info_t* ionsize)
+{
+    hwcam_ionsize_info_t* ion = ionsize;
+    size_t ionavailable = hisi_iommu_iova_available(0);
+    if(ionavailable > 0)
+        ion->ionsize = ionavailable;
+    else
+        ion->ionsize = 0;
+    return 0;
+}
 int
 hwcam_cfgdev_send_req(
         hwcam_user_intf_t* user,
@@ -303,6 +350,8 @@ hwcam_cfgdev_send_req(
     req->user = user;
     req->seq = atomic_add_return(1, &s_sequence);
     req->one_way = one_way ? 1 : 0;
+
+    trace_hwcam_cfgdev_send_req_begin(req); 
 
     mutex_lock(&s_cfgdev_lock);
     if (target->vdev) {
@@ -320,9 +369,11 @@ hwcam_cfgdev_send_req(
     if (ret) { *ret = rc; }
 
     if (!rc && !req->one_way) {
-        return hwcam_cfgdev_wait_ack(
+        rc = hwcam_cfgdev_wait_ack(
                 user, req, HWCAM_WAIT4ACK_TIME, ret);
     }
+
+    trace_hwcam_cfgdev_send_req_end(req); 
 
     return rc;
 }
@@ -335,19 +386,19 @@ hwcam_cfgdev_import_data_table(
 {
     hwcam_data_table_t* tbl = NULL;
     struct ion_handle* hdl = NULL;
-    mutex_lock(&s_cfgdev.lock4ion);
+    mutex_lock(&s_cfgsvr_lock);
 
-    if (!s_cfgdev.ion) {
+    if (!s_ion_client) {
         goto exit_import_data_table; 
     }
 
-    hdl = ion_import_dma_buf(s_cfgdev.ion, bi->fd);
+    hdl = ion_import_dma_buf(s_ion_client, bi->fd);
     if (!hdl) { 
         HWCAM_CFG_ERR("failed to import ion buffer(%d)!", bi->fd);
         goto exit_import_data_table; 
     }
 
-    tbl = ion_map_kernel(s_cfgdev.ion, hdl);
+    tbl = ion_map_kernel(s_ion_client, hdl);
     if (!tbl) { 
         HWCAM_CFG_ERR("failed to map ion buffer(%d)!", bi->fd);
         goto fail_to_map; 
@@ -361,15 +412,15 @@ hwcam_cfgdev_import_data_table(
     goto exit_import_data_table; 
 
 fail_for_wrong_format:
-    ion_unmap_kernel(s_cfgdev.ion, hdl);
+    ion_unmap_kernel(s_ion_client, hdl);
     tbl = NULL; 
 
 fail_to_map:
-    ion_free(s_cfgdev.ion, hdl);
+    ion_free(s_ion_client, hdl);
     hdl = NULL; 
 
 exit_import_data_table: 
-    mutex_unlock(&s_cfgdev.lock4ion);
+    mutex_unlock(&s_cfgsvr_lock);
 
     *handle = hdl;
     return tbl;
@@ -379,12 +430,12 @@ void
 hwcam_cfgdev_release_data_table(
         struct ion_handle* handle)
 {
-    mutex_lock(&s_cfgdev.lock4ion);
-    if (s_cfgdev.ion && handle) {
-        ion_unmap_kernel(s_cfgdev.ion, handle);
-        ion_free(s_cfgdev.ion, handle);
+    mutex_lock(&s_cfgsvr_lock);
+    if (s_ion_client && handle) {
+        ion_unmap_kernel(s_ion_client, handle);
+        ion_free(s_ion_client, handle);
     }
-    mutex_unlock(&s_cfgdev.lock4ion);
+    mutex_unlock(&s_cfgsvr_lock);
 }
 
 struct ion_handle* 
@@ -392,19 +443,19 @@ hwcam_cfgdev_import_graphic_buffer(
         int fd)
 {
     struct ion_handle* hdl = NULL; 
-    mutex_lock(&s_cfgdev.lock4ion);
+    mutex_lock(&s_cfgsvr_lock);
 
-    if (fd < 0 || !s_cfgdev.ion) {
+    if (fd < 0 || !s_ion_client) {
         goto exit_import_graphic_buffer; 
     }
 
-    hdl = ion_import_dma_buf(s_cfgdev.ion, fd);
+    hdl = ion_import_dma_buf(s_ion_client, fd);
     if (!hdl) {
         HWCAM_CFG_ERR("failed to import ion buffer(%d)!", fd);
     }
 
 exit_import_graphic_buffer: 
-    mutex_unlock(&s_cfgdev.lock4ion);
+    mutex_unlock(&s_cfgsvr_lock);
     return hdl; 
 }
 
@@ -413,19 +464,19 @@ hwcam_cfgdev_share_graphic_buffer(
         struct ion_handle* hdl)
 {
     int fd = -1; 
-    mutex_lock(&s_cfgdev.lock4ion);
+    mutex_lock(&s_cfgsvr_lock);
 
-    if (!hdl || !s_cfgdev.ion) {
+    if (!hdl || !s_ion_client) {
         goto exit_share_graphic_buffer; 
     }
 
-    fd = ion_share_dma_buf_fd(s_cfgdev.ion, hdl);
+    fd = ion_share_dma_buf_fd(s_ion_client, hdl);
     if (fd < 0) {
         HWCAM_CFG_ERR("failed to share ion buffer(0x%p)!", hdl);
     }
 
 exit_share_graphic_buffer: 
-    mutex_unlock(&s_cfgdev.lock4ion);
+    mutex_unlock(&s_cfgsvr_lock);
     return fd; 
 }
 
@@ -433,16 +484,64 @@ void
 hwcam_cfgdev_release_graphic_buffer(
         struct ion_handle* hdl)
 {
-    mutex_lock(&s_cfgdev.lock4ion);
+    mutex_lock(&s_cfgsvr_lock);
 
-    if (!hdl || !s_cfgdev.ion) {
+    if (!hdl || !s_ion_client) {
         goto exit_release_graphic_buffer; 
     }
 
-    ion_free(s_cfgdev.ion, hdl);
+    ion_free(s_ion_client, hdl);
 
 exit_release_graphic_buffer: 
-    mutex_unlock(&s_cfgdev.lock4ion);
+    mutex_unlock(&s_cfgsvr_lock);
+}
+
+static int 
+hwcam_cfgdev_check_device_status(
+        hwcam_dev_intf_t* cam)
+{
+    int rc = hwcam_cfgpipeline_wait_idle(
+            cam, HWCAM_WAIT4CFGSVR_TIME);
+    if (!rc) {
+        mutex_lock(&s_cfgsvr_lock); 
+        if (s_pid_cfgsvr) {
+            HWCAM_CFG_ERR(
+                    "the server stalled, "
+                    "try restarting it! ");
+            kill_pid(s_pid_cfgsvr, SIGKILL, 1); 
+        }
+        mutex_unlock(&s_cfgsvr_lock); 
+    }
+    return rc; 
+}
+
+static bool 
+hwcam_cfgdev_is_cfgsvr_running(void)
+{
+    bool rc = false; 
+
+    mutex_lock(&s_cfgsvr_lock); 
+    if (s_pid_cfgsvr) {
+        rcu_read_lock();
+        rc = pid_task(s_pid_cfgsvr, PIDTYPE_PID) != NULL; 
+        rcu_read_unlock();
+    }
+    mutex_unlock(&s_cfgsvr_lock); 
+    return rc; 
+}
+
+static int 
+hwcam_cfgdev_check_cfgsvr_status(void)
+{
+    /*lint -e666 */
+    int rc = wait_event_timeout(s_wait_cfgsvr, 
+            hwcam_cfgdev_is_cfgsvr_running(),
+            msecs_to_jiffies(HWCAM_WAIT4CFGSVR_TIME));
+    /*lint +e666 */
+    if (!rc) {
+        HWCAM_CFG_ERR("the server is not running!");
+    }
+    return rc; 
 }
 
 int
@@ -463,8 +562,17 @@ hwcam_cfgdev_mount_pipeline(
     hwcam_cfgreq_mount_pipeline_intf_t* mpr = NULL; 
     *pl = NULL; 
 
+    if (!hwcam_cfgdev_check_device_status(cam)) {
+        rc = -EBUSY; 
+        goto exit_mount_pipeline; 
+    }
+    if (!hwcam_cfgdev_check_cfgsvr_status()) {
+        rc = -ENOENT; 
+        goto exit_mount_pipeline; 
+    }
+
     rc = hwcam_cfgpipeline_mount_req_create_instance(
-            s_cfgdev.vdev, &s_cfgdev.pipelines, cam, moduleID, &mpr); 
+            s_cfgdev.vdev, cam, moduleID, &mpr); 
     if (!mpr) {
         goto exit_mount_pipeline; 
     }
@@ -477,20 +585,13 @@ hwcam_cfgdev_mount_pipeline(
         goto fail_mount_pipeline; 
     }
     rc = ack; 
+    if (rc) {
+        goto fail_mount_pipeline; 
+    }
 
     hwcam_cfgreq_mount_pipeline_intf_get_result(mpr, pl); 
     if (!*pl) {
         goto fail_mount_pipeline; 
-    }
-
-    if (NULL == s_cfgdev.notify_user) {
-        s_cfgdev.notify_user = user;
-        hwcam_user_intf_get(s_cfgdev.notify_user);
-    } 
-    else {
-        hwcam_user_intf_put(s_cfgdev.notify_user);
-        s_cfgdev.notify_user = user;
-        hwcam_user_intf_get(s_cfgdev.notify_user);
     }
 
 fail_mount_pipeline:
@@ -702,7 +803,9 @@ hwcam_cfgdev_vo_do_ioctl(
     case HWCAM_V4L2_IOCTL_THERMAL_GUARD:
         rc = hwcam_cfgdev_thermal_guard((struct v4l2_event*)arg);
         break;
-
+    case HWCAM_V4L2_IOCTL_GET_ION_AVAILABLE:
+        rc = hwcam_cfgdev_ion_available((hwcam_ionsize_info_t*)arg);
+        break;
     default:
         HWCAM_CFG_ERR("invalid IOCTL CMD(%d)! \n", cmd);
         break;
@@ -736,6 +839,7 @@ hwcam_cfgdev_vo_ioctl32(
 	{
 	case HWCAM_V4L2_IOCTL_REQUEST_ACK32: cmd = HWCAM_V4L2_IOCTL_REQUEST_ACK; break;
 	case HWCAM_V4L2_IOCTL_THERMAL_GUARD32: cmd = HWCAM_V4L2_IOCTL_THERMAL_GUARD; break;
+	case HWCAM_V4L2_IOCTL_GET_ION_AVAILABLE32: cmd = HWCAM_V4L2_IOCTL_GET_ION_AVAILABLE; break;
 	}
 
 	switch (cmd)
@@ -754,7 +858,7 @@ hwcam_cfgdev_vo_ioctl32(
 				return rc;
 			rc = compat_put_v4l2_event_data(kp, up);
 		}
-		break;	
+		break;
     default:
         rc = hwcam_cfgdev_vo_ioctl(filep, cmd, arg);
         break;
@@ -768,35 +872,33 @@ hwcam_cfgdev_vo_close(
         struct file* filep)
 {
     void* fpd = NULL;
-    struct ion_client* ion = NULL;
-
-    struct v4l2_event ev =
-    {
-        .type = HWCAM_V4L2_EVENT_TYPE,
-        .id = HWCAM_SERVER_CRASH,
-    };
-    if (NULL != s_cfgdev.notify_user) {
-        hwcam_user_intf_notify(s_cfgdev.notify_user,&ev);
-        hwcam_user_intf_put(s_cfgdev.notify_user);
-        s_cfgdev.notify_user = NULL;
-    }
-
     swap(filep->private_data, fpd);
-
-    mutex_lock(&s_cfgdev.lock4ion); 
-    swap(s_cfgdev.ion, ion);
-    mutex_unlock(&s_cfgdev.lock4ion); 
-
     if (fpd) {
+        struct ion_client* ion = NULL;
+        struct pid* pid = NULL;
+
+        mutex_lock(&s_cfgsvr_lock); 
+        swap(s_pid_cfgsvr, pid);
+        swap(s_ion_client, ion);
+        mutex_unlock(&s_cfgsvr_lock); 
+
+        mutex_lock(&s_cfgdev_lock); 
         v4l2_fh_del(&s_cfgdev.rq);
         v4l2_fh_exit(&s_cfgdev.rq);
-    }
+        mutex_unlock(&s_cfgdev_lock); 
 
-    if (ion) {
-        ion_client_destroy(ion);
-    }
+        if (ion) {
+            ion_client_destroy(ion);
+        }
 
-    HWCAM_CFG_INFO("the server(%d) detached. \n", current->pid);
+        if (pid) {
+            put_pid(pid); 
+        }
+
+        hwcam_cfgdev_flush_ack_queue(); 
+
+        HWCAM_CFG_INFO("the server(%d) detached. \n", current->pid);
+    }
     return 0;
 }
 
@@ -805,29 +907,39 @@ hwcam_cfgdev_vo_open(
         struct file* filep)
 {
     int rc = 0; 
-    mutex_lock(&s_cfgdev.lock4ion); 
 
-    if (s_cfgdev.ion) {
+    mutex_lock(&s_cfgsvr_lock); 
+    if (s_pid_cfgsvr) {
+        mutex_unlock(&s_cfgsvr_lock); 
         HWCAM_CFG_INFO("only one server can attach to cfgdev! \n");
         rc = -EBUSY;
         goto exit_open; 
     }
-
-    s_cfgdev.ion = hisi_ion_client_create("hwcam-cfgdev");
-    if (!s_cfgdev.ion) {
+    s_ion_client = hisi_ion_client_create("hwcam-cfgdev");
+    if (!s_ion_client) {
+        mutex_unlock(&s_cfgsvr_lock); 
         HWCAM_CFG_ERR("failed to create ion client! \n");
         rc = -ENOMEM;
         goto exit_open; 
     }
+    s_pid_cfgsvr = get_pid(task_pid(current)); 
+    mutex_unlock(&s_cfgsvr_lock); 
 
+    mutex_lock(&s_cfgdev_lock);
 	v4l2_fh_init(&s_cfgdev.rq, s_cfgdev.vdev);
     v4l2_fh_add(&s_cfgdev.rq);
+    mutex_unlock(&s_cfgdev_lock);
+
+    spin_lock(&s_ack_queue_lock);
+    s_cfgsvr_flags = HWCAM_CFGSVR_FLAG_PLAYING; 
+    spin_unlock(&s_ack_queue_lock);
+
     filep->private_data = &s_cfgdev;
+    wake_up_all(&s_wait_cfgsvr); 
 
     HWCAM_CFG_INFO("the server(%d) attached. \n", current->pid);
 
 exit_open: 
-    mutex_unlock(&s_cfgdev.lock4ion); 
 	return rc;
 }
 
@@ -912,9 +1024,6 @@ hwcam_cfgdev_vo_probe(
 
     s_cfgdev.vdev = vdev;
     s_cfgdev.mdev = mdev;
-    s_cfgdev.notify_user = NULL;
-    INIT_LIST_HEAD(&s_cfgdev.pipelines);
-    mutex_init(&s_cfgdev.lock4ion); 
 
     s_cfgdev.debug_root = debugfs_create_dir("hwcam", NULL);
 

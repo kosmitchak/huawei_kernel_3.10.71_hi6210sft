@@ -1480,6 +1480,7 @@ static int dhd_set_suspend(int value, dhd_pub_t *dhd)
 					sizeof(iovbuf));
 				dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf, sizeof(iovbuf), TRUE, 0);
 #endif /* ENABLE_FW_ROAM_SUSPEND */
+#ifndef HW_PATCH_DISABLE_ND_RA_FILTER
 				if (FW_SUPPORTED(dhd, ndoe)) {
 					/* disable IPv6 RA filter in  firmware during suspend */
 					nd_ra_filter = 0;
@@ -1490,6 +1491,7 @@ static int dhd_set_suspend(int value, dhd_pub_t *dhd)
 						DHD_ERROR(("failed to set nd_ra_filter (%d)\n",
 							ret));
 				}
+#endif
 			}
 	}
 	dhd_suspend_unlock(dhd);
@@ -2223,6 +2225,10 @@ dhd_sendpkt(dhd_pub_t *dhdp, int ifidx, void *pktbuf)
 #endif 
 		pktsetprio(pktbuf, FALSE);
 
+#ifdef HW_TX_802_1X_PRIO
+	/* Set the 802.1X packet with the highest priority 7 */
+	pktset1xprio(pktbuf, MAXPRIO);
+#endif
 
 #ifdef PCIE_FULL_DONGLE
 	/*
@@ -3489,6 +3495,11 @@ void dhd_set_scb_probe(dhd_pub_t *dhd)
 
 	scb_probe.scb_max_probe = NUM_SCB_MAX_PROBE;
 
+#ifdef	BCM_PATCH_GO_DETECT_GC_TIMEOUT
+	DHD_INFO(("%s: scb_max_probe=%x, scb_timeout=%x, scb_activity=%x\n",__FUNCTION__, scb_probe.scb_max_probe, scb_probe.scb_activity_time, scb_probe.scb_timeout));
+	scb_probe.scb_timeout = 12;
+	scb_probe.scb_activity_time = 4;
+#endif
 	bcm_mkiovar("scb_probe", (char *)&scb_probe,
 		sizeof(wl_scb_probe_t), iovbuf, sizeof(iovbuf));
 	if ((ret = dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf, sizeof(iovbuf), TRUE, 0)) < 0)
@@ -4106,6 +4117,11 @@ exit:
 		dhd->pub.dhd_cspec.rev = 0;
 		dhd->pub.dhd_cspec.ccode[0] = 0x00;
 	}
+
+#ifdef CONFIG_HW_WIFI_FREQ_CTRL_FLAG
+        hw_wifi_freq_ctrl_destroy();
+#endif
+
     HW_PRINT((WIFI_TAG"Exit: %s\n", __FUNCTION__));
 
 	DHD_PERIM_UNLOCK(&dhd->pub);
@@ -5503,15 +5519,54 @@ static int dhd_preinit_proc(dhd_pub_t *dhd, int ifidx, char *name, char *value)
 		/* x.band = WLC_BAND_AUTO; */
 		x.band = WLC_BAND_ALL;
 		return dhd_wl_ioctl_cmd(dhd, WLC_SET_ROAM_DELTA, &x, sizeof(x), TRUE, 0);
+
+#ifdef HW_WIFI_ROAMING_PARAMETER_SET
+	} else if (!strcmp(name, "roam_deltaa")) {
+		struct {
+			int val;
+			int band;
+		} x;
+		x.val = (int)simple_strtol(value, NULL, 0);
+		x.band = WLC_BAND_5G;
+		return dhd_wl_ioctl_cmd(dhd, WLC_SET_ROAM_DELTA, &x, sizeof(x), TRUE, 0);
+	} else if (!strcmp(name, "roam_deltab")) {
+		struct {
+			int val;
+			int band;
+		} x;
+		x.val = (int)simple_strtol(value, NULL, 0);
+		x.band = WLC_BAND_2G;
+		return dhd_wl_ioctl_cmd(dhd, WLC_SET_ROAM_DELTA, &x, sizeof(x), TRUE, 0);
+#endif
+
 	} else if (!strcmp(name, "roam_trigger")) {
 		int ret = 0;
-
+		int roam_trigger[2];
 		roam_trigger[0] = (int)simple_strtol(value, NULL, 0);
 		roam_trigger[1] = WLC_BAND_ALL;
 		ret = dhd_wl_ioctl_cmd(dhd, WLC_SET_ROAM_TRIGGER, &roam_trigger,
 			sizeof(roam_trigger), TRUE, 0);
-
 		return ret;
+
+#ifdef HW_WIFI_ROAMING_PARAMETER_SET
+	} else if (!strcmp(name, "roam_triggera")) {
+		int ret = 0;
+		int roam_trigger[2];
+		roam_trigger[0] = (int)simple_strtol(value, NULL, 0);
+		roam_trigger[1] = WLC_BAND_5G;
+		ret = dhd_wl_ioctl_cmd(dhd, WLC_SET_ROAM_TRIGGER, &roam_trigger,
+			sizeof(roam_trigger), TRUE, 0);
+		return ret;
+	}else if (!strcmp(name, "roam_triggerb")) {
+		int ret = 0;
+		int roam_trigger[2];
+		roam_trigger[0] = (int)simple_strtol(value, NULL, 0);
+		roam_trigger[1] = WLC_BAND_2G;
+		ret = dhd_wl_ioctl_cmd(dhd, WLC_SET_ROAM_TRIGGER, &roam_trigger,
+			sizeof(roam_trigger), TRUE, 0);
+		return ret;
+#endif
+
 	} else if (!strcmp(name, "PM")) {
 		int ret = 0;
 		var_int = (int)simple_strtol(value, NULL, 0);
@@ -7525,6 +7580,13 @@ dhd_os_wd_timer(void *bus, uint wdtick)
 		DHD_OS_WD_WAKE_UNLOCK(pub);
 		return;
 	}
+#ifdef HW_WIFI_WAKELOCK_BUGFIX
+	if(dhd->pub.up == 0){
+		DHD_GENERAL_UNLOCK(pub, flags);
+		DHD_OS_WD_WAKE_UNLOCK(pub);
+		return;
+	}
+#endif
 
 	if (wdtick) {
 		DHD_OS_WD_WAKE_LOCK(pub);
@@ -8079,9 +8141,14 @@ int net_os_rxfilter_add_remove(struct net_device *dev, int add_remove, int num)
 			filter_id = 102;
 			break;
 		case DHD_MULTICAST6_FILTER_NUM:
+#ifdef BCM_PATCH_BLOCK_IPV6_PACKET
+			/* customer want to use NO IPV6 packets only */
+			return ret;
+#else
 			filterp = "103 0 0 0 0xFFFF 0x3333";
 			filter_id = 103;
 			break;
+#endif /* BCM_PATCH_BLOCK_IPV6_PACKET */
 		default:
 			return -EINVAL;
 	}

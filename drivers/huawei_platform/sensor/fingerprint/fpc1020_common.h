@@ -11,8 +11,11 @@
 #define LINUX_SPI_FPC1020_COMMON_H
 
 #define DEBUG
+/*FPC1020 navigation gesture*/
 #define CONFIG_INPUT_FPC1020_NAV
 #define FPC1020_NAV_HEAP_BUF
+#define FPC1020_NAV_WQ
+
 #include <linux/cdev.h>
 #include <linux/gpio.h>
 #include <linux/delay.h>
@@ -64,7 +67,8 @@
 #define FPC1020_IMAGE_BUFFER_SIZE       FPC1020_FRAME_SIZE_MAX * \
     FPC1020_BUFFER_MAX_IMAGES
 #define FPC1020_IRQ_TIMEOUT_AFTER_CMD_MS      (100 * HZ / 1000)
-#define FPC1020_DEFAULT_IRQ_TIMEOUT_MS      (40 * HZ / 1000) //10 
+#define FPC1020_DEFAULT_IRQ_TIMEOUT_MS      (40 * HZ / 1000) //10
+#define FPC1020_WAIT_FNGR_TIMEOUT_MS	(10 * HZ / 1000)
 #define FPC1020_DEFAULT_WAKELOCK_TIME_S     (3 * HZ)
 #define FPC1020_STATUS_REG_RESET_VALUE 0x1e
 
@@ -219,6 +223,12 @@ typedef enum
     FPC1020_CAPTURE_STATE_FAILED,
 } fpc1020_capture_state_t;
 
+enum
+{
+	FPC1020_FINGER_UP = 0,
+	FPC1020_FINGER_DOWN,
+};
+
 typedef struct fpc1020_worker_struct
 {
     struct task_struct* thread;
@@ -253,6 +263,7 @@ typedef struct fpc1020_nav_struct
 
     unsigned long time;
     unsigned long tap_start;
+    unsigned long click_start;
     int tap_status;
     u8 input_mode;
     u16 detect_zones;
@@ -262,11 +273,13 @@ typedef struct fpc1020_nav_struct
     int move_pre_x;
     int move_pre_y;
     int throw_event;
+    int throw_event_move;
     int filter_key;
     int move_up_cnt;
     int move_down_cnt;
     int pre_zones;
     int cur_zones;
+    int report_key;
     //struct move_vec[POOL_SIZE];
 
     int p_multiplier_x;
@@ -285,6 +298,10 @@ typedef struct fpc1020_nav_struct
 
     int duration_key_clear;
     int threshold_key_start;
+    int threshold_key_start_up;
+    int threshold_key_start_down;
+    int threshold_key_start_left;
+    int threshold_key_start_right;
     int threshold_key_offset;
     int threshold_key_dispatch;
     int report_keys;
@@ -395,6 +412,11 @@ typedef struct
 #endif
     struct dsm_client* dsm_fingerprint_client;
     struct pl022_config_chip spidev0_chip_info;
+#ifdef FPC1020_NAV_WQ
+    struct work_struct fpc_nav_work;
+    struct workqueue_struct *fpc_nav_workqueue;
+#endif
+    u8 finger_status;
 } fpc1020_data_t;
 
 typedef struct
@@ -459,6 +481,8 @@ extern int fpc1020_cmd(fpc1020_data_t* fpc1020, fpc1020_cmd_t cmd,
 
 extern int fpc1020_wait_finger_present(fpc1020_data_t* fpc1020);
 
+extern int fpc1020_nav_wait_finger_present(fpc1020_data_t* fpc1020);
+
 extern int fpc1020_check_finger_present_raw(fpc1020_data_t* fpc1020);
 
 extern int fpc1020_check_finger_present_sum(fpc1020_data_t* fpc1020);
@@ -504,7 +528,11 @@ extern void send_msg_to_dsm(struct dsm_client* dsm_client, int error, int dsm);
         (__dst).write    = true;                    \
         (__dst).dataptr  = (u8 *)(__ptr); }
 
+#ifdef CONFIG_ARCH_HI3630
+#define FPC1020_FINGER_DETECT_ZONE_MASK     0x0666U
+#else
 #define FPC1020_FINGER_DETECT_ZONE_MASK     0x0FFFU
+#endif
 
 #endif /* LINUX_SPI_FPC1020_COMMON_H */
 

@@ -28,6 +28,7 @@
 #include <linux/hisi/hi6xxx-iomap.h>
 #include <linux/hisi/hi6xxx-platform.h>
 #include <linux/pwrctrl_power_state_manager.h>
+#include <huawei_platform/log/log_jank.h>
 #include <linux/init.h>
 
 
@@ -1301,6 +1302,7 @@ STATIC void hiusb_otg_intr_work(struct work_struct *work)
 
     switch (intr_flag) {
         case CHARGER_CONNECT_EVENT:
+		    LOG_JANK_D(JLID_USBCHARGING_START,"JL_USBCHARGING_START");
             if ((0 != pmu_version()) && (vbus_status() == 0)) {
                 dev_err(&lm_dev->dev, "%s charge INSERT no vbus error.\n", __func__);
                 spin_lock(&hiusb_info->intr_flag_lock);
@@ -1350,6 +1352,7 @@ STATIC void hiusb_otg_intr_work(struct work_struct *work)
                 disable_irq_nosync(gpio_to_irq(hiusb_info->otg_int_gpio));
             break;
         case CHARGER_DISCONNECT_EVENT:
+		    LOG_JANK_D(JLID_USBCHARGING_END,"JL_USBCHARGING_END");
             if ((0 != pmu_version()) && (vbus_status() != 0)) {
                 dev_err(&lm_dev->dev, "%s charge DRAW have vbus error.\n", __func__);
                 spin_lock(&hiusb_info->intr_flag_lock);

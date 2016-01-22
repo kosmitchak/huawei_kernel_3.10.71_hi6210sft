@@ -23,6 +23,8 @@ static int g_scf2_coef_load_refcount;
 
 uint32_t g_frame_count = 0;
 
+extern bool g_enable_extra_data;
+
 uint32_t g_dss_module_base[DSS_CHN_MAX][MODULE_CHN_MAX] = {
 	/******************DPE0*******************/
 	/* DPE0 CH0 */
@@ -1652,18 +1654,37 @@ int hisi_dss_handle_prev_ovl_req(struct hisi_fb_data_type *hisifd, dss_overlay_t
 	uint32_t format = 0;
 	uint32_t need_cap = 0;
 	uint32_t tmp = 0;
+	bool has_dpe2 = false;
 
 	BUG_ON(hisifd == NULL);
 	BUG_ON(pov_req == NULL);
 
 	if (hisifd->dss_exception.underflow_handler == 1) {
-		for (k = 0; k < DSS_CHN_MAX; k++) {
-			if (hisifd->dss_exception.chn_used[k] == 1) {
+		if (hisifd->index == PRIMARY_PANEL_IDX && !is_mipi_cmd_panel(hisifd)) {
+			for (k = DPE0_CHN0; k <= DPE0_CHN3; k++) {
 				hisifd->dss_glb.chn_ctl_used[k] = 1;
-				if (isYUVPlanar(hisifd->dss_exception.chn_format_used[k])
-					&& (k == DPE3_CHN0)) {
-					hisifd->dss_glb.chn_ctl_used[k + 1] = 1;
+			}
+
+			for (k = DPE2_CHN0; k <= DPE2_CHN3; k++) {
+				if (hisifd->dss_exception.chn_used[k] == 1) {
+					has_dpe2 = true;
 				}
+			}
+
+			if (has_dpe2) {
+				for (k = DPE2_CHN0; k <= DPE2_CHN3; k++) {
+					hisifd->dss_glb.chn_ctl_used[k] = 1;
+				}
+			}
+		} else {
+			for (k = 0; k < DSS_CHN_MAX; k++) {
+			    if (hisifd->dss_exception.chn_used[k] == 1) {
+			        hisifd->dss_glb.chn_ctl_used[k] = 1;
+			        if (isYUVPlanar(hisifd->dss_exception.chn_format_used[k])
+			          && (k == DPE3_CHN0)) {
+			            hisifd->dss_glb.chn_ctl_used[k + 1] = 1;
+			        }
+			    }
 			}
 		}
 
@@ -5113,6 +5134,57 @@ static int CSC_COE_RGB2YUV709_WIDE[CSC_ROW][CSC_COL] = {
 	{0x083, 0x78a, 0x7f5, 0x0, 0x080},
 };
 
+/*++grayscale++*/
+static int CSC_COE_YUV2RGB601_GRAY_WIDE[CSC_ROW][CSC_COL] = {
+	{0x100, 0x000, 0x000, 0x000, 0x0},
+	{0x100, 0x000, 0x000, 0x180, 0x0},
+	{0x100, 0x000, 0x000, 0x180, 0x0}
+};
+
+static int CSC_COE_YUV2RGB601_GRAY_NARROW[CSC_ROW][CSC_COL] = {
+	{0x12a, 0x000, 0x000, 0x1f0, 0x0},//0x133
+	{0x12a, 0x000, 0x000, 0x180, 0x0},//0x099
+	{0x12a, 0x000, 0x000, 0x180, 0x0} //0x100
+};
+
+static int CSC_COE_YUV2RGB709_GRAY_WIDE[CSC_ROW][CSC_COL] = {
+	{0x100, 0x000, 0x000, 0x000, 0x0},//0x13b
+	{0x100, 0x000, 0x000, 0x180, 0x0},//0x051
+	{0x100, 0x000, 0x000, 0x180, 0x0},//0x118
+};
+
+static int CSC_COE_YUV2RGB709_GRAY_NARROW[CSC_ROW][CSC_COL] = {
+	{0x12A, 0x000, 0x000, 0x1F0, 0x0},//0x11A
+	{0x12A, 0x000, 0x000, 0x180, 0x0},//0x05F
+	{0x12A, 0x000, 0x000, 0x180, 0x0} //0x100
+};
+
+static int CSC_COE_RGB2RGB601_GRAY_WIDE[CSC_ROW][CSC_COL] = {
+	{0x04d, 0x096, 0x01d, 0x0, 0x000},
+	{0x04d, 0x096, 0x01d, 0x0, 0x000},
+	{0x04d, 0x096, 0x01d, 0x0, 0x000},
+};
+
+static int CSC_COE_RGB2RGB709_GRAY_WIDE[CSC_ROW][CSC_COL] = {
+	{0x037, 0x0b7, 0x012, 0x0, 0x000},
+	{0x037, 0x0b7, 0x012, 0x0, 0x000},
+	{0x037, 0x0b7, 0x012, 0x0, 0x000},
+};
+
+static int CSC_COE_RGB2RGB601_GRAY_NARROW[CSC_ROW][CSC_COL] = {
+	{0x04c, 0x096, 0x01d, 0x0, 0x013},
+	{0x04c, 0x096, 0x01d, 0x0, 0x013},
+	{0x04c, 0x096, 0x01d, 0x0, 0x013},
+};
+
+static int CSC_COE_RGB2RGB709_GRAY_NARROW[CSC_ROW][CSC_COL] = {
+	{0x036, 0x0b6, 0x012, 0x0, 0x013},
+	{0x036, 0x0b6, 0x012, 0x0, 0x013},
+	{0x036, 0x0b6, 0x012, 0x0, 0x013},
+};
+
+/*--grayscale--*/
+
 static void hisi_dss_csc_init(char __iomem *csc_base, dss_csc_t *s_csc)
 {
 	BUG_ON(csc_base == NULL);
@@ -5174,25 +5246,67 @@ int hisi_dss_csc_config(struct hisi_fb_data_type *hisifd,
 		csc_mode = layer->src.csc_mode;
 	}
 
-	if (!isYUV(format))
-		return 0;
-
-	if (csc_mode == DSS_CSC_601_WIDE) {
-		csc_coe_yuv2rgb = CSC_COE_YUV2RGB601_WIDE;
-		csc_coe_rgb2yuv = CSC_COE_RGB2YUV601_WIDE;
-	} else if (csc_mode == DSS_CSC_601_NARROW) {
-		csc_coe_yuv2rgb = CSC_COE_YUV2RGB601_NARROW;
-		csc_coe_rgb2yuv = CSC_COE_RGB2YUV601_NARROW;
-	} else if (csc_mode == DSS_CSC_709_WIDE) {
-		csc_coe_yuv2rgb = CSC_COE_YUV2RGB709_WIDE;
-		csc_coe_rgb2yuv = CSC_COE_RGB2YUV709_WIDE;
-	} else if (csc_mode == DSS_CSC_709_NARROW) {
-		csc_coe_yuv2rgb = CSC_COE_YUV2RGB709_NARROW;
-		csc_coe_rgb2yuv = CSC_COE_RGB2YUV709_NARROW;
+	if (!hisifd->grayscale_enabled) {
+#if 0
+		if (!isYUV(format)) {
+			return 0;
+		}
+#endif
+		if (csc_mode == DSS_CSC_601_WIDE) {
+			csc_coe_yuv2rgb = CSC_COE_YUV2RGB601_WIDE;
+			csc_coe_rgb2yuv = CSC_COE_RGB2YUV601_WIDE;
+		} else if (csc_mode == DSS_CSC_601_NARROW) {
+			csc_coe_yuv2rgb = CSC_COE_YUV2RGB601_NARROW;
+			csc_coe_rgb2yuv = CSC_COE_RGB2YUV601_NARROW;
+		} else if (csc_mode == DSS_CSC_709_WIDE) {
+			csc_coe_yuv2rgb = CSC_COE_YUV2RGB709_WIDE;
+			csc_coe_rgb2yuv = CSC_COE_RGB2YUV709_WIDE;
+		} else if (csc_mode == DSS_CSC_709_NARROW) {
+			csc_coe_yuv2rgb = CSC_COE_YUV2RGB709_NARROW;
+			csc_coe_rgb2yuv = CSC_COE_RGB2YUV709_NARROW;
+		} else {
+			HISI_FB_ERR("not support this csc_mode(%d)!\n", csc_mode);
+			csc_coe_yuv2rgb = CSC_COE_YUV2RGB601_WIDE;
+			csc_coe_rgb2yuv = CSC_COE_RGB2YUV601_WIDE;
+		}
 	} else {
-		HISI_FB_ERR("not support this csc_mode(%d)!\n", csc_mode);
-		csc_coe_yuv2rgb = CSC_COE_YUV2RGB601_WIDE;
-		csc_coe_rgb2yuv = CSC_COE_RGB2YUV601_WIDE;
+		if (!isYUV(format)) {
+			if (csc_mode == DSS_CSC_601_WIDE) {
+				csc_coe_yuv2rgb = CSC_COE_RGB2RGB601_GRAY_WIDE;
+				csc_coe_rgb2yuv = CSC_COE_RGB2YUV601_WIDE;
+			} else if (csc_mode == DSS_CSC_601_NARROW) {
+				csc_coe_yuv2rgb = CSC_COE_RGB2RGB601_GRAY_NARROW;
+				csc_coe_rgb2yuv = CSC_COE_RGB2YUV601_NARROW;
+			} else if (csc_mode == DSS_CSC_709_WIDE) {
+				csc_coe_yuv2rgb = CSC_COE_RGB2RGB709_GRAY_WIDE;
+				csc_coe_rgb2yuv = CSC_COE_RGB2YUV709_WIDE;
+			} else if (csc_mode == DSS_CSC_709_NARROW) {
+				csc_coe_yuv2rgb = CSC_COE_RGB2RGB709_GRAY_NARROW;
+				csc_coe_rgb2yuv = CSC_COE_RGB2YUV709_NARROW;
+			} else {
+				HISI_FB_ERR("not support this csc_mode(%d)!\n", csc_mode);
+				csc_coe_yuv2rgb = CSC_COE_RGB2RGB601_GRAY_WIDE;
+				csc_coe_rgb2yuv = CSC_COE_RGB2YUV601_WIDE;
+			}
+		} else {
+			if (csc_mode == DSS_CSC_601_WIDE) {
+				csc_coe_yuv2rgb = CSC_COE_YUV2RGB601_GRAY_WIDE;
+				csc_coe_rgb2yuv = CSC_COE_RGB2YUV601_WIDE;
+			} else if (csc_mode == DSS_CSC_601_NARROW) {
+				csc_coe_yuv2rgb = CSC_COE_YUV2RGB601_GRAY_NARROW;
+				csc_coe_rgb2yuv = CSC_COE_RGB2YUV601_NARROW;
+			} else if (csc_mode == DSS_CSC_709_WIDE) {
+				csc_coe_yuv2rgb = CSC_COE_YUV2RGB709_GRAY_WIDE;
+				csc_coe_rgb2yuv = CSC_COE_RGB2YUV709_WIDE;
+			} else if (csc_mode == DSS_CSC_709_NARROW) {
+				csc_coe_yuv2rgb = CSC_COE_YUV2RGB709_GRAY_NARROW;
+				csc_coe_rgb2yuv = CSC_COE_RGB2YUV709_NARROW;
+			} else {
+				HISI_FB_ERR("not support this csc_mode(%d)!\n", csc_mode);
+				csc_coe_yuv2rgb = CSC_COE_YUV2RGB601_GRAY_WIDE;
+				csc_coe_rgb2yuv = CSC_COE_RGB2YUV601_WIDE;
+			}
+		}
 	}
 
 	chn_idx = hisi_get_chnIndex4crossSwitch(need_cap, chn_idx);
@@ -5203,6 +5317,14 @@ int hisi_dss_csc_config(struct hisi_fb_data_type *hisifd,
 
 	csc = &(hisifd->dss_module.csc[chn_idx]);
 	hisifd->dss_module.csc_used[chn_idx] = 1;
+
+	if (!hisifd->grayscale_enabled) {
+		if (!isYUV(format)) {
+			csc->vhdcscidc = set_bits32(csc->vhdcscidc, 0x0, 1, 27);
+			csc->icg_module = set_bits32(csc->icg_module, 0x0, 1, 2);
+			return 0;
+		}
+	}
 
 	if (layer) {
 		csc->vhdcscidc = set_bits32(csc->vhdcscidc, 0x1, 1, 27);
@@ -5640,7 +5762,11 @@ int hisi_dss_ovl_base_config(struct hisi_fb_data_type *hisifd,
 		img_height = wb_block_rect->h;
 	} else {
 		img_width = hisifd->panel_info.xres;
-		img_height = hisifd->panel_info.yres;
+		if (true == g_enable_extra_data) {
+			img_height = hisifd->panel_info.yres+EXTRA_NUM;
+		} else {
+			img_height = hisifd->panel_info.yres;
+		}
 	}
 
 	ovl->ovl_ov_size = set_bits32(ovl->ovl_ov_size, DSS_WIDTH(img_width), 15, 0);
@@ -7700,6 +7826,12 @@ int hisi_overlay_off(struct hisi_fb_data_type *hisifd)
 	if ((hisifd->index == PRIMARY_PANEL_IDX) || (hisifd->index == EXTERNAL_PANEL_IDX)) {
 		hisifb_activate_vsync(hisifd);
 
+        	ret = hisi_vactive0_start_config(hisifd);
+        	if (ret != 0) {
+                	HISI_FB_ERR("hisi_vactive0_start_config failed! ret = %d\n", ret);
+			mdelay(17);
+	        }
+
 		memset(&hisifd->dss_exception, 0, sizeof(dss_exception_t));
 		hisifd->dss_exception.underflow_exception = 1;
 
@@ -7769,6 +7901,8 @@ int hisi_overlay_off(struct hisi_fb_data_type *hisifd)
 	return 0;
 }
 
+extern int fastboot_set_needed;
+
 bool hisi_dss_check_reg_reload_status(struct hisi_fb_data_type *hisifd)
 {
 	uint32_t tmp = 0;
@@ -7803,7 +7937,9 @@ bool hisi_dss_check_reg_reload_status(struct hisi_fb_data_type *hisifd)
 		tmp = inp32(hisifd->dss_base + offset);
 	}
 
-	mdelay(40);  //be sure that overlay base layer has been displayed on lcd
+	if (fastboot_set_needed) {
+		mdelay(40);  //be sure that overlay base layer has been displayed on lcd
+	}
 
 	return is_ready;
 }
@@ -7881,8 +8017,16 @@ int hisi_overlay_ioctl_handler(struct hisi_fb_data_type *hisifd,
 {
 	int ret = 0;
 
-	BUG_ON(hisifd == NULL);
+	//ignore sigstop and sigcont signals, because this signals will cancel screen update.
+	sigset_t setmask;
+	sigset_t oldmask;
+	sigemptyset(&setmask);
+	sigaddset(&setmask, SIGSTOP);
+	sigaddset(&setmask, SIGCONT);  
 
+	BUG_ON(hisifd == NULL);
+	sigprocmask(SIG_SETMASK, &setmask, &oldmask); 
+	
 	switch (cmd) {
 	case HISIFB_OV_ONLINE_PLAY:
 		if (hisifd->ov_online_play) {
@@ -8098,6 +8242,7 @@ int hisi_vactive0_start_config(struct hisi_fb_data_type *hisifd)
 	uint32_t isr_s2_mask = 0;
 #if defined (CONFIG_HUAWEI_DSM)
 	uint32_t read_value = 0;
+	static u32 s_vactive0_timeout_count = 0;
 #endif
 	BUG_ON(hisifd == NULL);
 
@@ -8124,13 +8269,16 @@ int hisi_vactive0_start_config(struct hisi_fb_data_type *hisifd)
 						HISI_FB_ERR("Read LCD register 0x0A timeout\n");
 					else
 						HISI_FB_ERR("LCD power status 0x0A=0x%x\n", read_value);
+					s_vactive0_timeout_count++;
 				#endif
 
 					ret = -ETIMEDOUT;
 				} else {
 					set_reg(hisifd->dss_base + PDP_LDI_CTRL, 0x1, 1, 2);
 					hisifd->ldi_data_gate_en = 1;
-
+				#if defined (CONFIG_HUAWEI_DSM)
+					s_vactive0_timeout_count = 0;
+				#endif
 					ret = 0;
 				}
 			} else {
@@ -8176,11 +8324,14 @@ int hisi_vactive0_start_config(struct hisi_fb_data_type *hisifd)
 			hisifd->index, isr_s1_mask, isr_s2_mask, isr_s1, isr_s2);
 
 	#if defined (CONFIG_HUAWEI_DSM)
-		if (!dsm_client_ocuppy(lcd_dclient) && hisifd->lcd_self_testing == false) {
-			dsm_client_record(lcd_dclient, "fb%d, isr_s1_mask=0x%x, isr_s2_mask=0x%x, "
-				"isr_s1=0x%x, isr_s2=0x%x.\n", hisifd->index,
-				isr_s1_mask, isr_s2_mask, isr_s1, isr_s2);
-			dsm_client_notify(lcd_dclient, DSM_LCD_TE_TIME_OUT_ERROR_NO);
+		if (s_vactive0_timeout_count > VACTIVE0_TIMEOUT_EXPIRE_COUNT) {
+			if (!dsm_client_ocuppy(lcd_dclient) && hisifd->lcd_self_testing == false) {
+				dsm_client_record(lcd_dclient, "fb%d, isr_s1_mask=0x%x, isr_s2_mask=0x%x, "
+					"isr_s1=0x%x, isr_s2=0x%x.\n", hisifd->index,
+					isr_s1_mask, isr_s2_mask, isr_s1, isr_s2);
+				dsm_client_notify(lcd_dclient, DSM_LCD_TE_TIME_OUT_ERROR_NO);
+			}
+			s_vactive0_timeout_count = 0;
 		}
 	#endif
 	}
@@ -8188,7 +8339,7 @@ int hisi_vactive0_start_config(struct hisi_fb_data_type *hisifd)
 	return ret;
 }
 /*lint +e665*/
-
+volatile int g_ext_num = 0;
 void hisi_dss_dirty_region_updt_config(struct hisi_fb_data_type *hisifd)
 {
 	struct hisi_fb_panel_data *pdata = NULL;
@@ -8214,10 +8365,26 @@ void hisi_dss_dirty_region_updt_config(struct hisi_fb_data_type *hisifd)
 		dirty = hisifd->ov_req.dirty_region_updt_info.dirty_rect;
 	}
 
+	if (true == g_enable_extra_data) {
+		if ((dirty.h + dirty.y) < hisifd->panel_info.yres) {
+			g_ext_num = 0;
+		} else {
+			g_ext_num = EXTRA_NUM;
+		}
+	} else {
+		g_ext_num = 0;
+	}
+
 	ovl_base = hisifd->dss_base +
 		g_dss_module_ovl_base[hisifd->ovl_type][MODULE_OVL_BASE];
-	set_reg(ovl_base + OVL_OV_SIZE,
-		(DSS_WIDTH(dirty.w) | DSS_HEIGHT(dirty.h) << 16), 31, 0);
+
+	if (true == g_enable_extra_data) {
+		set_reg(ovl_base + OVL_OV_SIZE,
+			(DSS_WIDTH(dirty.w) | DSS_HEIGHT(dirty.h+g_ext_num) << 16), 31, 0);
+	} else {
+		set_reg(ovl_base + OVL_OV_SIZE,
+			(DSS_WIDTH(dirty.w) | DSS_HEIGHT(dirty.h) << 16), 31, 0);
+	}
 
 	if (hisifd->ldi_data_gate_en == 1) {
 		set_reg(hisifd->dss_base + PDP_LDI_CTRL, 0x1, 1, 2);

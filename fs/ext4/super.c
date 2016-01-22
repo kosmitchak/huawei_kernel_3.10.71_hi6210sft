@@ -64,7 +64,9 @@ extern unsigned int get_datamount_flag(void);
 #define USERDATA_MOUNTPOINT "userdata"
 #define USERDATA_MOUNTPOINT_LEN 8
 #endif
+#if defined(CONFIG_HI3XXX_CMDLINE_PARSE)||defined(CONFIG_HISILICON_PLATFORM_HI6XXX_BOOTCMD)
 extern unsigned int get_boot_into_recovery_flag(void);
+#endif
 #ifdef CONFIG_HUAWEI_FS_DSM
 #include <huawei_platform/dsm/dsm_pub.h>
 struct dsm_dev dsm_fs = {
@@ -409,6 +411,7 @@ static void ext4_journal_commit_callback(journal_t *journal, transaction_t *txn)
  * that error until we've noted it down and cleared it.
  */
 
+#ifdef CONFIG_FEATURE_HUAWEI_EMERGENCY_DATA
 static char * ext4_get_mountpoint(struct super_block *sb)
 {
     if (unlikely(!sb || !sb->s_bdev || !sb->s_bdev->bd_part ||
@@ -422,6 +425,23 @@ static char * ext4_get_mountpoint(struct super_block *sb)
 
     return sb->s_bdev->bd_part->info->volname;
 }
+
+static inline void trigger_double_data(struct super_block *sb)
+{
+#ifndef TARGET_VERSION_FACTORY
+#if defined(CONFIG_HI3XXX_CMDLINE_PARSE)||defined(CONFIG_HISILICON_PLATFORM_HI6XXX_BOOTCMD)
+	if (get_boot_into_recovery_flag() == 0 &&
+			get_datamount_flag() == 0) {
+		if(ext4_get_mountpoint(sb) &&
+				(strncmp(USERDATA_MOUNTPOINT, ext4_get_mountpoint(sb), USERDATA_MOUNTPOINT_LEN) == 0)) {
+			printk(KERN_CRIT "ext4_handle_error reboot mountfail\n");
+			kernel_restart("mountfail");
+		}
+	}
+#endif
+#endif
+}
+#endif
 
 static void ext4_handle_error(struct super_block *sb)
 {
@@ -445,22 +465,9 @@ static void ext4_handle_error(struct super_block *sb)
 	if (test_opt(sb, ERRORS_PANIC))
 		panic("EXT4-fs (device %s): panic forced after error\n",
 			sb->s_id);
+
 #ifdef CONFIG_FEATURE_HUAWEI_EMERGENCY_DATA
-    /*
-     * if is factory mode, same to orignal.
-     * if flag equal to 0, this phone boot not caused by ext4_handle_error, so reboot.
-     * if flag equal to 1, this phone boot caused by ext4_handle_error, so not reboot again.
-     */
-#ifndef TARGET_VERSION_FACTORY
-    if (get_boot_into_recovery_flag() == 0 && get_datamount_flag() == 0)
-    {
-        if(ext4_get_mountpoint(sb) &&(strncmp(USERDATA_MOUNTPOINT, ext4_get_mountpoint(sb), USERDATA_MOUNTPOINT_LEN) == 0))
-        {
-             printk(KERN_CRIT "ext4_handle_error reboot mountfail\n");
-             kernel_restart("mountfail");
-        }
-    }
-#endif
+	trigger_double_data(sb);
 #endif
 }
 
@@ -663,6 +670,10 @@ void __ext4_abort(struct super_block *sb, const char *function,
 
 	if (test_opt(sb, ERRORS_PANIC))
 		panic("EXT4-fs panic from previous error\n");
+
+#ifdef CONFIG_FEATURE_HUAWEI_EMERGENCY_DATA
+	trigger_double_data(sb);
+#endif
 }
 
 void ext4_msg(struct super_block *sb, const char *prefix, const char *fmt, ...)
@@ -4741,6 +4752,8 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
 	int i, j;
 #endif
 	char *orig_data = kstrdup(data, GFP_KERNEL);
+
+	sync_filesystem(sb);
 
 	/* Store the original options */
 	old_sb_flags = sb->s_flags;

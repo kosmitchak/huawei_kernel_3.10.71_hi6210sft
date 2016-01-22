@@ -382,23 +382,17 @@ out:
 
 int misp_get_chipid(void)
 {
-	struct misp_data *drv_data = get_misp_data();
-	int retry = 0;
-	int extisp_type = EXTISP_NULL;
+    struct misp_data *drv_data = get_misp_data();
+    int extisp_type = EXTISP_NULL;
 
-	for (retry = 0; retry < 2; retry++) {
-		extisp_type = _misp_get_chipid();
-		if (EXTISP_NULL != extisp_type)
-			break;
-	}
-	if(extisp_type == EXTISP_NULL){
-		cam_err("%s mini isp type detect timeout", __func__);
-		if(!dsm_client_ocuppy(drv_data->client_extisp)){
-			dsm_client_record(drv_data->client_extisp, "%s mini isp type detect timeout,times = %d\n", __func__,retry);
-			dsm_client_notify(drv_data->client_extisp, DSM_EXTISP_LOAD_FW_ERROR_NO);
-		}
-	}
-	return extisp_type;
+    extisp_type = altek6045_get_chipid();
+    if(misp_firmware_path[0] == 0){
+        strncpy(misp_firmware_path,"/system/miniisp/",sizeof(misp_firmware_path));
+    }
+    misp_set_firmware_path(misp_firmware_path,extisp_type);
+    drv_data->extisp_type = extisp_type;
+    cam_info("%s extisp_type = %d",__func__,extisp_type);
+    return extisp_type;
 }
 
 
@@ -1243,8 +1237,7 @@ static irqreturn_t misp_irq_thread(int irq, void *handle)
 	}
 
 	memcpy(&irq_code, drv_data->irq_buf, sizeof(irq_code));
-	if((irq_code & MINI_ISP_IRQ_PWDN)||(irq_code & MINI_ISP_IRQ_OTHRE_ERR))
-		cam_info("misp irq state=0x%04x", irq_code);
+	cam_info("misp irq state=0x%04x", irq_code);
 
 	/* handle ready done */
 	if (irq_code & MINI_ISP_IRQ_READY_DONE) {

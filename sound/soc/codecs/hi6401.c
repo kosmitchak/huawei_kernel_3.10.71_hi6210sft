@@ -53,9 +53,10 @@
 #include <linux/huawei/hisi_adc.h>
 #include <linux/timer.h>
 #include <linux/rtc.h>
-#include <huawei_platform/log/log_exception.h>
+#include <linux/dsm_pub.h>
+#include <linux/log_exception.h>
 
-#define GET_VOLTAGE(value)	(value * 2700 / 0xFF)	/* saradc range 0 ~ 2700mV */
+#define GET_VOLTAGE(value)	(value * 2800 / 0xFF)	/* saradc range 0 ~ 2800mV */
 
 #define STEP_DELAY	mdelay(5)
 
@@ -108,13 +109,14 @@ enum ANC_HS_ERRNO {
 
 #define  ANC_HS_LIMIT_MIN                  20
 #define  ANC_HS_LIMIT_MAX                  200
-#define  ANC_CHIP_WARM_STARTUP_TIME        160
-#define  ANC_CHIP_COLD_STARTUP_TIME        380
+#define  ANC_CHIP_WARM_STARTUP_TIME        30
+#define  ANC_CHIP_COLD_STARTUP_TIME        30
 #define  NO_CHARGE_DETECT_PERIOD_TIME      (1 * 60 * 60 * 1000)  // 1 hours
 #define  ADC_CALIBRATION_TIMES             10
 #define  ADC_READ_COUNT                    3
 #define  ADC_NORMAL_LIMIT_MIN              -500
 #define  ADC_NORMAL_LIMIT_MAX              500
+#define  ADC_OUT_OF_RANGE                  2499
 
 #define FLASHLIGHT_CALLER 0
 #define TINYMIX_CALLER 1
@@ -162,11 +164,11 @@ struct anc_hs_data {
 	int anc_hs_limit_min;
 	int anc_hs_limit_max;
 	bool irq_flag;
-	bool boost_flag;
 	int no_charge_detect_period;
 	int sleep_time;
 	bool mic_used;
 	int anc_resistence_level;
+	int no_charge_ctl;
 
 	int adc_calibration_base;
 	bool calibration_done;
@@ -264,6 +266,9 @@ struct hi6401_priv {
 	struct workqueue_struct * headset_btn_down_delay_wq;
 	struct delayed_work headset_btn_down_delay_work;
 };
+
+extern void boost5v_headphone_enable(bool enable);
+extern void boost5v_denoise_headphone_enable(bool enable);
 
 static void hi6401_enable_ibias(struct snd_soc_codec *codec, bool enable);
 static void hi6401_hs_micbias_saradc_enable(struct snd_soc_codec *codec, bool enable);
@@ -379,7 +384,7 @@ static void hi6401_set_lineout_gain(int type)
 
 void hi6401_set_gain_for_flashlight(bool enable)
 {
-#ifdef CONFIG_HISI_6421_SPK
+#ifdef CONFIG_HI6421_SPK
 	struct hi6401_priv *priv = dev_get_drvdata(g_codec->dev);
 
 	BUG_ON(NULL == priv);
@@ -483,11 +488,10 @@ static void anc_hs_dump(struct anc_hs_data *p_anc_hs)
 						struct hi6401_priv,
 						p_anc_hs);
 
-	pr_info("%s: mode:%d,irq:%d,boost:%d,sleep_time:%d,mic_used:%d,pressed:%d,switch:%d\n",
+	pr_info("%s: mode:%d,irq:%d,sleep_time:%d,mic_used:%d,pressed:%d,switch:%d\n",
 		__FUNCTION__,
 		p_anc_hs->anc_hs_mode,
 		p_anc_hs->irq_flag,
-		p_anc_hs->boost_flag,
 		p_anc_hs->sleep_time,
 		p_anc_hs->mic_used,
 		priv->button_pressed,
@@ -3011,14 +3015,12 @@ static void hi6401_enable_ibias(struct snd_soc_codec *codec, bool enable)
 	if (enable) {
 		if (!priv->ibias_saradc && (0 == priv->ibias_work)) {
 			/* enable ldo8 */
-#if 0
 			ret = regulator_bulk_enable(1, &priv->regu);
 			if (0 != ret) {
 				pr_err("%s : couldn't enable regulators %d\n",
 						__FUNCTION__, ret);
 				return;
 			}
-#endif
 			hi6401_reg_clr_bit(codec, HI6401_VREF_IBIAS_PD, HI6401_IBIAS_PD_BIT);
 			hi6401_set_vref(codec, VREF_QUICK_PU);
 			msleep(30);
@@ -3028,9 +3030,7 @@ static void hi6401_enable_ibias(struct snd_soc_codec *codec, bool enable)
 		if (!priv->ibias_saradc && (0 == priv->ibias_work)) {
 			hi6401_set_vref(codec, VREF_PD);
 			hi6401_reg_set_bit(codec, HI6401_VREF_IBIAS_PD, HI6401_IBIAS_PD_BIT);
-#if 0
 			regulator_bulk_disable(1, &priv->regu);
-#endif
 		}
 	}
 }
@@ -3094,10 +3094,9 @@ static void anc_dsm_report(struct anc_hs_data *p_anc_hs, int anc_errno, int sys_
 
 	if(!dsm_client_ocuppy(anc_hs_dclient)){
 		dsm_client_record(anc_hs_dclient,
-			"mode:%d,irq:%d,boost:%d,sleep_time:%d,mic_used:%d,pressed:%d,switch:%d,errno\n",
+			"mode:%d,irq:%d,sleep_time:%d,mic_used:%d,pressed:%d,switch:%d,errno\n",
 		p_anc_hs->anc_hs_mode,
 		p_anc_hs->irq_flag,
-		p_anc_hs->boost_flag,
 		p_anc_hs->sleep_time,
 		p_anc_hs->mic_used,
 		priv->button_pressed,
@@ -3215,10 +3214,10 @@ static void hi6401_hs_micbias_enable(struct snd_soc_codec *codec, bool enable)
 		if (enable) {
 			first = (0 == (hi6401_reg_read(codec, HI6401_IRQ_SOURCE_STATE) & (1 << HI6401_HS_BTN_ECO_BIT)));
 			hi6401_ibias_saradc_enable(codec, true);
+			hi6401_hs_eco_enable(codec, false);
 			hi6401_reg_clr_bit(codec, HI6401_HSMICBIAS_PD_REG, HI6401_HSMICBIAS_PD_BIT);
 			msleep(6);
 			hi6401_clr_btn_irqs(codec);
-			hi6401_hs_eco_enable(codec, false);
 			secend = (0 == (hi6401_reg_read(codec, HI6401_IRQ_SOURCE_STATE) & (1 << HI6401_HS_BTN_BIT)));
 			if (!priv->need_report_up_event)
 				priv->need_report_up_event = (first && !secend);
@@ -3246,12 +3245,11 @@ static void anc_hs_charging_control(struct hi6401_priv *priv)
 	if(!priv->anc_hs_enable)
 		return ;
 
-	if (1 == priv->hs_micbias_work ) {
+	if (1 == priv->hs_micbias_work || 1 == p_anc_hs->no_charge_ctl) {
 		mutex_lock(&p_anc_hs->charge_lock);
 		if(p_anc_hs->anc_hs_mode == ANC_HS_CHARGE_ON) {
 			gpio_set_value(p_anc_hs->gpio_mic_sw, SWITCH_CHIP_HSBIAS);
 			anc_hs_disable_irq(p_anc_hs);
-			flush_work(&p_anc_hs->anc_hs_btn_delay_work.work);
 
 			pr_info("%s(%u) : stop charging for anc hs !\n", __FUNCTION__, __LINE__);
 			p_anc_hs->anc_hs_mode = ANC_HS_CHARGE_OFF;
@@ -3264,14 +3262,12 @@ static void anc_hs_charging_control(struct hi6401_priv *priv)
 		}else {
 			if(gpio_get_value(p_anc_hs->gpio_mic_sw) == SWITCH_CHIP_5VBOOST){
 				pr_err("%s(%u) : gpio status is not right !\n", __FUNCTION__, __LINE__);
-#ifdef CONFIG_HUAWEI_DSM
 				anc_dsm_report(p_anc_hs, ANC_HS_MIC_WITH_GPIO_ERR, 0);
-#endif
 			}
 		}
 		anc_hs_dump(p_anc_hs);
 		mutex_unlock(&p_anc_hs->charge_lock);
-	}else if (0 == priv->hs_micbias_work){
+	}else if (0 == priv->hs_micbias_work && 0 == p_anc_hs->no_charge_ctl){
 		mutex_lock(&p_anc_hs->charge_lock);
 		if(p_anc_hs->mic_used) {
 			p_anc_hs->mic_used = false;
@@ -3284,9 +3280,7 @@ static void anc_hs_charging_control(struct hi6401_priv *priv)
 						0);
 				if(!ret) {
 					pr_info("%s(%u) : queue work failed\n", __FUNCTION__, __LINE__);
-#ifdef CONFIG_HUAWEI_DSM
 					anc_dsm_report(p_anc_hs, ANC_HS_QUEUE_WORK_ERR, 0);
-#endif
 				}
 				pr_info("%s(%u) : resume charging for anc hs =%d!\n", __FUNCTION__, __LINE__,ret);
 			}
@@ -3419,45 +3413,16 @@ void hi6401_jack_report(struct hi6401_priv *priv)
 
 	hi6401_btn_report(priv);/* clear btn event */
 	snd_soc_jack_report(&priv->hs_jack, priv->report, HI6401_JACK_HEADSET);
-#ifdef CONFIG_SWITCH
 	switch_set_state(&priv->sdev, jack_status);
-#endif
-}
-
-static int enable_boost(struct anc_hs_data *p_anc_hs, bool enable)
-{
-	int ret = 0;
-
-	if(enable) {
-		if(!p_anc_hs->boost_flag) {
-			ret = regulator_bulk_enable(1, &p_anc_hs->regu_boost5v);
-			if (ret != 0) {
-				pr_err("%s(%u) : regulator_bulk_enable fail err = %d\n",
-					__FUNCTION__, __LINE__, ret);
-				return ret;
-			}
-			p_anc_hs->boost_flag = true;
-		}
-	}else {
-		if(p_anc_hs->boost_flag) {
-			ret = regulator_bulk_disable(1, &p_anc_hs->regu_boost5v);
-			if (ret != 0) {
-				pr_err("%s(%u) : regulator_bulk_disable fail err = %d\n",
-					__FUNCTION__, __LINE__, ret);
-				return ret;
-			}
-			p_anc_hs->boost_flag = false;
-		}
-	}
-	return ret;
 }
 
 static bool need_charging(struct anc_hs_data *anc_hs)
 {
-	int ear_pwr_h,ear_pwr_l;
+	int ear_pwr_h = 0,ear_pwr_l = 0;
 	int delta = 0, count, fail_count = 0;
 	int loop = ADC_READ_COUNT;
 	int temp;
+	bool need_report = true;
 
 	while(loop) {
 		loop--;
@@ -3465,18 +3430,12 @@ static bool need_charging(struct anc_hs_data *anc_hs)
 		ear_pwr_h = hisi_adc_get_value(anc_hs->channel_pwl_h);
 		if(ear_pwr_h < 0) {
 			pr_err("%s(%u) : get ear_pwr_h hkadc error err = %d\n", __FUNCTION__, __LINE__, ear_pwr_h);
-#ifdef CONFIG_HUAWEI_DSM
-			anc_dsm_report(anc_hs, ANC_HS_ADCH_READ_ERR, ear_pwr_h);
-#endif
 			fail_count++;
 			continue;
 		}
 		ear_pwr_l = hisi_adc_get_value(anc_hs->channel_pwl_l);
 		if(ear_pwr_l < 0) {
 			pr_err("%s(%u) : get ear_pwr_h hkadc error err = %d\n", __FUNCTION__, __LINE__, ear_pwr_l);
-#ifdef CONFIG_HUAWEI_DSM
-			anc_dsm_report(anc_hs, ANC_HS_ADC_FULL_ERR, ear_pwr_l);
-#endif
 			fail_count++;
 			continue;
 		}
@@ -3485,15 +3444,23 @@ static bool need_charging(struct anc_hs_data *anc_hs)
 		temp = ear_pwr_h - ear_pwr_l - anc_hs->adc_calibration_base;
 		if((temp > ADC_NORMAL_LIMIT_MAX) || (temp < ADC_NORMAL_LIMIT_MIN) ){
 			fail_count++;
+			need_report = false;
 			continue;
 		}
 
 		delta += temp;
 	}
 
+      if(ear_pwr_h >= ADC_OUT_OF_RANGE || ear_pwr_l >= ADC_OUT_OF_RANGE) {
+		anc_dsm_report(anc_hs, ANC_HS_ADC_FULL_ERR, 0);
+      }
+
 	count = ADC_READ_COUNT -loop -fail_count;
 	if(count == 0) {
 		pr_err("%s(%u) : get anc_hs hkadc failed \n", __FUNCTION__, __LINE__);
+		if(need_report) {
+			anc_dsm_report(anc_hs, ANC_HS_ADCH_READ_ERR, 0);
+		}
 		return false;
 	}
 	delta /= count;
@@ -3508,19 +3475,13 @@ static bool need_charging(struct anc_hs_data *anc_hs)
 void start_charging(struct hi6401_priv *priv)
 {
 	struct anc_hs_data *p_anc_hs = &priv->p_anc_hs;
-	int ret;
 
 	if(!priv->anc_hs_enable)
 		return ;
 
 	//enable 5vboost first
 	pr_info("%s(%u) :enable 5vboost first\n", __FUNCTION__, __LINE__);
-	ret = enable_boost(p_anc_hs, true);
-	if(ret){
-#ifdef CONFIG_HUAWEI_DSM
-		anc_dsm_report(p_anc_hs, ANC_HS_OPEN_BOOST_ERR, ret);
-#endif
-	}
+	boost5v_headphone_enable(true);
 	msleep(5);    //FIXME:delay time can be optimazed
 
 	mutex_lock(&p_anc_hs->charge_lock);
@@ -3565,16 +3526,11 @@ void control_regulator_by_headset_type(struct hi6401_priv *priv, int saradc_valu
 		queue_delayed_work(p_anc_hs->anc_hs_charge_delay_wq,
 			&p_anc_hs->anc_hs_charge_delay_work,
 			0);
-	} else {
+	} else if(priv->hs_3_pole_max_voltage >= saradc_value){
 		/* not 4-pole headset */
 		pr_info("%s : no need enable 5vboost for non-4-pole headset\n", __FUNCTION__);
 		// It is not anc headset
-		ret = enable_boost(p_anc_hs, false);
-		if(ret){
-#ifdef CONFIG_HUAWEI_DSM
-			anc_dsm_report(p_anc_hs, ANC_HS_CLOSE_BOOST_ERR, ret);
-#endif
-		}
+		boost5v_headphone_enable(false);
 	}
 
 }
@@ -3691,16 +3647,9 @@ void anc_hs_plug_out(struct hi6401_priv *priv)
 		cancel_delayed_work(&p_anc_hs->anc_hs_charge_delay_work);
 	}
 
-	//It is proper to wait btn event to be finished
-	flush_work(&p_anc_hs->anc_hs_btn_delay_work.work);
-
 	mutex_lock(&p_anc_hs->charge_lock);
-	ret = enable_boost(p_anc_hs, false);
-	if(ret){
-#ifdef CONFIG_HUAWEI_DSM
-		anc_dsm_report(p_anc_hs, ANC_HS_CLOSE_BOOST_ERR, ret);
-#endif
-	}
+	boost5v_denoise_headphone_enable(false);
+	boost5v_headphone_enable(false);
 	gpio_set_value(p_anc_hs->gpio_mic_sw, SWITCH_CHIP_HSBIAS);
 	p_anc_hs->anc_hs_mode = ANC_HS_CHARGE_OFF;
 	//may plug out with button pressed
@@ -3757,8 +3706,10 @@ void anc_hs_btn_judge(struct work_struct *work)
 
 	pr_info("%s(%u) : in anc_hs_btn_judge !\n", __FUNCTION__, __LINE__);
 
-	wake_lock(&priv->wake_lock);
+	//wait codec power finish
 	mutex_lock(&hi6401_irq->sr_mutex);
+	wake_lock(&priv->wake_lock);
+	mutex_unlock(&hi6401_irq->sr_mutex);
 
 	//enable irq here
 	anc_hs_enable_irq(p_anc_hs);
@@ -3795,7 +3746,6 @@ void anc_hs_btn_judge(struct work_struct *work)
 	}
 end2:
 	mutex_unlock(&priv->mutex);
-	mutex_unlock(&hi6401_irq->sr_mutex);
 	wake_unlock(&priv->wake_lock);
 
 	return;
@@ -3808,20 +3758,33 @@ void  anc_hs_charge_workfunc(struct work_struct *work)
 						p_anc_hs.anc_hs_charge_delay_work.work);
 	struct anc_hs_data *p_anc_hs = &priv->p_anc_hs;
 	struct snd_soc_codec *codec;
+	struct hi6401_irq *hi6401_irq;
+
 	codec = priv->codec;
 
 	BUG_ON(NULL == priv);
+	hi6401_irq = priv->p_irq;
+	BUG_ON(NULL == hi6401_irq);
+
+	if(1 == p_anc_hs->no_charge_ctl) {
+		pr_info("%s(%u) : charge function is occupied by app level\n", __FUNCTION__, __LINE__);
+		p_anc_hs->mic_used = true;
+		return;
+	}
 
 	wake_lock(&priv->wake_lock);
+	mutex_lock(&hi6401_irq->sr_mutex);
 
 	pr_info("%s(%u) : anc hs charge !\n", __FUNCTION__, __LINE__);
 
 	if (!check_headset_pluged_in(priv->codec)) {
 		pr_info("%s(%u) :headset has plug out!\n", __FUNCTION__, __LINE__);
 		anc_hs_dump(p_anc_hs);
+		mutex_unlock(&hi6401_irq->sr_mutex);
 		wake_unlock(&priv->wake_lock);
 		return ;
 	}
+	mutex_unlock(&hi6401_irq->sr_mutex);
 
 	mutex_lock(&priv->hs_micbias_mutex);
 	if(priv->hs_micbias_work > 0) {
@@ -3845,6 +3808,7 @@ void  anc_hs_charge_workfunc(struct work_struct *work)
 	if(p_anc_hs->anc_hs_mode == ANC_HS_CHARGE_OFF) {
 		p_anc_hs->anc_hs_mode = ANC_HS_CHARGE_SWITCHING;
 	}
+	boost5v_headphone_enable(true);
 	gpio_set_value(p_anc_hs->gpio_mic_sw, SWITCH_CHIP_5VBOOST);
 	mutex_unlock(&p_anc_hs->charge_lock);
 	mutex_unlock(&priv->hs_micbias_mutex);
@@ -3865,12 +3829,12 @@ void  anc_hs_charge_workfunc(struct work_struct *work)
 	}
 	if((priv->hs_micbias_work <= 0) && need_charging(p_anc_hs)){
 		if(p_anc_hs->anc_hs_mode == ANC_HS_CHARGE_SWITCHING) {
-			/* make sure hi6401 btn work has been completed*/
-			flush_work(&priv->headset_btn_down_delay_work.work);
-			flush_work(&priv->headset_btn_up_delay_work.work);
 
 			pr_info("%s(%u) : anc_hs_enable_irq !\n", __FUNCTION__, __LINE__);
 			anc_hs_enable_irq(p_anc_hs);
+
+			boost5v_denoise_headphone_enable(true);
+			boost5v_headphone_enable(false);
 
 			p_anc_hs->anc_hs_mode = ANC_HS_CHARGE_ON;
 		}
@@ -3878,7 +3842,6 @@ void  anc_hs_charge_workfunc(struct work_struct *work)
 		if(p_anc_hs->anc_hs_mode == ANC_HS_CHARGE_ON) {
 			/* make sure anc hs btn work has been completed*/
 			anc_hs_disable_irq(p_anc_hs);
-			flush_work(&p_anc_hs->anc_hs_btn_delay_work.work);
 
 			pr_info("%s(%u) : anc_hs_disable_irq !\n", __FUNCTION__, __LINE__);
 		}
@@ -4215,7 +4178,7 @@ static void hi6401_init_chip(struct snd_soc_codec *codec)
 	hi6401_reg_write(codec, HI6401_PLL_FCW_1, 0x8F);
 	hi6401_reg_write(codec, HI6401_PLL_FCW_2, 0x5C);
 
-	hi6401_reg_write(codec, HI6401_MBHD_VREF_CTRL, 0x92);
+	hi6401_reg_write(codec, HI6401_MBHD_VREF_CTRL, 0x82);/* eco : 100mv */
 	hi6401_reg_write(codec, HI6401_MICBIAS_ECO_EN, 0x84);/* submic 2.5v */
 	hi6401_reg_write(codec, HI6401_MICBIAS1_HSMICB_ADJ, 0x26);/* mainmic 2.5v hsmic 2.7v */
 	hi6401_reg_write(codec, HI6401_DEB_HS_DET, 0x50);/* 20ms */
@@ -4309,7 +4272,6 @@ static ssize_t hs_info_read(struct file *file, char __user *user_buf,
 	snprintf(buf, HS_INFO_SIZE, "%sirq_flag: %d\n", buf, p_anc_hs->irq_flag);
 	snprintf(buf, HS_INFO_SIZE, "%schannel_pwl_h: %d\n", buf, p_anc_hs->channel_pwl_h);
 	snprintf(buf, HS_INFO_SIZE, "%schannel_pwl_l: %d\n", buf, p_anc_hs->channel_pwl_l);
-	snprintf(buf, HS_INFO_SIZE, "%sboost_flag: %d\n", buf, p_anc_hs->boost_flag);
 	snprintf(buf, HS_INFO_SIZE, "%sgpio_mic_sw: %d\n", buf, gpio_get_value(p_anc_hs->gpio_mic_sw));
 	snprintf(buf, HS_INFO_SIZE, "%smic_used: %d\n", buf, p_anc_hs->mic_used);
 	snprintf(buf, HS_INFO_SIZE, "%sbutton_pressed: %d\n", buf, priv->button_pressed);
@@ -4472,6 +4434,43 @@ static ssize_t sleep_time_write(struct file *file,
 	return buf_size;
 }
 
+static ssize_t charge_ctl_read(struct file *file, char __user *user_buf,
+				   size_t count, loff_t *ppos)
+{
+	struct anc_hs_data *p_anc_hs = file->private_data;
+	char buf[32];
+	memset(buf,0,32);
+	snprintf(buf, 32, "%d",p_anc_hs->no_charge_ctl);
+	return simple_read_from_buffer(user_buf, count, ppos, buf, strlen(buf));
+}
+
+static ssize_t charge_ctl_write(struct file *file,
+		const char __user *user_buf, size_t count, loff_t *ppos)
+{
+	struct anc_hs_data *p_anc_hs = file->private_data;
+	struct hi6401_priv *priv = container_of(p_anc_hs,
+					struct hi6401_priv,
+					p_anc_hs);
+	char buf[32];
+	size_t buf_size;
+	int value;
+	int ret;
+	memset(buf,0,32);
+	buf_size = min(count, (sizeof(buf)-1));
+	if (copy_from_user(buf, user_buf, buf_size))
+		return -EFAULT;
+	ret = kstrtoint(buf, 10, &value);
+	if(ret) {
+		pr_err("%s : convert to int type failed\n",__FUNCTION__);
+		return ret;
+	}
+
+	p_anc_hs->no_charge_ctl = value;
+	pr_info("app level contrl set charge status with %d\n", p_anc_hs->no_charge_ctl);
+	anc_hs_charging_control(priv);
+	return buf_size;
+}
+
 static const struct file_operations hs_info_fops = {
 	.read =     hs_info_read,
 	.open =     simple_open,
@@ -4500,6 +4499,13 @@ static const struct file_operations gpio_sw_fops = {
 static const struct file_operations sleep_time_fops = {
 	.read =     sleep_time_read,
 	.write =    sleep_time_write,
+	.open =     simple_open,
+	.llseek =   default_llseek,
+};
+
+static const struct file_operations charge_ctl_fops = {
+	.read =     charge_ctl_read,
+	.write =    charge_ctl_write,
 	.open =     simple_open,
 	.llseek =   default_llseek,
 };
@@ -4577,12 +4583,12 @@ static int anc_hs_init(struct anc_hs_data *p_anc_hs)
 
 	p_anc_hs->anc_hs_mode = ANC_HS_CHARGE_OFF;
 	p_anc_hs->irq_flag = true;
-	p_anc_hs->boost_flag = false;
 	p_anc_hs->mic_used = false;
 	p_anc_hs->sleep_time = ANC_CHIP_WARM_STARTUP_TIME;
 	p_anc_hs->debug_sleep_time = 0;
 	p_anc_hs->adc_calibration_base = 0;
 	p_anc_hs->no_charge_detect_period = NO_CHARGE_DETECT_PERIOD_TIME;
+	p_anc_hs->no_charge_ctl = 0;
 
 	node = of_find_compatible_node(NULL, NULL, "hisilicon,anc_headset");
 	if (!node) {
@@ -4590,15 +4596,6 @@ static int anc_hs_init(struct anc_hs_data *p_anc_hs)
 		return -ENODEV;
 	}
 
-	p_anc_hs->regu_boost5v.supply = "anc_hs_charge";
-	
-#if 0
-	ret = devm_regulator_bulk_get(codec->dev, 1, &(p_anc_hs->regu_boost5v));
-	if (0 != ret) {
-		dev_err(codec->dev, "couldn't get regulators(boost5v) %d\n", ret);
-		return -ENODEV;
-	}
-#endif
 	p_anc_hs->gpio_mic_sw =  of_get_named_gpio(node, "gpios", 0);
 	if(p_anc_hs->gpio_mic_sw < 0) {
 		dev_err(codec->dev, "gpio_mic_sw is unvalid!\n");
@@ -4722,6 +4719,10 @@ static int anc_hs_init(struct anc_hs_data *p_anc_hs)
 	if (!debugfs_create_file("sleep_time", 0660, debug_dir, p_anc_hs,
 				&sleep_time_fops)) {
 		pr_err("anc_hs: Failed to create sleep_time debugfs file\n");
+	}
+	if (!debugfs_create_file("charge_ctl", 0660, debug_dir, p_anc_hs,
+				&charge_ctl_fops)) {
+		pr_err("anc_hs: Failed to create charge_ctl debugfs file\n");
 	}
 #endif
 
@@ -5165,14 +5166,12 @@ static int hi6401_codec_probe(struct platform_device *pdev)
 		return -ENOENT;
 	}
 
-#if 0
 	priv->regu.supply = "hi6401-codec";
 	ret = devm_regulator_bulk_get(dev, 1, &(priv->regu));
 	if (0 != ret) {
 		dev_err(dev, "couldn't get regulators %d\n", ret);
 		return -ENOENT;
 	}
-#endif
 
 	priv->irq[HI6401_IRQ_BTNUP] = platform_get_irq_byname(pdev, "btnup");
 	if (0 > priv->irq[HI6401_IRQ_BTNUP])

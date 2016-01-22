@@ -249,11 +249,12 @@ static void ocp_log_exception_archive(u32 ocp_status)
 		"archive -i /data/android_logs/charge_log -i /data/android_logs/charge_log.1",
 			" -i /data/android_logs/kmsgcat-log -i /data/android_logs/kmsgcat-log.1",
 			" -o ", time_buf, "_OCP_status0x", ocp_status, " -z zip");
-
+/*
 	ret = log_to_exception("OCP",cmd);
 	if(ret < 0 ){
 		pr_err("%s %d :upload ocp log error.\n", __func__, __LINE__);
 	}
+*/
 }
 static void get_hi6421_register_info(struct hi6421_ocp_info *temp_info)
 {

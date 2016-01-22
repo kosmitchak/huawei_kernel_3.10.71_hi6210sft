@@ -216,10 +216,18 @@ ov5648_x1s_match_id(
     struct sensor_cfg_data *cdata = (struct sensor_cfg_data *)data;
     uint16_t sensor_id = 0;
     uint8_t modue_id = 0;
+    uint8_t retry = 0;
 
     cam_info("%s TODO.", __func__);
-
-    misp_get_module_info(sensor->board_info->sensor_index,&sensor_id,&modue_id);
+    for(retry = 0;retry < 2; retry++){
+        misp_get_module_info(sensor->board_info->sensor_index,&sensor_id,&modue_id);
+        if(sensor_id==0){
+            cam_info("%s try to read camera id again",__func__);
+            continue;
+        }else{
+            break;
+        }
+    }
 
     if(sensor_id == 0x5648) {
         cdata->data = sensor->board_info->sensor_index;

@@ -83,7 +83,6 @@ struct hisi_hi6421v300_coul_device
     int batt_rm;
     int batt_ruc;
     int batt_uuc;
-    int uuc_err;
     int batt_delta_rc;
     int batt_pre_delta_rc;
     int rbatt;
@@ -1103,12 +1102,25 @@ static int interpolate_ocv(struct pc_temp_ocv_lut *lut, int batt_temp_degc, int 
 static int calculate_termination_uuc(struct hisi_hi6421v300_coul_device *di, int batt_temp, int chargecycles, int fcc_uah, int i_ma, int *ret_pc_unusable)
 {
     int unusable_uv, pc_unusable, uuc;
+    int i = 0;
+    int ocv_mv;
     int batt_temp_degc = batt_temp / 10;
     int rbatt_mohm = 0;
+    int delta_uv = 0;
+    int prev_delta_uv = 0;
+    int prev_rbatt_mohm = 0;
+    int uuc_rbatt_uv;
     int fcc_mah = fcc_uah / 1000;
     int zero_voltage = 3200;
+    int ratio = 100;
 
-    i_ma = di->last_fifo_iavg_ma;
+#ifdef RBATT_ADJ
+    if (di->rbatt_ratio)
+    {
+        ratio = di->rbatt_ratio;
+        i_ma = di->last_fifo_iavg_ma;
+    }
+#endif
 
     if((batt_temp_degc < 5) && (batt_temp_degc > -10))
     {
@@ -1125,8 +1137,22 @@ static int calculate_termination_uuc(struct hisi_hi6421v300_coul_device *di, int
     }
     HISI_HI6421V300_COUL_DEBUG("%s,batt_temp_degc = %d,zero_voltage = %d\n",__func__,batt_temp_degc,zero_voltage);
 
-    rbatt_mohm = get_rbatt(di, (di->batt_soc_real / 10), batt_temp);
-    unusable_uv = (rbatt_mohm * i_ma) + (zero_voltage * 1000);
+    for (i = 0; i <= 100; i++)
+    {
+        ocv_mv = interpolate_ocv(di->batt_data->pc_temp_ocv_lut, batt_temp_degc, i*10);
+        rbatt_mohm = get_rbatt(di, i, batt_temp);
+        rbatt_mohm = rbatt_mohm*ratio/100;
+        unusable_uv = (rbatt_mohm * i_ma) + (zero_voltage * 1000);
+        delta_uv = ocv_mv * 1000 - unusable_uv;
+
+        if (delta_uv > 0)
+            break;
+
+        prev_delta_uv = delta_uv;
+        prev_rbatt_mohm = rbatt_mohm;
+    }
+    uuc_rbatt_uv = linear_interpolate(rbatt_mohm, delta_uv, prev_rbatt_mohm, prev_delta_uv, 0);
+    unusable_uv = (uuc_rbatt_uv * i_ma) + (zero_voltage * 1000);
 
     pc_unusable = calculate_pc(di, unusable_uv, batt_temp, chargecycles);
     uuc =  fcc_mah * pc_unusable;
@@ -1203,6 +1229,8 @@ static int calculate_unusable_charge_uah(struct hisi_hi6421v300_coul_device *di,
 
     HISI_HI6421V300_COUL_DEBUG("RBATT_ADJ:UUC =%d uAh, pc=%d.%d\n",
         uuc_uah_iavg, pc_unusable/10, pc_unusable%10);
+
+    di->rbatt_ratio = 0;
 
     glog->uuc_pc = pc_unusable;
 
@@ -2050,7 +2078,6 @@ static void get_ocv_by_fcc(struct hisi_hi6421v300_coul_device *di,int batt_temp)
         /*clear cc register*/
         clear_cc_register();
         di->batt_pre_delta_rc = 0;
-        di->uuc_err = 0;
         clear_coul_time();
         di->get_cc_start_time = 0;
         if (di->cc_start_value != 0){
@@ -2122,7 +2149,6 @@ static void get_ocv_by_vol(struct hisi_hi6421v300_coul_device *di)
         di->batt_ocv_valid_to_refresh_fcc = 1;
         clear_cc_register();
         di->batt_pre_delta_rc = 0;
-        di->uuc_err = 0;
         clear_coul_time();
         save_ocv(voltage_uv);
         di->get_cc_start_time = 0;
@@ -2304,17 +2330,7 @@ static int calculate_delta_rc(struct hisi_hi6421v300_coul_device *di, int soc,
     int rbatt_calc = 0, delta_rbatt = 0;
     int batt_temp_degc = batt_temp/10;
     int ratio = 0;
-    int ocv_for_uuc_err = 0;
-    int rbatt_calc_for_uuc_err = 0;
-    int ratio_for_uuc_err = 0;
     struct vcdata vc = {0};
-    static int first_in = 1;
-
-    if (first_in)
-    {
-        di->batt_soc = di->batt_soc_real / 10;//first in, batt_soc is 0 ,so use batt_soc_real
-        first_in = 0;
-    }
 
     get_simultaneous_battery_voltage_and_current(di, &ibat_ua, &vbat_uv);
 
@@ -2323,27 +2339,14 @@ static int calculate_delta_rc(struct hisi_hi6421v300_coul_device *di, int soc,
     vc.avg_v += (di->r_pcb/1000)*(vc.avg_c)/1000;
     di->last_fifo_iavg_ma = vc.avg_c;
 
-    if (vc.avg_c < 10) {
+    if (vc.avg_c < 50) {
     goto out;
     }
 
-    if (di->batt_soc_real > 10 * di->batt_soc)
-    {
-        ocv = interpolate_ocv(di->batt_data->pc_temp_ocv_lut, batt_temp_degc, di->batt_soc_real);
-    }
-    else
-    {
-        ocv = interpolate_ocv(di->batt_data->pc_temp_ocv_lut, batt_temp_degc, 10 * di->batt_soc);
-    }
-    ocv_for_uuc_err = interpolate_ocv(di->batt_data->pc_temp_ocv_lut, batt_temp_degc, 10 * di->batt_soc);
-
+    ocv = interpolate_ocv(di->batt_data->pc_temp_ocv_lut, batt_temp_degc, di->batt_soc_real);
     rbatt_calc = (ocv - vc.avg_v)*1000/vc.avg_c;
-    rbatt_calc_for_uuc_err = (ocv_for_uuc_err - vc.avg_v) * 1000 / vc.avg_c;
-
     ratio = rbatt_calc*100/rbatt_tbl;
-    ratio_for_uuc_err = rbatt_calc_for_uuc_err * 100 /rbatt_tbl;
-
-    di->rbatt_ratio = ratio_for_uuc_err;
+    di->rbatt_ratio = ratio;
 
     delta_rbatt = rbatt_calc - rbatt_tbl;
 
@@ -2355,7 +2358,7 @@ static int calculate_delta_rc(struct hisi_hi6421v300_coul_device *di, int soc,
 
     rc_new_uah = di->batt_fcc/1000 * pc_new;
 
-    delta_pc = pc_new - (10 * di->batt_soc);
+    delta_pc = pc_new - di->batt_soc_real;
 
     delta_rc_uah = di->batt_fcc/1000 * delta_pc;
 
@@ -2363,7 +2366,7 @@ static int calculate_delta_rc(struct hisi_hi6421v300_coul_device *di, int soc,
     {
         delta_ocv_100 = -rbatt_tbl*vc.avg_c/1000;
         pc_new_100 = interpolate_pc(di->batt_data->pc_temp_ocv_lut, batt_temp, ocv-delta_ocv_100);
-        delta_pc_100 = pc_new_100 - (10 * di->batt_soc);
+        delta_pc_100 = pc_new_100 - di->batt_soc_real;
         delta_rc_uah_100 = di->batt_fcc/1000 * delta_pc_100;
 
         delta_rc_final = delta_rc_uah - delta_rc_uah_100;
@@ -2683,7 +2686,7 @@ static int calculate_state_of_charge(struct hisi_hi6421v300_coul_device *di)
     di->batt_soc_with_uuc = soc;
 
     /* calculate remaining usable charge */
-    remaining_usable_charge_uah = remaining_charge_uah - cc_uah - unusable_charge_uah - di->uuc_err + delta_rc_uah;
+    remaining_usable_charge_uah = remaining_charge_uah - cc_uah - unusable_charge_uah + delta_rc_uah;
 
     if (fcc_uah - unusable_charge_uah <= 0) {
     soc = 0;
@@ -2734,34 +2737,6 @@ void print_offset(void)
                        volreg_offset, curreg_offset);
 }
 
-static void update_uuc_err(struct hisi_hi6421v300_coul_device * di)
-{
-    int uuc_err = di->uuc_err;
-
-    if (di->last_fifo_iavg_ma < 10)
-    {
-        uuc_err -= di->batt_fcc / 1000;
-    }
-    else if (di->rbatt_ratio < 0)
-    {
-        uuc_err -= di->batt_fcc / 1000;
-    }
-    else if (di->rbatt_ratio > 100)
-    {
-        if (di->batt_soc_real <= 50) //uuc_err is only used when soc_real is below 5%
-        {
-            uuc_err += di->batt_fcc / 1000;
-        }
-    }
-    else
-    {
-        //do nothing;
-    }
-    if (uuc_err < 0)
-        uuc_err = 0;
-    di->uuc_err = uuc_err;
-    di->rbatt_ratio = 0;
-}
 #define CHARGED_OCV_UPDATE_INTERVAL (10*60*1000)
 /**
  * calculate_soc_work - schedule every CALCULATE_SOC_MS.
@@ -2784,8 +2759,6 @@ static void update_uuc_err(struct hisi_hi6421v300_coul_device * di)
     DI_LOCK();
     /* calc soc */
     di->batt_soc = calculate_state_of_charge(di);
-    update_uuc_err(di);
-
 
    if (cali_cnt % (CALIBRATE_INTERVAL / di->soc_work_interval) == 0)
    {
@@ -3629,7 +3602,7 @@ static ssize_t hisi_coul_do_save_offset(struct device *dev, struct device_attrib
 
 static ssize_t hisi_hi6421v300_show_gaugelog_head(struct device *dev, struct device_attribute *attr, char *buf)
 {
-    snprintf(buf, PAGE_SIZE, "ss_VOL  ss_CUR  ss_ufSOC  ss_SOC  SOC  ss_RM  ss_FCC  ss_UUC  UUC_ERR  ss_CC  ss_dRC  Temp  ss_OCV   rbatt  fcc    uuc_pc  soc_est  rbat_calc  ocv_delrc  vavg  cavg  delta_ocv  delta_rc_mid  delta_rc_100  iavg_ua  soc_before  ");
+    snprintf(buf, PAGE_SIZE, "ss_VOL  ss_CUR  ss_ufSOC  ss_SOC  SOC  ss_RM  ss_FCC  ss_UUC  ss_CC  ss_dRC  Temp  ss_OCV   rbatt  fcc    uuc_pc  soc_est  rbat_calc  ocv_delrc  vavg  cavg  delta_ocv  delta_rc_mid  delta_rc_100  iavg_ua  soc_before  ");
     return strlen(buf);
 }
 
@@ -3660,7 +3633,7 @@ static ssize_t hisi_hi6421v300_show_gaugelog(struct device *dev, struct device_a
     ocv = hisi_hi6421v300_battery_ocv();
     rbatt = hisi_hi6421v300_battery_resistance();
 
-    snprintf(buf, PAGE_SIZE, "%-6d  %-6d  %-8d  %-6d  %-3d  %-5d  %-6d  %-6d  %-6d  %-5d  %-6d  %-4d  %-7d  %-5d  %-5d  %-6d  %-6d  %-6d  %-6d  %-6d  %-6d  %-6d  %-6d  %-6d  %-6d  %-6d  ", voltage,  (signed short)cur, ufcapacity, capacity, afcapacity, rm, fcc, uuc, di->uuc_err/1000, cc, delta_rc, temp, ocv, rbatt, di->batt_limit_fcc/1000, glog->uuc_pc, glog->soc_est, glog->rbat_calc, glog->ocv_for_delrc, glog->vavg, glog->cavg, glog->delta_ocv, glog->delta_rc_mid, glog->delta_rc_100, glog->iavg_ua, glog->soc_before_limit);
+    snprintf(buf, PAGE_SIZE, "%-6d  %-6d  %-8d  %-6d  %-3d  %-5d  %-6d  %-6d  %-5d  %-6d  %-4d  %-7d  %-5d  %-5d  %-6d  %-6d  %-6d  %-6d  %-6d  %-6d  %-6d  %-6d  %-6d  %-6d  %-6d  ", voltage,  (signed short)cur, ufcapacity, capacity, afcapacity, rm, fcc, uuc, cc, delta_rc, temp, ocv, rbatt, di->batt_limit_fcc/1000, glog->uuc_pc, glog->soc_est, glog->rbat_calc, glog->ocv_for_delrc, glog->vavg, glog->cavg, glog->delta_ocv, glog->delta_rc_mid, glog->delta_rc_100, glog->iavg_ua, glog->soc_before_limit);
 
     return strlen(buf);
 }

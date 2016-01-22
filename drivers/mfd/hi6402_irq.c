@@ -48,6 +48,9 @@
 
 #define HI6402_IRQ_PLL_UNLOCK_BIT	4
 
+#define PLL_NOTLOCK_REG_START	(HI6402_IRQ_CFG_BASE_ADDR + 0xA0)
+#define PLL_NOTLOCK_REG_END		(HI6402_IRQ_CFG_BASE_ADDR + 0xF8)
+
 #define HI6402_REG_IRQ_OFFSET		(24)
 
 #define HI6402_IRQ_REG_IOMUX	0x20001000
@@ -950,7 +953,7 @@ static inline void hi6402_irq_pll_mode_cfg(struct hi6402_irq *irq, enum hi6402_p
 		hi6402_reg_write_bits(irq, HI6402_PLL_FCW_1_0,
 				0x0<<HI6402_PLL_FCW_1_0_BIT, 0x3<<HI6402_PLL_FCW_1_0_BIT);
 		hi6402_irq_write(irq, HI6402_PLL_PDIV_AD, 0xCB);
-		hi6402_irq_write(irq, HI6402_PLL_LPF_PI, 0x24);
+		hi6402_irq_write(irq, HI6402_PLL_LPF_PI, 0x46);
 		hi6402_reg_set_bit(irq, HI6402_PLL_PHE_THR_SEL, HI6402_PLL_PHE_THR_SEL_BIT);
 		break;
 	default:
@@ -1102,7 +1105,12 @@ void hi6402_pll_pd(struct hi6402_irq *irq)
 	hi6402_reg_clr_bit(irq, HI6402_PLL_RSTN_REG, HI6402_PLL_RSTN_REG_BIT);
 	hi6402_reg_clr_bit(irq, HI6402_PLL_RSTN_REFDIV, HI6402_PLL_RSTN_REFDIV_BIT);
 
-	clk_disable_unprepare(irq->pmu_audio_clk);
+	/* high pll */
+	if (0x5C == hi6402_irq_read(irq, HI6402_PLL_FCW_17_10)) {
+		clk_disable_unprepare(irq->pmu_audio_clk);
+		/* ldo26 disable */
+		regulator_bulk_disable(1, &irq->regu_ldo26);
+	}
 
 	hi6402_irq_ibias_work_enable(irq, false);
 
@@ -1112,11 +1120,13 @@ extern struct dsm_client *dsm_audio_client;
 void hi6402_irq_set_pll_mode(struct hi6402_irq *irq)
 {
 	bool need_notify_dsp = false;
-
+	u32 irq_state = 0;
 	/* max pll start time */
 	unsigned int pll_lock_retry = 5;
 	/* max pll judge time */
 	unsigned int pll_lock_counter = 5;
+
+	unsigned int i = 0;
 
 	enum hi6402_pll_status pll_current_status;
 
@@ -1197,7 +1207,9 @@ void hi6402_irq_set_pll_mode(struct hi6402_irq *irq)
 				pr_info("%s : pll lock retry time is %d\n", __FUNCTION__, (5 - pll_lock_retry));
 				/* unmask pll unlock irq */
 				mutex_lock(&irq->irq_lock);
-				hi6402_reg_set_bit(irq, HI6402_REG_IRQ_2, HI6402_IRQ_PLL_UNLOCK_BIT);
+				irq_state = hi6402_irq_read(irq,HI6402_REG_IRQ_2);
+				if(irq_state & (0x1 << HI6402_IRQ_PLL_UNLOCK_BIT))
+					hi6402_reg_set_bit(irq, HI6402_REG_IRQ_2, HI6402_IRQ_PLL_UNLOCK_BIT);
 				hi6402_reg_clr_bit(irq, HI6402_REG_IRQM_2, HI6402_IRQ_PLL_UNLOCK_BIT);
 				irq->mask2 &= 0xEF;
 				mutex_unlock(&irq->irq_lock);
@@ -1205,7 +1217,9 @@ void hi6402_irq_set_pll_mode(struct hi6402_irq *irq)
 				break;
 			}
 		} else {
-			hi6402_reg_set_bit(irq, HI6402_REG_IRQ_2, HI6402_IRQ_PLL_UNLOCK_BIT);
+			irq_state = hi6402_irq_read(irq,HI6402_REG_IRQ_2);
+			if(irq_state & (0x1 << HI6402_IRQ_PLL_UNLOCK_BIT))
+				hi6402_reg_set_bit(irq, HI6402_REG_IRQ_2, HI6402_IRQ_PLL_UNLOCK_BIT);
 			break;
 		}
 
@@ -1217,6 +1231,9 @@ void hi6402_irq_set_pll_mode(struct hi6402_irq *irq)
 		if (!dsm_client_ocuppy(dsm_audio_client)) {
 			dsm_client_record(dsm_audio_client, "DSM_HI6402_PLL_CANNOT_LOCK\n");
 			dsm_client_notify(dsm_audio_client, DSM_HI6402_PLL_CANNOT_LOCK);
+		}
+		for (i = PLL_NOTLOCK_REG_START; i<= PLL_NOTLOCK_REG_END; i++) {
+			pr_err("%s(%u): %x is %x \n", __FUNCTION__, __LINE__, i, hi6402_irq_read(irq, i));
 		}
 		return;
 	}

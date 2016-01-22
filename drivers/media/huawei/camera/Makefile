@@ -1,5 +1,7 @@
 obj-y += hwcam_usrdev.o hwcam_cfgdev.o hwcam_cfgpipeline.o hwcam_cfgstream.o hwcam_compat32.o
 
+CFLAGS_hwcam_cfgdev.o = -I$(src)
+
 obj-y += sensor/
 
 ifeq ($(CONFIG_HUAWEI_CAMERA_USE_EXTISP),y)

@@ -22,6 +22,7 @@
 #include "cam_log.h"
 #include "hw_isp_io.h"
 #include "isp_ops.h"
+#include "trace_ovisp23.h"
 #include <huawei_platform/dsm/dsm_pub.h>
 
 static struct pm_qos_request qos_request_ddr_up_record;
@@ -315,14 +316,17 @@ static int ovisp23_read_reg_setting(struct isp_cfg_reg_array *data)
 	struct isp_cfg_reg *settings = NULL;
 
 	cam_debug("ovisp read reg array:%d", data->length);
-
-	settings = (struct isp_cfg_reg *)kzalloc(data_length, GFP_KERNEL);
-
+	if(0 == data_length){
+		return 0;
+	}
+	settings = (struct isp_cfg_reg *)vmalloc(data_length);
 	if(settings == NULL)
 	{
 		cam_err("allocate setting memory fail %s", __func__);
 		return -ENOMEM;
 	}
+
+	memset(settings, 0, data_length);
 	if(copy_from_user((void *)settings, (void __user *) data->reg_array, data_length)){
 		cam_err("%s copy_from_user error.", __func__);
 		ret = -EFAULT;
@@ -363,7 +367,7 @@ static int ovisp23_read_reg_setting(struct isp_cfg_reg_array *data)
 		goto out;
 	}
 out:
-	kfree(settings);
+	vfree(settings);
 	return ret;
 }
 
@@ -376,14 +380,17 @@ static int ovisp23_write_reg_setting(struct isp_cfg_reg_array *data)
 	struct isp_cfg_reg *settings = NULL;
 
 	cam_debug("ovisp write reg array:%d", data->length);
-
-	settings = (struct isp_cfg_reg *)kzalloc(data_length, GFP_KERNEL);
-
+	if(0 == data_length){
+		return 0;
+	}
+	settings = (struct isp_cfg_reg *)vmalloc(data_length);
 	if(settings == NULL)
 	{
 		cam_err("allocate setting memory fail %s", __func__);
 		return -ENOMEM;
 	}
+
+	memset(settings, 0, data_length);
 	if(copy_from_user((void *)settings, (void __user *) data->reg_array, data_length)){
 		cam_err("%s copy_from_user error.", __func__);
 		ret = -EFAULT;
@@ -432,7 +439,7 @@ static int ovisp23_write_reg_setting(struct isp_cfg_reg_array *data)
 	}
 
 out:
-	kfree(settings);
+	vfree(settings);
 	return ret;
 }
 
@@ -484,6 +491,8 @@ void ovisp23_notify_sof( uint32_t id)
     isp_ev.kind = HWISP_SOF;
     isp_ev.data.sof.pipeline = PIPELINE(id);
     hwisp_notify_intf_sof(s_ovisp23.notify,&isp_ev);
+
+    trace_hw_ovisp23_event_sof(id); 
 }
 
 void ovisp23_notify_eof(uint32_t id)
@@ -492,6 +501,8 @@ void ovisp23_notify_eof(uint32_t id)
     isp_ev.kind = HWISP_EOF;
     isp_ev.data.eof.pipeline = PIPELINE(id);
     hwisp_notify_intf_eof(s_ovisp23.notify,&isp_ev);
+
+    trace_hw_ovisp23_event_eof(id); 
 }
 
 void ovisp23_notify_cmd_ready(uint32_t cmd, uint32_t result)
@@ -502,6 +513,8 @@ void ovisp23_notify_cmd_ready(uint32_t cmd, uint32_t result)
     isp_ev.data.ready.result = result;
     cam_debug("%s cmd = %d result = %d",__func__,cmd,result);
     hwisp_notify_intf_cmd_ready(s_ovisp23.notify,&isp_ev);
+
+    trace_hw_ovisp23_cmd_ready(cmd, result); 
 }
 
 static int
@@ -610,12 +623,11 @@ hwisp_buf_t* ovisp23_get_buf_from_readyq(isp_port_e port)
             continue;
         }
         stm = I2STM(intf);
-/*    stm can't be null
-        if(!stm)
-        {
+/*    stm can't be null */
+        if(!stm) {
             cam_err("stm = NULL");
             continue;
-        }*/
+        }
         if(stm->port.id != port){
             continue;
         }

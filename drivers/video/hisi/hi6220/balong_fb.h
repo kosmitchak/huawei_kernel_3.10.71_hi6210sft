@@ -116,6 +116,8 @@ extern u8* balongfd_reg_base_ade;
 extern u8* balongfd_reg_base_dsi0;
 //extern u32 g_smmu_flag;
 
+extern u32 not_use_scharger;
+
 
 /* ADE */
 #define ADE_CH_SECU_LINE	11

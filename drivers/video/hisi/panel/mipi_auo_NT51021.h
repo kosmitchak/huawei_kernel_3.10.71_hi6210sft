@@ -10,7 +10,7 @@ char truly_control_reg[] = {
 	0x8C,0x04,      
 };
 
-static char auo_global_reset[] = {
+char auo_global_reset[] = {
 	0x01,0x00, 
 };  
                   
@@ -43,11 +43,7 @@ char select_page3_step0[] = {
                   
 char select_page3_step1[] = {
 	0x84,0x33,      
-};                
-                  
-char mipi_rx[] = {
-	0xA9,0x4B,      
-};                
+};
 
 /*truly*/
 char truly_gamma_red_param1[] = {
@@ -875,7 +871,7 @@ char truly_cabc_off[] = {
 	0x90, 0x00,
 };
 char truly_cabc_STILL[] = {
-	0x90, 0x40,
+	0x90, 0x80,
 };
 char truly_cabc_MOVING[] = {
 	0x90, 0xC0,
@@ -896,7 +892,6 @@ char auo_cabc_MOVING[] = {
 //when cabc cloesed, bl setting will be sensitived.
 char close_als_dimming[] = {
 	0x91, 0xA0,
-	//0x91, 0x97,
 };
 
 // 2steps
@@ -906,7 +901,15 @@ char moving_dimming_steps[] = {
 
 // 2steps
 char still_dimming_steps[] = {
-	0x95,0x00,
+	0x95,0xB1,
+};
+
+char still_dimming[] = {
+	0x95,0x60
+};
+
+char moving_dimming[] = {
+	0x94, 0x78
 };
 
 char auto_moving_mode_detect[] = {
@@ -914,7 +917,7 @@ char auto_moving_mode_detect[] = {
 };
 
 char min_duty_clamp[] = {
-	0x96, 0x8,
+	0x96, 0x00,
 };
 
 /*minimum duty = 80% begin*/
@@ -983,20 +986,20 @@ char auo_ce_disable[] = {
 
 //vivid color: control the whole ce  [5--0]  0~63
 char auo_vivid_color[] = {
-	0x91, 0x04,
+	0x91, 0x84,
 };
 
 //smart color: adjust a part of ce
 char auo_red_hue_ratio[] = {
-	0x92, 0x07,
+	0x92, 0x06,
 };
 
 char auo_yellow_hue_ratio[] = {
-	0x93, 0x04,
+	0x93, 0x00,
 };
 
 char auo_green_hue_ratio[] = {
-	0x94, 0x05,
+	0x94, 0x00,
 };
 
 char auo_cyan_hue_ratio[] = {
@@ -1004,11 +1007,11 @@ char auo_cyan_hue_ratio[] = {
 };
 
 char auo_blue_hue_ratio[] = {
-	0x96, 0x04,
+	0x96, 0x03,
 };
 
 char auo_magenta_hue_ratio[] = {
-	0x97, 0x06,
+	0x97, 0x00,
 };
 
 //ce enable register  page 3 90H
@@ -1026,34 +1029,34 @@ char ce_disable[] = {
 };
 
 //vivid color: control the whole ce  [5--0]  0~63
-static char truly_vivid_color[] = {
-	0x91, 0x20,
+char truly_vivid_color[] = {
+	0x91, 0x84,
 };
 
 //smart color: adjust a part of ce
 /*ce level control begin*/
 char truly_red_hue_ratio[] = {
-	0x92, 0x20,
+	0x92, 0x0D,
 };
 
 char truly_yellow_hue_ratio[] = {
-	0x93, 0x20,
+	0x93, 0x0F,
 };
 
 char truly_green_hue_ratio[] = {
-	0x94, 0x20,
+	0x94, 0x0F,
 };
 
 char truly_cyan_hue_ratio[] = {
-	0x95, 0x20,
+	0x95, 0x13,
 };
 
 char truly_blue_hue_ratio[] = {
-	0x96, 0x20,
+	0x96, 0x14,
 };
 
 char truly_magenta_hue_ratio[] = {
-	0x97, 0x20,
+	0x97, 0x0F,
 };
 /*ce level control end*/
 
@@ -1105,7 +1108,7 @@ struct dsi_cmd_desc sleep_in_cmds[] = {
     	sizeof(sel_page_step0), sel_page_step0},
     {DTYPE_DCS_WRITE1, 0, 100, WAIT_TYPE_US,
     	sizeof(sel_page_step1), sel_page_step1},	    	
-    {DTYPE_DCS_WRITE1, 0, 120, WAIT_TYPE_MS,
+    {DTYPE_DCS_WRITE1, 0, 70, WAIT_TYPE_MS,
     	sizeof(sleep_in), sleep_in},
 };
 
@@ -1113,6 +1116,13 @@ struct dsi_cmd_desc elusion_high_bl[] = {
 	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(sel_page_step0), sel_page_step0},
 	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(sel_page_step1), sel_page_step1},
 	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(bl_level), bl_level},
+};
+
+struct dsi_cmd_desc dimming_initial_cmd[] = {
+	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(select_page2_step0), select_page2_step0},
+	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(select_page2_step1), select_page2_step1},
+	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(still_dimming), still_dimming},
+	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_MS, sizeof(moving_dimming), moving_dimming},
 };
 
 struct dsi_cmd_desc truly_cabc_initial_cmd[] = { 
@@ -1124,19 +1134,19 @@ struct dsi_cmd_desc truly_cabc_initial_cmd[] = {
 	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(moving_dimming_steps), moving_dimming_steps},
 	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(min_duty_clamp), min_duty_clamp},
 	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(close_als_dimming), close_als_dimming},
-    //{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(cabc_pwm0_reg), cabc_pwm0_reg},
-    //{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(cabc_pwm1_reg), cabc_pwm1_reg},
-    //{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(cabc_pwm2_reg), cabc_pwm2_reg},
-    //{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(cabc_pwm3_reg), cabc_pwm3_reg},
-    //{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(cabc_pwm4_reg), cabc_pwm4_reg},
-    //{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(cabc_pwm5_reg), cabc_pwm5_reg},
-    //{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(cabc_pwm6_reg), cabc_pwm6_reg},
-    //{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(cabc_pwm7_reg), cabc_pwm7_reg},
-    //{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(cabc_pwm8_reg), cabc_pwm8_reg},
-    //{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(cabc_pwm9_reg), cabc_pwm9_reg},
-    //{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(cabc_delta_gray64), cabc_delta_gray64},
-    //{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(cabc_delta_gray128), cabc_delta_gray128},
-    //{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(cabc_delta_gray192), cabc_delta_gray192},
+    {DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(cabc_pwm0_reg), cabc_pwm0_reg},
+    {DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(cabc_pwm1_reg), cabc_pwm1_reg},
+    {DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(cabc_pwm2_reg), cabc_pwm2_reg},
+    {DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(cabc_pwm3_reg), cabc_pwm3_reg},
+    {DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(cabc_pwm4_reg), cabc_pwm4_reg},
+    {DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(cabc_pwm5_reg), cabc_pwm5_reg},
+    {DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(cabc_pwm6_reg), cabc_pwm6_reg},
+    {DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(cabc_pwm7_reg), cabc_pwm7_reg},
+    {DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(cabc_pwm8_reg), cabc_pwm8_reg},
+    {DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(cabc_pwm9_reg), cabc_pwm9_reg},
+    {DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(cabc_delta_gray64), cabc_delta_gray64},
+    {DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(cabc_delta_gray128), cabc_delta_gray128},
+    {DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(cabc_delta_gray192), cabc_delta_gray192},
 };
 
 struct dsi_cmd_desc auo_cabc_initial_cmd[] = { 
@@ -1148,19 +1158,19 @@ struct dsi_cmd_desc auo_cabc_initial_cmd[] = {
 	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(moving_dimming_steps), moving_dimming_steps},
 	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(min_duty_clamp), min_duty_clamp},
 	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(close_als_dimming), close_als_dimming},
-    //{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(cabc_pwm0_reg), cabc_pwm0_reg},
-    //{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(cabc_pwm1_reg), cabc_pwm1_reg},
-    //{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(cabc_pwm2_reg), cabc_pwm2_reg},
-    //{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(cabc_pwm3_reg), cabc_pwm3_reg},
-    //{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(cabc_pwm4_reg), cabc_pwm4_reg},
-    //{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(cabc_pwm5_reg), cabc_pwm5_reg},
-    //{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(cabc_pwm6_reg), cabc_pwm6_reg},
-    //{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(cabc_pwm7_reg), cabc_pwm7_reg},
-    //{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(cabc_pwm8_reg), cabc_pwm8_reg},
-    //{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(cabc_pwm9_reg), cabc_pwm9_reg},
-    //{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(cabc_delta_gray64), cabc_delta_gray64},
-    //{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(cabc_delta_gray128), cabc_delta_gray128},
-    //{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(cabc_delta_gray192), cabc_delta_gray192},
+    {DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(cabc_pwm0_reg), cabc_pwm0_reg},
+    {DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(cabc_pwm1_reg), cabc_pwm1_reg},
+    {DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(cabc_pwm2_reg), cabc_pwm2_reg},
+    {DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(cabc_pwm3_reg), cabc_pwm3_reg},
+    {DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(cabc_pwm4_reg), cabc_pwm4_reg},
+    {DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(cabc_pwm5_reg), cabc_pwm5_reg},
+    {DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(cabc_pwm6_reg), cabc_pwm6_reg},
+    {DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(cabc_pwm7_reg), cabc_pwm7_reg},
+    {DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(cabc_pwm8_reg), cabc_pwm8_reg},
+    {DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(cabc_pwm9_reg), cabc_pwm9_reg},
+    {DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(cabc_delta_gray64), cabc_delta_gray64},
+    {DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(cabc_delta_gray128), cabc_delta_gray128},
+    {DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(cabc_delta_gray192), cabc_delta_gray192},
 };
 
 struct dsi_cmd_desc auo_ce_initial_cmd[] = {
@@ -1179,7 +1189,7 @@ struct dsi_cmd_desc auo_ce_initial_cmd[] = {
 struct dsi_cmd_desc truly_ce_initial_cmd[] = {
 	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(select_page3_step0), select_page3_step0},
 	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(select_page3_step1), select_page3_step1},
-	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(ce_disable), ce_disable},
+	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(ce_enable), ce_enable},
 	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(truly_vivid_color), truly_vivid_color},
 	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(truly_red_hue_ratio), truly_red_hue_ratio},
 	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(truly_yellow_hue_ratio), truly_yellow_hue_ratio},
@@ -1203,8 +1213,8 @@ struct dsi_cmd_desc shift_to_mipi_cmd[] = {
 struct dsi_cmd_desc auo_display_on_cmds[] = {
 	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(sel_page_step0), sel_page_step0},
 	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(sel_page_step1), sel_page_step1},
-	{DTYPE_DCS_WRITE1, 0, 180, WAIT_TYPE_MS,sizeof(exit_sleep), exit_sleep},
-	{DTYPE_DCS_WRITE1, 0, 100, WAIT_TYPE_MS,sizeof(display_on), display_on},
+	{DTYPE_DCS_WRITE1, 0, 50, WAIT_TYPE_MS,sizeof(exit_sleep), exit_sleep},
+	{DTYPE_DCS_WRITE1, 0, 90, WAIT_TYPE_MS,sizeof(display_on), display_on},
 };
 
 struct dsi_cmd_desc truly_gamma_initial_cmd[] = {
@@ -1212,7 +1222,6 @@ struct dsi_cmd_desc truly_gamma_initial_cmd[] = {
 	//{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(truly_set_v1v14), truly_set_v1v14},
 	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(select_page1_step0), select_page1_step0},
 	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(select_page1_step1), select_page1_step1},
-	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(mipi_rx), mipi_rx},
 	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(truly_gamma_red_param1), truly_gamma_red_param1},
 	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(truly_gamma_red_param2), truly_gamma_red_param2},
 	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(truly_gamma_red_param3), truly_gamma_red_param3},
@@ -1414,8 +1423,8 @@ struct dsi_cmd_desc truly_gamma_initial_cmd[] = {
 struct dsi_cmd_desc truly_display_on_cmds[] = {
 	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(sel_page_step0), sel_page_step0},
 	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(sel_page_step1), sel_page_step1},
-	{DTYPE_DCS_WRITE1, 0, 100, WAIT_TYPE_MS,sizeof(exit_sleep), exit_sleep},
-	{DTYPE_DCS_WRITE1, 0, 5, WAIT_TYPE_MS,sizeof(display_on), display_on},
+	{DTYPE_DCS_WRITE1, 0, 50, WAIT_TYPE_MS,sizeof(exit_sleep), exit_sleep},
+	{DTYPE_DCS_WRITE1, 0, 90, WAIT_TYPE_MS,sizeof(display_on), display_on},
 };
 #endif
 

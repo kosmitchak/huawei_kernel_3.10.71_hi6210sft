@@ -500,7 +500,7 @@ static int sonyimx328_try_framesizes(struct v4l2_frmsizeenum *framesizes)
 ***********************************************************************
 */
 static int sonyimx328_set_framesizes(camera_state state,
-                struct v4l2_frmsize_discrete *fs, int flag, camera_setting_view_type view_type,bool zsl_preview, camera_b_shutter_mode b_shutter_mode,ecgc_support_type_s ecgc_type)
+                struct v4l2_frmsize_discrete *fs, int flag, camera_setting_view_type view_type,bool zsl_preview)
 {
     int i = 0;
     bool match = false;
@@ -512,9 +512,9 @@ static int sonyimx328_set_framesizes(camera_state state,
     if(NULL == fs){
 		return -EINVAL;
     }
-
-	print_info("Enter Function:%s State(%d), flag=%d, width=%d, height=%d, b_shutter_mode=0x%x, ecgc_type=0x%x",
-		   __func__, state, flag, fs->width, fs->height,b_shutter_mode,ecgc_type);
+    
+    print_info("Enter Function:%s State(%d), flag=%d, width=%d, height=%d",
+               __func__, state, flag, fs->width, fs->height);
  
     size = sonyimx328_config->framesizes.size;
     sonyimx328_framesizes = sonyimx328_config->framesizes.framesize_setting;
@@ -525,32 +525,7 @@ static int sonyimx328_set_framesizes(camera_state state,
                         continue;
                    }
 				
-			if(b_shutter_mode == CAMERA_B_SHUTTER_MODE_ON && ecgc_type==ECGC_TYPE_NORMAL_BSHUTTER_SHORT){//B_SHUTTER ALGO SHORT  EXPO USE THIS
-				   if ((sonyimx328_framesizes[i].width >= fs->width)
-                      && (sonyimx328_framesizes[i].height >= fs->height)
-                      && (VIEW_FULL == sonyimx328_framesizes[i].view_type)
-                      && (camera_get_resolution_type(fs->width, fs->height)
-                      <= sonyimx328_framesizes[i].resolution_type)
-                      && (sonyimx328_framesizes[i].ecgc_support_type == ECGC_TYPE_NORMAL_BSHUTTER_SHORT)) {
-                         fs->width = sonyimx328_framesizes[i].width;
-                         fs->height = sonyimx328_framesizes[i].height;
-                         match = true;
-                         break;
-                   }
-			}else if(b_shutter_mode == CAMERA_B_SHUTTER_MODE_ON && ecgc_type==ECGC_TYPE_BSHUTTER_LONG){//B_SHUTTER ALGO LONG  EXPO USE THIS
-				   if ((sonyimx328_framesizes[i].width >= fs->width)
-                      && (sonyimx328_framesizes[i].height >= fs->height)
-                      && (VIEW_FULL == sonyimx328_framesizes[i].view_type)
-                      && (camera_get_resolution_type(fs->width, fs->height)
-                      <= sonyimx328_framesizes[i].resolution_type)
-                      && (sonyimx328_framesizes[i].ecgc_support_type == ECGC_TYPE_BSHUTTER_LONG)) {
-                         fs->width = sonyimx328_framesizes[i].width;
-                         fs->height = sonyimx328_framesizes[i].height;
-                         match = true;
-                         break;
-                   }
-			}else{
-				   if ((sonyimx328_framesizes[i].width >= fs->width)
+                   if ((sonyimx328_framesizes[i].width >= fs->width)
                       && (sonyimx328_framesizes[i].height >= fs->height)
                       && (VIEW_FULL == sonyimx328_framesizes[i].view_type)
                       && (camera_get_resolution_type(fs->width, fs->height)
@@ -560,7 +535,6 @@ static int sonyimx328_set_framesizes(camera_state state,
                          match = true;
                          break;
                    }
-			}
 		}
 	}
 
@@ -591,7 +565,7 @@ static int sonyimx328_set_framesizes(camera_state state,
 	else
 		sonyimx328_sensor.capture_frmsize_index = i;
 
-    print_info("Enter Function:%s  preview index =%d, capture=%d b_shutter_mode=0x%x,ecgc_type=0x%x", __func__, sonyimx328_sensor.preview_frmsize_index, sonyimx328_sensor.capture_frmsize_index,b_shutter_mode,ecgc_type);
+       print_info("Enter Function:%s  preview index =%d, capture=%d ", __func__, sonyimx328_sensor.preview_frmsize_index, sonyimx328_sensor.capture_frmsize_index);
 	return 0;
 }
 /*
@@ -759,9 +733,6 @@ static void sonyimx328_dump_reg_debug(void)
       reg=0x30d7;sonyimx328_read_reg(reg,&val);print_info("0x%0x=0x%0x", reg, val);
       reg=0x30de;sonyimx328_read_reg(reg,&val);print_info("0x%0x=0x%0x", reg, val);
       reg=0x3318;sonyimx328_read_reg(reg,&val);print_info("0x%0x=0x%0x", reg, val);
-	  //HTS
-      reg=0x0342;sonyimx328_read_reg(reg,&val);print_info("0x%0x=0x%0x", reg, val);
-      reg=0x0343;sonyimx328_read_reg(reg,&val);print_info("0x%0x=0x%0x", reg, val);
 }
 
 static int sonyimx328_get_capability(u32 id, u32 *value)
@@ -992,7 +963,7 @@ static void sonyimx328_set_exposure_gain(u32 exposure, u32 gain)
 
 	analog_gain = 256 - (256 * 16) / analog_gain;
 	sonyimx328_write_reg(SONYIMX328_ANA_GAIN_REG_L, analog_gain & 0xff, 0x00);
-
+	
 	sonyimx328_write_reg(SONYIMX328_DIG_GAIN_GR_REG_H, (digital_gain_g >> 8) & 0xff, 0x00);
 	sonyimx328_write_reg(SONYIMX328_DIG_GAIN_GR_REG_L, digital_gain_g & 0xff, 0x00);
 	sonyimx328_write_reg(SONYIMX328_DIG_GAIN_GB_REG_H, (digital_gain_g >> 8) & 0xff, 0x00);
@@ -1069,20 +1040,6 @@ static void sonyimx328_set_vts(u16 vts)
 	print_debug("Enter %s  ", __func__);
 	sonyimx328_write_reg(SONYIMX328_VTS_REG_H, (vts >> 8) & 0xff, 0x00);
 	sonyimx328_write_reg(SONYIMX328_VTS_REG_L, vts & 0xff, 0x00);
-}
-
-u32 sonyimx328_get_vts(void){
-	u8 vts_l = 0;
-	u8 vts_h = 0;
-	u32 vts = 0;
-	sonyimx328_read_reg(SONYIMX328_VTS_REG_H, &vts_h);
-	sonyimx328_read_reg(SONYIMX328_VTS_REG_L, &vts_l);
-
-	vts = vts_h;
-	vts <<=8;
-	vts += vts_l;
-
-	return vts;
 }
 
 static u32 sonyimx328_get_vts_reg_addr(void)
@@ -1874,7 +1831,6 @@ static void sonyimx328_set_default(void)
 	sonyimx328_sensor.sensor_dump_reg = sonyimx328_dump_reg_debug;
 
 	sonyimx328_sensor.set_vts = sonyimx328_set_vts;
-	sonyimx328_sensor.get_vts = sonyimx328_get_vts;
 	sonyimx328_sensor.get_vts_reg_addr = sonyimx328_get_vts_reg_addr;
 	sonyimx328_sensor.get_override_param = sonyimx328_get_override_param;
 
@@ -1935,8 +1891,7 @@ static void sonyimx328_set_default(void)
 	sonyimx328_sensor.get_sensor_reg = sonyimx328_get_sensor_reg;
 	sonyimx328_sensor.set_sensor_reg = sonyimx328_set_sensor_reg;
 	sonyimx328_sensor.check_otp_status = sonyimx328_check_otp;
-	sonyimx328_sensor.support_max_vts = 0xFFFF;
-	sonyimx328_sensor.support_expoline_offset = 5;
+
 }
 
 /*

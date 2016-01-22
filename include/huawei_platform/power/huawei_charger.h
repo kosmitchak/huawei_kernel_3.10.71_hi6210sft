@@ -137,6 +137,13 @@ enum fcp_check_stage_type{
     FCP_STAGE_ADAPTER_DETECT,
     FCP_STAGE_ADAPTER_ENABLE,
     FCP_STAGE_SUCESS,
+    FCP_STAGE_CHARGE_DONE,
+};
+enum fcp_retry_operate_type{
+    FCP_RETRY_OPERATE_DEFAUTL,
+    FCP_RETRY_OPERATE_RESET_ADAPTER,
+    FCP_RETRY_OPERATE_RESET_FSA9688,
+    FCP_RETRY_OPERATE_UNVALID,
 };
 static const char* const fcp_check_stage[] = {
     [0] = "FCP_STAGE_DEFAUTL",
@@ -209,6 +216,7 @@ struct charge_device_ops{
     int  (*set_covn_start)(int enable);
     int (*set_charger_hiz)(int enable);
     int (*set_otg_current)(int value);
+    int (*stop_charge_config)(void);
 };
 
 struct fcp_adapter_device_ops{
@@ -216,6 +224,8 @@ struct fcp_adapter_device_ops{
     int (*set_adapter_output_vol)(void);
     int (*detect_adapter)(void);
     int (*is_support_fcp)(void);
+    int (*switch_chip_reset)(void);
+    int (*fcp_adapter_reset)(void);
 };
 struct charge_device_info{
     struct device   *dev;

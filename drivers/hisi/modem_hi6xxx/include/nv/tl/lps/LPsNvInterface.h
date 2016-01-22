@@ -27,26 +27,26 @@ extern "C" {
 /*****************************************************************************
   2 macro
 *****************************************************************************/
-/* NV???????? */
+/* NV²Ù×÷º¯Êý */
 /*
-ERR_MSP_NO_INITILIZATION   3              Ä£????Ê¼??Ê§?Ü£??Þ·?Ö´?Ð½Ó¿Ú²???
-ERR_MSP_NO_INITILIZATION   502            ????????
-ERR_MSP_NV_NOT_SUPPORT_ID  520            ??ID??????
-ERR_MSP_NV_ERROR_READ      521            ??flashÊ§??
-ERR_MSP_NV_ITEM_IS_EMPTY   1100           ???????Ý³???Îª??
+ERR_MSP_NO_INITILIZATION   3              Ä£¿é³õÊ¼»¯Ê§°Ü£¬ÎÞ·¨Ö´ÐÐ½Ó¿Ú²Ù×÷
+ERR_MSP_NO_INITILIZATION   502            ²ÎÊý´íÎó
+ERR_MSP_NV_NOT_SUPPORT_ID  520            ¸ÃID²»´æÔÚ
+ERR_MSP_NV_ERROR_READ      521            ¶ÁflashÊ§°Ü
+ERR_MSP_NV_ITEM_IS_EMPTY   1100           ¸ÃÏîÊý¾Ý³¤¶ÈÎªÁã
 */
 #if (VOS_OS_VER != VOS_WIN32)
 #define LPs_NvimItem_Read( ulId, pItemData, usItemDataLen ) \
         NVM_Read( ulId, (VOS_VOID *)pItemData, usItemDataLen)
 
 /*
-ERR_MSP_NO_INITILIZATION             3              Ä£????Ê¼??Ê§?Ü£??Þ·?Ö´?Ð½Ó¿Ú²???
-ERR_MSP_NO_INITILIZATION             502            ????????
-ERR_MSP_NV_NOT_SUPPORT_ID            520            ??ID?????Ú£?????Òª???Ã½Ó¿??Ð²?Ö§??????ID?Ä²?????
-ERR_MSP_NV_NOT_SUPPORT_LENTH         522            ???È²?Ö§??
-ERR_MSP_NV_ERROR_WRITE               524            Ð´flashÊ§??
-ERR_MSP_NV_FLASH_FULL                1103           flash?Õ¼ä±»Ð´??
-ERR_MSP_NVIM_NOT_SUPPORT_WRITE       2007           ÏµÍ³Ä£Ê½???????Þ¸Ä¸???
+ERR_MSP_NO_INITILIZATION             3              Ä£¿é³õÊ¼»¯Ê§°Ü£¬ÎÞ·¨Ö´ÐÐ½Ó¿Ú²Ù×÷
+ERR_MSP_NO_INITILIZATION             502            ²ÎÊý´íÎó
+ERR_MSP_NV_NOT_SUPPORT_ID            520            ¸ÃID²»´æÔÚ£¨°´ÕÕÒªÇó¸Ã½Ó¿ÚÖÐ²»Ö§³ÖÌí¼ÓIDµÄ²Ù×÷£©
+ERR_MSP_NV_NOT_SUPPORT_LENTH         522            ³¤¶È²»Ö§³Ö
+ERR_MSP_NV_ERROR_WRITE               524            Ð´flashÊ§°Ü
+ERR_MSP_NV_FLASH_FULL                1103           flash¿Õ¼ä±»Ð´Âú
+ERR_MSP_NVIM_NOT_SUPPORT_WRITE       2007           ÏµÍ³Ä£Ê½²»ÔÊÐíÐÞ¸Ä¸ÃÏî
 */
 #define LPs_NvimItem_Write( ulId, pItemData, usItemDataLen)\
        NVM_Write( ulId, (VOS_VOID *)pItemData, usItemDataLen)
@@ -61,7 +61,7 @@ ERR_MSP_NVIM_NOT_SUPPORT_WRITE       2007           ÏµÍ³Ä£Ê½???????Þ¸Ä¸???
 #define LPs_FactNvim_Write(ulId, pItemData, usDataLen)\
         NVIM_WriteFactoryForce(ulId, (VOS_VOID *)pItemData, usDataLen)
 
-/* GCF??????,Î»?????? */
+/* GCF¿ª¹Ø×é,Î»Óò¹¦ÄÜ */
 #define LPS_NV_GET_TAU_CIPHERED_BIT         ( 0x00000001 )
 #define LPS_NV_LOCK_BAND_FREQ_CELL_IN_TEST_MODE_FUNC_BIT     (0x00000001)
 
@@ -75,58 +75,58 @@ ERR_MSP_NVIM_NOT_SUPPORT_WRITE       2007           ÏµÍ³Ä£Ê½???????Þ¸Ä¸???
 
 #define LPS_NV_GET_MSG4_OLDCR_BIT           ( 0x00000002 )
 
-/* GCF?Ç·?Ö§??24.301 Table D.1.1?Ð½?Á´Ô­?????Ã£?Î»?ò¿ª¹? */
+/* GCFÊÇ·ñÖ§³Ö24.301 Table D.1.1ÖÐ½¨Á´Ô­ÒòÉèÖÃ£¬Î»Óò¿ª¹Ø */
 #define LPS_NV_GET_EST_CAUSE_BIT             ( 0x00000004 )
 
-/* Ö¸Ê¾??È«?????Ç·?Ö§?Ö²???Ä£Ê½,Î»?????? */
+/* Ö¸Ê¾°²È«¹¦ÄÜÊÇ·ñÖ§³Ö²âÊÔÄ£Ê½,Î»Óò¹¦ÄÜ */
 #define LPS_NV_GET_SUPPORT_SMC_TEST_MODE_BIT  ( 0x00000008 )
 
-/* GCF??×®Í¨??CDRX??????????Êµ?Ê³???Îª?Ë½????Ä²??ò¿ª¸Ã¿??Ø£?Î»?ò¿ª¹? */
+/* GCF´ò×®Í¨¹ýCDRXÏà¹ØÓÃÀý£¬Êµ¼Ê³¡¾°ÎªÁË½µ¹¦ºÄ²»´ò¿ª¸Ã¿ª¹Ø£¬Î»Óò¿ª¹Ø */
 #define LPS_NV_GET_CDRX_L2_TIMER_BIT         ( 0x00000010 )
 
-/* PS???Ü¿?????,Î»?????? */
+/* PS¹¦ÄÜ¿ª¹Ø×é,Î»Óò¹¦ÄÜ */
 #define LPS_NV_GET_SUPPORT_BAND64_BIT       ( 0x00000001 )
 
-/* PS???Ü¿?????,É¾??SDF?Ç·?Ð¯??Qos Î»?? */
-/* É¾??SDFÊ±?Ç·?Ð¯??Qos??Ï¢???Ü¿??Ø£?0Îª?Ø±Õ£?1Îª?ò¿ª¡?Ä¬??Îª?Ø±? */
+/* PS¹¦ÄÜ¿ª¹Ø×é,É¾³ýSDFÊÇ·ñÐ¯´øQos Î»Óò */
+/* É¾³ýSDFÊ±ÊÇ·ñÐ¯´øQosÐÅÏ¢¹¦ÄÜ¿ª¹Ø£¬0Îª¹Ø±Õ£¬1Îª´ò¿ª¡£Ä¬ÈÏÎª¹Ø±Õ */
 #define LPS_NV_GET_DEL_SDF_WITH_QOS_BIT       ( 0x00000002 )
 
-/* ?Ç·?????Á¬??Ì¬?Õµ???ue??Òµ??Ñ°?????????Í·?, È±Ê¡0 ??Ê¾?????Í·?,  4??Ê¾???????Í·? */
+/* ÊÇ·ñ½øÐÐÁ¬½ÓÌ¬ÊÕµ½±¾ueµÄÒµÎñÑ°ºôºó½øÐÐÊÍ·Å, È±Ê¡0 ±íÊ¾½øÐÐÊÍ·Å,  4±íÊ¾²»½øÐÐÊÍ·Å */
 #define LPS_NV_GET_CONN_RCV_PAGING_TO_RELASE_BIT       ( 0x00000004 )
 
-/* PS???Ü¿?????,?Ç·?Ö§?Ö°?È«??Á¦?È½?Î»?? */
+/* PS¹¦ÄÜ¿ª¹Ø×é,ÊÇ·ñÖ§³Ö°²È«ÄÜÁ¦±È½ÏÎ»Óò */
 #define LPS_NV_GET_SECU_CAP_MACTCH_BIT         ( 0x00000008 )
 
-/* PS???Ü¿?????,?Ç·?Ö§?Ö°?È«???î³¡???Â´??????Ä¾Ü¾?NAS??Ï¢??Ê¶ */
+/* PS¹¦ÄÜ¿ª¹Ø×é,ÊÇ·ñÖ§³Ö°²È«¼¤»î³¡¾°ÏÂ´¦ÀíÃ÷ÎÄ¾Ü¾øNASÏûÏ¢±êÊ¶ */
 #define LPS_NV_GET_NAS_PLAIN_REJ_MSG_FLAG_BIT  (0x00001000)
 
-/* PS???Ü¿?????,????À¼??CSFB???Ëº?????BUG??NV???Ø±?Ê¶ */
+/* PS¹¦ÄÜ¿ª¹Ø×é,¹æ±ÜÀ¼ÖÝCSFBÖÐÐËºËÐÄÍøBUGµÄNV¿ª¹Ø±êÊ¶ */
 #define LPS_NV_GET_NAS_CSFB_TAU_TYPE2_FLAG_BIT  (0x00004000)
 
-/* PS???Ü¿?????,?Ç·?Ö§??????KDF?ã·¨Î»?? */
+/* PS¹¦ÄÜ¿ª¹Ø×é,ÊÇ·ñÖ§³ÖÈí¼þKDFËã·¨Î»Óò */
 #define LPS_NV_GET_HARD_KDF_BIT         ( 0x00000010 )
 #define LPS_NV_GET_HARD_KDF_HYBRI_BIT   ( 0x00000020 )
 #define LPS_NV_GET_ULDRB_DISCARD_BIT    ( 0x00000040 )
 
-/* ??????Ê±???Å»????Ø£? 0x00000080??Ê¾?ò¿ª£?0??Ê¾?Ø±? */
+/* ÐÅÁîÃæÊ±ÑÓÓÅ»¯¿ª¹Ø£¬ 0x00000080±íÊ¾´ò¿ª£¬0±íÊ¾¹Ø±Õ */
 #define PS_NV_TIME_DELAY_SWITCH_BIT     ( 0x00000080 )
 
-/* ??????Ê±???Å»????Ø£? 0x00000100??Ê¾?ò¿ª£?0??Ê¾?Ø±? */
+/* ÐÅÁîÃæÊ±ÑÓÓÅ»¯¿ª¹Ø£¬ 0x00000100±íÊ¾´ò¿ª£¬0±íÊ¾¹Ø±Õ */
 #define PS_NV_TIME_DELAY_HOOK_SWITCH_BIT     ( 0x00000100 )
 
-/* MBMS?????? */
+/* MBMS¡¡¿ª¹Ø */
 #define LPS_NV_GET_MBMS_SUPPORT_BIT         ( 0x00000200 )
 
-/* ????Bandwidth???ó¿ª¹? */
+/* ÈíÒøBandwidthÐèÇó¿ª¹Ø */
 #define LPS_NV_GET_BANDWIDTH_SUPPORT_BIT         ( 0x00000400 )
 
 /* modify by lishangfeng freq all begin */
 #define LPS_NV_GET_FREQ_IN_ALL_BANDWITH_SUPPORT_BIT ( 0x00000800 )
 /* modify by lishangfeng freq all end */
-/* ?Ø½????? */
+/* ÖØ½¨¿ª¹Ø */
 #define LPS_NV_GET_REST_STUB_SUPPORT_BIT         ( 0x00001000 )
 
-/* sunjitan DCM???????? GU??L???Ð»????Ð¶Ï±???TA???? */
+/* sunjitan DCM¶¨ÖÆÐèÇó GUµ½LµÄÇÐ»»²»ÅÐ¶Ï±»½ûTA¿ª¹Ø */
 #define LPS_NV_GET_GU2L_HO_IGNORE_FORBID_TA_BIT     ( 0x00002000 )
 
 /* gaojishan-ETWS-Begin */
@@ -137,31 +137,31 @@ ERR_MSP_NVIM_NOT_SUPPORT_WRITE       2007           ÏµÍ³Ä£Ê½???????Þ¸Ä¸???
 #define LPS_NV_GET_JP_UBand1_Record_SUPPORT_BIT         ( 0x00010000 )
 /* gaojishan-SYSCFG-SAVENV-End */
 
-/* L?Ø½?UTRA-FDD???????? */
+/* LÖØ½¨UTRA-FDDËÑÍø¿ª¹Ø */
 #define LPS_NV_GET_L_REEST_CELL_SRCH_UTRA_FDD_BIT         ( 0x00020000 )
 
-/* L?Ø½?GSM???????? */
+/* LÖØ½¨GSMËÑÍø¿ª¹Ø */
 #define LPS_NV_GET_L_REEST_CELL_SRCH_GSM_BIT         ( 0x00040000 )
 
-/* Ð¡????????Ð¡?ø£¬µ«???Þ·????Õ»??ß²??Ö½??Õµ?ÏµÍ³??Ï¢Ê±,?????Ð¶Ï·???ÒªbarÐ¡?? */
+/* Ð¡ÇøËÑË÷µ½Ð¡Çø£¬µ«ÊÇÎÞ·¨½ÓÊÕ»òÕß²¿·Ö½ÓÊÕµ½ÏµÍ³ÐÅÏ¢Ê±,ÓÃÓÚÅÐ¶Ï·ñÐèÒªbarÐ¡Çø */
 #define LPS_NV_GET_CELL_SRCH_CELL_BAR_BIT         ( 0x00080000 )
 
 /* gaojishan-nccpermit */
 #define LPS_NV_NCC_PERMIT_BIT         ( 0x00100000 )
 
 /* bgs begin */
-/* L?????Ñ¹????Ç·?Ö§?Ö¿??? */
+/* L±³¾°ËÑ¹¦ÄÜÊÇ·ñÖ§³Ö¿ª¹Ø */
 #define LPS_NV_GET_L_BGS_SUPPORT_BIT                 ( 0x00200000 )
 /* bgs end */
 
-/*y00151394,tcp????*/
+/*y00151394,tcp²¢·¢*/
 #define LPS_NV_TCP_OPT_BIT            ( 0x00800000 )
 
 
 /* gaojishan-reest-measGap*/
 #define LPS_NV_GET_REEST_MEAS_GAP_SETUP_BIT            ( 0x00400000 )
 
-/* gaojishan-SoftBank-???Æ±?Ö¾:true,set Band41 range */
+/* gaojishan-SoftBank-¶¨ÖÆ±êÖ¾:true,set Band41 range */
 #define LPS_NV_SOFT_BANK_FLAG_BIT            ( 0x01000000 )
 
 /* gaojishan-nccpermit-2 */
@@ -188,68 +188,68 @@ ERR_MSP_NVIM_NOT_SUPPORT_WRITE       2007           ÏµÍ³Ä£Ê½???????Þ¸Ä¸???
 /* gaojishan-CMAS-End */
 
 /* v7r2 ca begin */
-/* CA?????Ç·??ò¿ª£?1Îª?ò¿ª£?0Îª?Ø±? */
+/* CAÌØÐÔÊÇ·ñ´ò¿ª£¬1Îª´ò¿ª£¬0Îª¹Ø±Õ */
 #define LPS_NV_CA_SUPPORT_BIT  ( 0x00000001 )
 /* v7r2 ca end */
 
 /* add for LTE NetScan begin */
-/* stPsFunFlag02????????Îª1 */
-/* NetScan?????Ç·??ò¿ª£?1Îª?ò¿ª£?0Îª?Ø±? */
+/* stPsFunFlag02£¬Êý×éÖÐÎª1 */
+/* NetScanÌØÐÔÊÇ·ñ´ò¿ª£¬1Îª´ò¿ª£¬0Îª¹Ø±Õ */
 #define LPS_NV_NETSCAN_SUPPORT_BIT    (0x00000002)
 /* add for LTE NetScan end */
 
-/* lwurc Æµ??????Ö¸Ê¾???? */
+/* lwurc Æµ¶ÎÏÞÖÆÖ¸Ê¾¿ª¹Ø */
 #define LPS_NV_LWURC_BAND_LIMIT_FLG_BIT            (0x00000020)
 
-/* ?ô¶¯±????Ñ£?????Ö»????L??Ä£?????????Ïº??Ø¸?LMM???????û£¬²»?????? GU Ä£ */
+/* Æô¶¯±³¾°ËÑ£¬µ«ÊÇÖ»ËÑË÷Lµ¥Ä££¬ËÑË÷Íê±Ïºó»Ø¸´LMMËÑË÷½á¹û£¬²»ÔÙËÑË÷ GU Ä£ */
 #define LPS_NV_GET_L_BGS_L_SUPPORT_BIT            (0x00000040)
 
 /* modify by lishangfeng 20131212 begin */
-#define LPS_NV_SND_ETWS_IMIDIEATELY_BIT           (0x00000080)                  /* 0x80??Ê¾ÎªÁ¢?????Í£?0x00??Ê¾???????Ù·??? */
+#define LPS_NV_SND_ETWS_IMIDIEATELY_BIT           (0x00000080)                  /* 0x80±íÊ¾ÎªÁ¢¼´·¢ËÍ£»0x00±íÊ¾ÊÕÆëºóÔÙ·¢ËÍ */
 /* modify by lishangfeng 20131212 end */
 
-#define LPS_NV_L2_TLEVENT_REPORT_BIT           (0x00000100)                  /* TL L2?Â¼??Ï±?*/
-#define LPS_NV_L2_LTEPRINT_REPORT_BIT           (0x00000200)                  /* LTE L2 ??Ó¡??Ï¢?Ï±?*/
-#define LPS_NV_RRC_LIST_SEARCH_TWICE_BIT           (0x00000400)                  /* LTE ????LIST????????Æµ??????Á½?Î¿???*/
+#define LPS_NV_L2_TLEVENT_REPORT_BIT           (0x00000100)                  /* TL L2ÊÂ¼þÉÏ±¨*/
+#define LPS_NV_L2_LTEPRINT_REPORT_BIT           (0x00000200)                  /* LTE L2 ´òÓ¡ÐÅÏ¢ÉÏ±¨*/
+#define LPS_NV_RRC_LIST_SEARCH_TWICE_BIT           (0x00000400)                  /* LTE ¿ØÖÆLISTËÑÍøÏÈÑéÆµµãËÑË÷Á½´Î¿ª¹Ø*/
 #define LPS_NV_RRC_BACKTOLTE_REDRECTFAIL_BIT        (0x00000800)
-#define LPS_NV_L2_CACELLINFO_REPORT_BIT          (0x00002000)                  /*CA SCELL×´Ì¬??Ï¢?Ï±?*/
+#define LPS_NV_L2_CACELLINFO_REPORT_BIT          (0x00002000)                  /*CA SCELL×´Ì¬ÐÅÏ¢ÉÏ±¨*/
 
 #define LPS_NV_GET_SSC_SUPPORT_BIT                (0x00000001)
 #define LPS_NV_GET_ADRX_SUPPORT_BIT               (0x00000002)
 
-/*TDS DSP ?Ô¼???Ö·*/
+/*TDS DSP ×Ô¼ìµØÖ·*/
 #define ADDR_SELF_ADJUST_PARA       (0x1300F840)
 
 
-/* GCF?????? */
+/* GCF¿ª¹Ø×é */
 #define  LPS_NV_GET_GCF_FLAG(ucIndex, ulFlag) \
          (g_aulGcfFlg[ucIndex]&(ulFlag))
 
-/* PS???Ü¿????? */
+/* PS¹¦ÄÜ¿ª¹Ø×é */
 #define  LPS_NV_GET_PS_FUN_FLAG(ucIndex, ulFlag) \
          (g_aulPsFunFlg[ucIndex]&(ulFlag))
 
-#define  LPS_NV_SUPPORT_BAND64                1     /* Ö§??Band64Æµ?? */
-#define  LPS_NV_NOT_SUPPORT_BAND64            0     /* ??Ö§??Band64Æµ?? */
-#define LPS_NV_CONN_RCV_PAGING_RELASE  0          /* ?Õµ?Òµ??Ñ°???????Í·? */
-#define LPS_NV_CONN_RCV_PAGING_NO_RELASE  LPS_NV_GET_CONN_RCV_PAGING_TO_RELASE_BIT   /* ?Õµ?Òµ??Ñ°?ô²»½????Í·? */
+#define  LPS_NV_SUPPORT_BAND64                1     /* Ö§³ÖBand64Æµ¶Î */
+#define  LPS_NV_NOT_SUPPORT_BAND64            0     /* ²»Ö§³ÖBand64Æµ¶Î */
+#define LPS_NV_CONN_RCV_PAGING_RELASE  0          /* ÊÕµ½ÒµÎñÑ°ºô½øÐÐÊÍ·Å */
+#define LPS_NV_CONN_RCV_PAGING_NO_RELASE  LPS_NV_GET_CONN_RCV_PAGING_TO_RELASE_BIT   /* ÊÕµ½ÒµÎñÑ°ºô²»½øÐÐÊÍ·Å */
 
-#define LPS_NV_GET_HARD_KDF_OFF        0                        /* ??Ö§??Ó²??KDF?ã·¨ */
-#define LPS_NV_GET_HARD_KDF_ON         LPS_NV_GET_HARD_KDF_BIT  /* Ö§??Ó²??KDF?ã·¨ */
-
-
-#define LPS_NV_GET_HARD_KDF_HYBRI_OFF        0                              /* ??Ê¹??Á½?Î»??Ï¼?????KDF?ã·¨ */
-#define LPS_NV_GET_HARD_KDF_HYBRI_ON         LPS_NV_GET_HARD_KDF_HYBRI_BIT  /* Ê¹??Á½?Î»??Ï¼?????KDF?ã·¨ */
+#define LPS_NV_GET_HARD_KDF_OFF        0                        /* ²»Ö§³ÖÓ²¼þKDFËã·¨ */
+#define LPS_NV_GET_HARD_KDF_ON         LPS_NV_GET_HARD_KDF_BIT  /* Ö§³ÖÓ²¼þKDFËã·¨ */
 
 
-/* PS???Ü¿??Øºê¶¨?? */
+#define LPS_NV_GET_HARD_KDF_HYBRI_OFF        0                              /* ²»Ê¹ÓÃÁ½´Î»ìºÏ¼ÆËãµÄKDFËã·¨ */
+#define LPS_NV_GET_HARD_KDF_HYBRI_ON         LPS_NV_GET_HARD_KDF_HYBRI_BIT  /* Ê¹ÓÃÁ½´Î»ìºÏ¼ÆËãµÄKDFËã·¨ */
+
+
+/* PS¹¦ÄÜ¿ª¹Øºê¶¨Òå */
 #define LPS_FUNC_SW_ON                       (1)
 #define LPS_FUNC_SW_OFF                      (0)
 
-/*??Ó¡È«?Ö±?Á¿??????????*/
+/*´òÓ¡È«¾Ö±äÁ¿µÄ×î´ó¸öÊý*/
 #define MAX_GLOBAL_PRANT_NUM   5
 
-/* TPS ?????? */
+/* TPS ¿ª¹Ø×é */
 #define  TPS_NV_GET_FLAG(uVlaue, ulFlag) \
          (uVlaue&(ulFlag))
 #define TPS_NV_OP_HL1_SCHEDULE_IND_FLITER_BIT            ( 0x00000001 )
@@ -290,15 +290,15 @@ ERR_MSP_NVIM_NOT_SUPPORT_WRITE       2007           ÏµÍ³Ä£Ê½???????Þ¸Ä¸???
 
 #define TPS_NV_GCF_DRXEXTRA_CONTROL_BIT            ( 0x00000002 )
 
-/*×¼FR????begin*/
+/*×¼FRÌØÐÔbegin*/
 #define TPS_NV_OP_GSM_FR_BIT           ( 0x00000004 )
-/*×¼FR????end*/
-/*TG ??Ñ¡?Å»?begin*/
+/*×¼FRÌØÐÔend*/
+/*TG ÖØÑ¡ÓÅ»¯begin*/
 #define TPS_NV_GCF_SIRAT_BIT           ( 0x00000008 )
 #define TPS_NV_GCF_QRXLEVMIN_BIT        (0x00000010)
 #define TPS_NV_GCF_S_UNSATISFIED_BIT    (0x00000020)
 #define TPS_NV_T2G_IRAT_REPORT_BIT      (0x00000040)
-/*TG ??Ñ¡?Å»?end*/
+/*TG ÖØÑ¡ÓÅ»¯end*/
 
 #define TPS_NV_GCF_RRM_STUB_BIT         (0x00000080)
 
@@ -322,7 +322,7 @@ ERR_MSP_NVIM_NOT_SUPPORT_WRITE       2007           ÏµÍ³Ä£Ê½???????Þ¸Ä¸???
 /*****************************************************************************
   4 Enum
 *****************************************************************************/
-/*????Ã¶??*/
+/*¿ª¹ØÃ¶¾Ù*/
 enum RRC_NV_SWITCH_ENUM
 {
     RRC_SWITCH_OFF = 0,
@@ -331,38 +331,38 @@ enum RRC_NV_SWITCH_ENUM
 
 typedef VOS_UINT32   RRC_NV_SWITCH_ENUM_UINT32;
 
-/* sib??Ê±??Ñ¡?ñ¿ª¹?Ã¶??*/
+/* sib¶¨Ê±Æ÷Ñ¡Ôñ¿ª¹ØÃ¶¾Ù*/
 enum RRC_NV_TIMER_CHOICE_ENUM
 {
-    RRC_TIMER_CHOICE_DEFAULT = 0,           /* Ä¬??Ñ¡?? */
-    RRC_TIMER_CHOICE_DT  = 1,               /* ?Âµ?????Ñ¡?? */
+    RRC_TIMER_CHOICE_DEFAULT = 0,           /* Ä¬ÈÏÑ¡Ôñ */
+    RRC_TIMER_CHOICE_DT  = 1,               /* µÂµçÐèÇóÑ¡Ôñ */
     RRC_TIMER_CHOICE_BUTT
 };
 typedef VOS_UINT32   RRC_NV_TIMER_CHOICE_ENUM_UINT32;
 
 enum RRC_PHY_LTE_RF_HW_ENUM
 {
-    RRC_PHY_LTE_RF_HW_BAND7_38_40         = 0,  /* Band7/38/40??Æµ???Û°?*/
-    RRC_PHY_LTE_RF_HW_BAND20,                   /* Band20??Æµ???Û°?*/
-    RRC_PHY_LTE_RF_HW_USB_STICK_VB,             /* USB STICK??vbÓ²?????? */
-    RRC_PHY_LTE_RF_HW_SOFTBANK_BAND64,          /* ????Ê¹?Ãµ?Band64?Û°? */
-    RRC_PHY_LTE_RF_HW_USB_STICK_VC,             /* USB STICK??vCÓ²?????? */
-    RRC_PHY_LTE_RF_HW_USB_STICK_VD,             /* USB STICK??vDÓ²?????? */
-    RRC_PHY_LTE_RF_HW_USB_STICK_VE,             /* USB STICK??vEÓ²?????? */
-    RRC_PHY_LTE_RF_HW_USB_STICK_VF,             /* USB STICK??vFÓ²?????? */
-    RRC_PHY_LTE_RF_HW_USB_STICK_VG,             /* USB STICK??vGÓ²?????? */
-    RRC_PHY_LTE_RF_HW_USB_STICK_VH,             /* USB STICK??vHÓ²?????? */
+    RRC_PHY_LTE_RF_HW_BAND7_38_40         = 0,  /* Band7/38/40¶àÆµ´ø¿Û°å*/
+    RRC_PHY_LTE_RF_HW_BAND20,                   /* Band20µ¥Æµ´ø¿Û°å*/
+    RRC_PHY_LTE_RF_HW_USB_STICK_VB,             /* USB STICKµÄvbÓ²¼þµ¥°å */
+    RRC_PHY_LTE_RF_HW_SOFTBANK_BAND64,          /* ÈíÒøÊ¹ÓÃµÄBand64¿Û°å */
+    RRC_PHY_LTE_RF_HW_USB_STICK_VC,             /* USB STICKµÄvCÓ²¼þµ¥°å */
+    RRC_PHY_LTE_RF_HW_USB_STICK_VD,             /* USB STICKµÄvDÓ²¼þµ¥°å */
+    RRC_PHY_LTE_RF_HW_USB_STICK_VE,             /* USB STICKµÄvEÓ²¼þµ¥°å */
+    RRC_PHY_LTE_RF_HW_USB_STICK_VF,             /* USB STICKµÄvFÓ²¼þµ¥°å */
+    RRC_PHY_LTE_RF_HW_USB_STICK_VG,             /* USB STICKµÄvGÓ²¼þµ¥°å */
+    RRC_PHY_LTE_RF_HW_USB_STICK_VH,             /* USB STICKµÄvHÓ²¼þµ¥°å */
     RRC_PHY_LTE_RF_HW_BUTT
 };
 typedef VOS_UINT8 RRC_PHY_LTE_RF_HW_ENUM_UINT8;
-/*NV??Ã¶??*/
+/*NVÏîÃ¶¾Ù*/
 /* gaojishan-PLMN_EXACTLY_COMPARE_FLG */
 #ifdef PS_ITT_PC_TEST2
 #define en_NV_Item_PLMN_EXACTLY_COMPARE_FLG   (9106)
 #endif
 /*****************************************************************************
- Ã¶????    : PS_NV_INDEX_ENUM
- Ã¶??Ëµ??  : ??????????Í¬band?Âµ???Í¬??NV??
+ Ã¶¾ÙÃû    : PS_NV_INDEX_ENUM
+ Ã¶¾ÙËµÃ÷  : ÓÃÓÚË÷Òý²»Í¬bandÏÂµÄÏàÍ¬µÄNVÏî
 *****************************************************************************/
 enum PS_NV_INDEX_ENUM
 {
@@ -453,8 +453,8 @@ enum PS_NV_INDEX_ENUM
 typedef VOS_UINT32 PS_NV_INDEX_ENUM_UINT32;
 
 /*****************************************************************************
- Ã¶????    : PS_BAND_ENUM
- Ã¶??Ëµ??  : ??????????Í¬band??NV?Ð±?
+ Ã¶¾ÙÃû    : PS_BAND_ENUM
+ Ã¶¾ÙËµÃ÷  : ÓÃÓÚË÷Òý²»Í¬bandµÄNVÁÐ±í
 *****************************************************************************/
 enum PS_BAND_ENUM
 {
@@ -497,7 +497,7 @@ enum PS_BAND_ENUM
     PS_BAND_42,
     PS_BAND_43,
 	PS_BAND_28,
-    /* ?Ç±?Æµ??begin */
+    /* ·Ç±êÆµ¶Îbegin */
     //PS_BAND_101,
     PS_BAND_128,
     PS_BAND_103,
@@ -514,23 +514,23 @@ enum PS_BAND_ENUM
     PS_BAND_114,
     PS_BAND_115,
     PS_BAND_116,
-    /* ?Ç±?Æµ??end */
+    /* ·Ç±êÆµ¶Îend */
 
     PS_BAND_BUTT
 };
 typedef VOS_UINT8 PS_BAND_ENUM_UINT8;
 
 /*****************************************************************************
- ?á¹¹??    : LPS_NV_FLOW_CONTROL
- Ð­??????  :
- ASN.1???? :
- ?á¹¹Ëµ??  : Ð­??Õ»???Ø½á¹¹??
+ ½á¹¹Ãû    : LPS_NV_FLOW_CONTROL
+ Ð­Òé±í¸ñ  :
+ ASN.1ÃèÊö :
+ ½á¹¹ËµÃ÷  : Ð­ÒéÕ»Á÷¿Ø½á¹¹Ìå
 *****************************************************************************/
 typedef struct
 {
-    /* ?????Ü¿??? */
+    /* Á÷¿Ø×Ü¿ª¹Ø */
     VOS_UINT32                          ulFlowCtrlFlag;
-    /*ulFcInitFlag???Ø³?Ê¼??Ñ¡?? 0-??RRC??Ì¬Ñ¡????1-??????NV?????Ð¿???*/
+    /*ulFcInitFlagÁ÷¿Ø³õÊ¼»¯Ñ¡Ôñ 0-ÓÉRRC¶¯Ì¬Ñ¡Ôñ£¬1-´ú±íÓÉNVÏî½øÐÐ¿ØÖÆ*/
     VOS_UINT32                          ulFcInitFlag;
     VOS_UINT32                          ulFcPdcpTarget;
     VOS_UINT32                          ulTargetIPMax;
@@ -542,38 +542,38 @@ typedef struct
 }LPS_NV_FLOW_CONTROL;
 
 /*****************************************************************************
- ?á¹¹??    : LPS_NV_GLOBAL_PRINT
- Ð­??????  :
- ASN.1???? :
- ?á¹¹Ëµ??  : Ð­??Õ»??Ó¡È«?Ö±?Á¿?á¹¹??
+ ½á¹¹Ãû    : LPS_NV_GLOBAL_PRINT
+ Ð­Òé±í¸ñ  :
+ ASN.1ÃèÊö :
+ ½á¹¹ËµÃ÷  : Ð­ÒéÕ»´òÓ¡È«¾Ö±äÁ¿½á¹¹Ìå
 *****************************************************************************/
 typedef struct
 {
-    /* ??Ó¡?Ü¿??? 0:?Ø±Õ´?Ó¡È«?Ö±?Á¿??1: ??Ó¡Ò»????2:??Ó¡Á½?????À´? 3 4 5 */
+    /* ´òÓ¡×Ü¿ª¹Ø 0:¹Ø±Õ´òÓ¡È«¾Ö±äÁ¿£¬1: ´òÓ¡Ò»¸ö£¬2:´òÓ¡Á½¸ö£¬ÒÀ´Î 3 4 5 */
     VOS_UINT32                          ulGlobalPrintFlag;
     VOS_UINT32                          aulPara[MAX_GLOBAL_PRANT_NUM];
 }LPS_NV_GLOBAL_PRINT_STRU;
 
 /*****************************************************************************
- ?á¹¹??    : LPS_NV_MEAS_THRESHOLD_STRU
- Ð­??????  :
- ASN.1???? :
- ?á¹¹Ëµ??  :
+ ½á¹¹Ãû    : LPS_NV_MEAS_THRESHOLD_STRU
+ Ð­Òé±í¸ñ  :
+ ASN.1ÃèÊö :
+ ½á¹¹ËµÃ÷  :
 *****************************************************************************/
 typedef struct
 {
-    VOS_UINT8 ucSynsSwitch;     /*?Ç·??ô¶¯²?Á¿Öµ???×·????Ø½????? */
-    VOS_UINT8 ucRsrpLowCount;   /* PHY?Ï±??Ä²?Á¿ÖµÐ¡??sRsrpHoldThreshold?ïµ½Á½?Î¡??????Ø½????? */
-    VOS_INT16 sRsrpHoldThreshold;  /* PHY?Ï±??Ä²?Á¿ÖµÐ¡??Ä³Öµ ucRsrpLowCount++*/
+    VOS_UINT8 ucSynsSwitch;     /*ÊÇ·ñÆô¶¯²âÁ¿Öµµôµ×·¢ÆðÖØ½¨Á÷³Ì */
+    VOS_UINT8 ucRsrpLowCount;   /* PHYÉÏ±¨µÄ²âÁ¿ÖµÐ¡ÓÚsRsrpHoldThreshold´ïµ½Á½´Î¡£·¢ÆðÖØ½¨Á÷³Ì */
+    VOS_INT16 sRsrpHoldThreshold;  /* PHYÉÏ±¨µÄ²âÁ¿ÖµÐ¡ÓÚÄ³Öµ ucRsrpLowCount++*/
 }LPS_NV_MEAS_THRESHOLD_STRU;
 
 
 /* 2655 begin */
  /*****************************************************************************
- ?á¹¹??    : LPS_NV_LONG_BIT_STRU
- Ð­??????  :
- ASN.1???? :
- ?á¹¹Ëµ??  : Ð­??Õ»?Äº?Ð­?é¹¦?????ØµÄ¿??ØµÄ½á¹¹??
+ ½á¹¹Ãû    : LPS_NV_LONG_BIT_STRU
+ Ð­Òé±í¸ñ  :
+ ASN.1ÃèÊö :
+ ½á¹¹ËµÃ÷  : Ð­ÒéÕ»µÄºÍÐ­Òé¹¦ÄÜÏà¹ØµÄ¿ª¹ØµÄ½á¹¹Ìå
 *****************************************************************************/
 typedef struct
 {
@@ -611,27 +611,27 @@ typedef struct
     VOS_UINT32  bitFlag32                   :1;
 }LPS_NV_LONG_BIT_STRU;
 /*****************************************************************************
- ?á¹¹??    : LPS_NV_TL_L2_PARA_STRU
- Ð­??????  :
- ASN.1???? :
- ?á¹¹Ëµ??  : L2???????ØµÄ¿??ØµÄ½á¹¹??
+ ½á¹¹Ãû    : LPS_NV_TL_L2_PARA_STRU
+ Ð­Òé±í¸ñ  :
+ ASN.1ÃèÊö :
+ ½á¹¹ËµÃ÷  : L2¹¦ÄÜÏà¹ØµÄ¿ª¹ØµÄ½á¹¹Ìå
 *****************************************************************************/
 typedef struct
 {
-    /* ????RLC ???????????????? ??NVÄ¬??Îª45*/
+    /* ÅäÖÃRLC ÉÏÐÐ×é°ü¸öÊýÏÞÖÆ £¬NVÄ¬ÈÏÎª45*/
     VOS_UINT32                          ulRlcUlSduLimit;
 
     LPS_NV_LONG_BIT_STRU                stL2Flag;
 
-    /************************stL2Flag????BIT????***************************
-     bitFlag01: ????×¥È¡L2 MAC PDU?ÐµÄ²??? g_ulIfForwardToPc, Ä¬??Îª??
-     bitFlag02: ????×¥È¡L2 MAC PDU?ÐµÄ²??? g_ulCapPusch, Ä¬??Îª??
-     bitFlag03: ????×¥È¡L2 MAC PDU?ÐµÄ²??? g_ulCapPdsch, Ä¬??Îª??
-     bitFlag04: ????×¥È¡L2 MAC PDU?ÐµÄ²??? g_ulCapPdcp, Ä¬??Îª??
-     bitFlag05: ????×¥È¡L2 MAC PDU?ÐµÄ²??? g_ulTcpDebugFlg, Ä¬??Îª??
-     bitFlag06: ????×¥È¡L2 MAC PDU?ÐµÄ²??? g_ulTcpDlFlg, Ä¬??Îª??
-     bitFlag07: ????×¥È¡L2 MAC PDU?ÐµÄ²??? g_g_ulTcpUlFlg, Ä¬??Îª??
-     bitFlag08: ????×¥È¡L2 MAC PDU?ÐµÄ²??? g_ulTcpCtrlPduFlg, Ä¬??Îª??
+    /************************stL2Flag¸÷¸öBITº¬Òå***************************
+     bitFlag01: ÉèÖÃ×¥È¡L2 MAC PDUÖÐµÄ²ÎÊý g_ulIfForwardToPc, Ä¬ÈÏÎª¹Ø
+     bitFlag02: ÉèÖÃ×¥È¡L2 MAC PDUÖÐµÄ²ÎÊý g_ulCapPusch, Ä¬ÈÏÎª¹Ø
+     bitFlag03: ÉèÖÃ×¥È¡L2 MAC PDUÖÐµÄ²ÎÊý g_ulCapPdsch, Ä¬ÈÏÎª¹Ø
+     bitFlag04: ÉèÖÃ×¥È¡L2 MAC PDUÖÐµÄ²ÎÊý g_ulCapPdcp, Ä¬ÈÏÎª¹Ø
+     bitFlag05: ÉèÖÃ×¥È¡L2 MAC PDUÖÐµÄ²ÎÊý g_ulTcpDebugFlg, Ä¬ÈÏÎª¹Ø
+     bitFlag06: ÉèÖÃ×¥È¡L2 MAC PDUÖÐµÄ²ÎÊý g_ulTcpDlFlg, Ä¬ÈÏÎª¹Ø
+     bitFlag07: ÉèÖÃ×¥È¡L2 MAC PDUÖÐµÄ²ÎÊý g_g_ulTcpUlFlg, Ä¬ÈÏÎª¹Ø
+     bitFlag08: ÉèÖÃ×¥È¡L2 MAC PDUÖÐµÄ²ÎÊý g_ulTcpCtrlPduFlg, Ä¬ÈÏÎª¹Ø
      bitFlag09:
      bitFlag10:
      bitFlag11:
@@ -660,131 +660,131 @@ typedef struct
 
     LPS_NV_LONG_BIT_STRU                stL2Flag1;
 
-    /*Ô¤??*/
-    /*?????ÐµÄµ?Ò»??Ôª??Îª?????Þµ?????????Ó¦IPV6Ç°×º???â£¬Ê¹??NV???Æµ?È«?Ö±?Á¿??IPV6Ç°×ºÄ¬??UEÖ»??1??*/
+    /*Ô¤Áô*/
+    /*Êý×éÖÐµÄµÚÒ»¸öÔªËØÎª¹æ±ÜÂÞµÂÒÇÆ÷²»ÏìÓ¦IPV6Ç°×ºÎÊÌâ£¬Ê¹ÓÃNV¿ØÖÆµÄÈ«¾Ö±äÁ¿£¬IPV6Ç°×ºÄ¬ÈÏUEÖ»·¢1´Î*/
     VOS_UINT32                          ulRev[32];
 
 }LPS_NV_TL_L2_PARA_STRU;
 /*****************************************************************************
- ?á¹¹??    : LPS_SWITCH_PARA_STRU
- Ð­??????  :
- ASN.1???? :
- ?á¹¹Ëµ??  : Ð­??Õ»?Äº?Ð­?é¹¦?????ØµÄ¿??ØµÄ½á¹¹??
+ ½á¹¹Ãû    : LPS_SWITCH_PARA_STRU
+ Ð­Òé±í¸ñ  :
+ ASN.1ÃèÊö :
+ ½á¹¹ËµÃ÷  : Ð­ÒéÕ»µÄºÍÐ­Òé¹¦ÄÜÏà¹ØµÄ¿ª¹ØµÄ½á¹¹Ìå
 *****************************************************************************/
 typedef struct
 {
-    /* ????TA Timer??Ê±SRS??PUCCH?Í·Å¿??? 0:?Ø±Õ£?1:?ò¿ª£?Ä¬?Ï¹Ø±? */
+    /* ÅäÖÃTA Timer³¬Ê±SRSºÍPUCCHÊÍ·Å¿ª¹Ø 0:¹Ø±Õ£¬1:´ò¿ª£¬Ä¬ÈÏ¹Ø±Õ */
     VOS_UINT32                          ulCloseTaTimer;
 
-    /* ????SR?????????? 0:?Ø±?  1:?ò¿ª£?Ä¬?Ï¹Ø±? */
+    /* ÅäÖÃSR´¥·¢·½¿ª¹Ø 0:¹Ø±Õ  1:´ò¿ª£¬Ä¬ÈÏ¹Ø±Õ */
     VOS_UINT32                          ulSrTrigFlag;
 
-    /* ????SR???????????ë¿ª?? 0:?Ø±Õ£?1:?ò¿ª£?Ä¬?Ï¹Ø±? */
+    /* ÅäÖÃSR´¥·¢Ëæ»ú½ÓÈë¿ª¹Ø 0:¹Ø±Õ£¬1:´ò¿ª£¬Ä¬ÈÏ¹Ø±Õ */
     VOS_UINT32                          ulCloseSrRandFlag;
 
-    /*Í¬Ê§?????Ø£?0Îª?Ø±Õ£?1Îª?ò¿ª¡?Ä¬??Îª?Ø±Õ£?????Îª????*/
+    /*Í¬Ê§²½¿ª¹Ø£¬0Îª¹Ø±Õ£¬1Îª´ò¿ª¡£Ä¬ÈÏÎª¹Ø±Õ£¬ÉèÖÃÎª´ò¿ª*/
     /*VOS_UINT32                          ulSyncCtrlFlag;*/
 
-    /*Á¬??Ì¬??Á¿???Ø£?0Îª?Ø±Õ£?1Îª?ò¿ª¡?Ä¬??Îª?Ø±Õ£?????Îª????*/
+    /*Á¬½ÓÌ¬²âÁ¿¿ª¹Ø£¬0Îª¹Ø±Õ£¬1Îª´ò¿ª¡£Ä¬ÈÏÎª¹Ø±Õ£¬ÉèÖÃÎª´ò¿ª*/
     VOS_UINT32                          ulConnMeasFlg;
 
-    /*???Ã²?Á¿IND??Ï¢Æµ?Ê£???????Ê¾?Ï±?????: È¡Öµ????Òª???Úµ???1*/
+    /*ÉèÖÃ²âÁ¿INDÏûÏ¢ÆµÂÊ£¬²ÎÊý±íÊ¾ÉÏ±¨¼ä¸ô: È¡Öµ·½·¨Òª´óÓÚµÈÓÚ1*/
     VOS_UINT32                          ulMeasReportMaxNum;
 
-    /*0:?Ø±?×¥?????? 1:????×¥?????? Ä¬???Ç´???*/
+    /*0:¹Ø±Õ×¥°ü¹¦ÄÜ 1:´ò¿ª×¥°ü¹¦ÄÜ Ä¬ÈÏÊÇ´ò¿ª*/
     VOS_UINT32                          ulIfForwardToPc;
 
-    /*?ò¿ª°?È«???Ü¿??Ø£???????ÒªÊ±???Ã¸Ã±?Ö¾*/
+    /*´ò¿ª°²È«¼ÓÃÜ¿ª¹Ø£¬½ö½öÐèÒªÊ±ÉèÖÃ¸Ã±êÖ¾*/
     VOS_UINT32                          ulSmcControl;
 
-    /*????eNB??TDD?Ä½???????*/
+    /*¹æ±ÜeNBµÄTDDµÄ½ÓÈëÎÊÌâ*/
     /*VOS_UINT32                          ulMsg4OnlyPadding;*/
 
-    /*?Ð¶??Ç·?BARÐ¡??????*/
+    /*ÅÐ¶ÏÊÇ·ñBARÐ¡Çø¿ª¹Ø*/
     VOS_UINT32                          ulCloseBarCell;
 
-    /*DRX???Ü¿??? 0:?Ø±?  1:????*/
+    /*DRX¹¦ÄÜ¿ª¹Ø 0:¹Ø±Õ  1:´ò¿ª*/
     VOS_UINT32                          ulDrxControlFlag;
 
-   /*?â³¡????×®???ë¿ª?? 0:?Ø±?  1:????.Ä¬??Îª?Ø±?*/
+   /*Íâ³¡²âÊÔ×®´úÂë¿ª¹Ø 0:¹Ø±Õ  1:´ò¿ª.Ä¬ÈÏÎª¹Ø±Õ*/
     VOS_UINT32                          ulFieldTestSwitch;
 
-    /* PCO???Ü¿??Ø£?0Îª?Ø±Õ£?1Îª?ò¿ª¡?Ä¬??Îª???? */
+    /* PCO¹¦ÄÜ¿ª¹Ø£¬0Îª¹Ø±Õ£¬1Îª´ò¿ª¡£Ä¬ÈÏÎª´ò¿ª */
     VOS_UINT32                          ulPcoFlag;
 
-    /*???Ø½á¹¹*/
+    /*Á÷¿Ø½á¹¹*/
     LPS_NV_FLOW_CONTROL                  stPsNvFlowCtl;
 
-    /************************stPsGcfFlag01????BIT????***************************
-     bitFlag01:??Ê¾GCF???Ô³???TAU??Ï¢?Ç·????Ü£?Æ½Ì¨È±Ê¡ÖµÎª1??
-               0: ???Ü£?1:??????
-     bitFlag02:??Ê¾GCF???Ô³???msg4???ö¿ª¹Ø£?Æ½Ì¨È±Ê¡ÖµÎª1??
-               0: ??Ê¾??Ð­??Êµ??; 1:??Ê¾?????Ü·???Êµ??
-     bitFlag03:??Ê¾GCF???Ô³????Ç·?Ö§??24.301 Table D.1.1?Ð½?Á´Ô­?????Ã£?Æ½Ì¨È±Ê¡ÖµÎª1??
-               0: Ö§??; 1:??Ö§??
-     bitFlag04:??Ê¾GCF???Ô³???Ö¸Ê¾??È«?????Ç·?Ö§?Ö²???Ä£Ê½??????Ä£Ê½Ö§?Ö¿????????ã·¨??Æ½Ì¨È±Ê¡ÖµÎª1??
-               0: Ö§??; 1:??Ö§??
+    /************************stPsGcfFlag01¸÷¸öBITº¬Òå***************************
+     bitFlag01:±íÊ¾GCF²âÊÔ³¡¾°TAUÏûÏ¢ÊÇ·ñ¼ÓÃÜ£¬Æ½Ì¨È±Ê¡ÖµÎª1¡£
+               0: ¼ÓÃÜ£»1:²»¼ÓÃÜ
+     bitFlag02:±íÊ¾GCF²âÊÔ³¡¾°msg4½âÎö¿ª¹Ø£¬Æ½Ì¨È±Ê¡ÖµÎª1¡£
+               0: ±íÊ¾°´Ð­ÒéÊµÏÖ; 1:±íÊ¾°´¹æ±Ü·½°¸ÊµÏÖ
+     bitFlag03:±íÊ¾GCF²âÊÔ³¡¾°ÊÇ·ñÖ§³Ö24.301 Table D.1.1ÖÐ½¨Á´Ô­ÒòÉèÖÃ£¬Æ½Ì¨È±Ê¡ÖµÎª1¡£
+               0: Ö§³Ö; 1:²»Ö§³Ö
+     bitFlag04:±íÊ¾GCF²âÊÔ³¡¾°Ö¸Ê¾°²È«¹¦ÄÜÊÇ·ñÖ§³Ö²âÊÔÄ£Ê½£¬²âÊÔÄ£Ê½Ö§³Ö¿ÕÍêÕûÐÔËã·¨£¬Æ½Ì¨È±Ê¡ÖµÎª1¡£
+               0: Ö§³Ö; 1:²»Ö§³Ö
     ****************************************************************************/
     LPS_NV_LONG_BIT_STRU                 stPsGcfFlag01;
 
-    /************************stPsGcfFlag02????BIT????***************************
-     stPsGcfFlag01????BIT????:
+    /************************stPsGcfFlag02¸÷¸öBITº¬Òå***************************
+     stPsGcfFlag01¸÷¸öBITº¬Òå:
      bitFlag01:
      bitFlag02:
     ****************************************************************************/
     LPS_NV_LONG_BIT_STRU                 stPsGcfFlag02;
 
-    /************************stPsFunFlag01????BIT????***************************
-     bitFlag01: Band64?Ç·?Ö§?Ö£?È±Ê¡Öµ:0; 0:??Ö§??;1:Ö§??
-     bitFlag02: É¾??SDFÊ±?Ç·?Ð¯??Qos??Ï¢,È±Ê¡Öµ:0; 0:Ð¯??;1:??Ð¯??
-     bitFlag03: ?Ç·?????Á¬??Ì¬?Õµ???ue??Òµ??Ñ°?????????Í·?,È±Ê¡Öµ:0; 0:?Í·?;1:???Í·?
-     bitFlag04: Ð£?é°²È«???Ü¿???,È±Ê¡Öµ:0; 0:????;1:?Ø±?
+    /************************stPsFunFlag01¸÷¸öBITº¬Òå***************************
+     bitFlag01: Band64ÊÇ·ñÖ§³Ö£¬È±Ê¡Öµ:0; 0:²»Ö§³Ö;1:Ö§³Ö
+     bitFlag02: É¾³ýSDFÊ±ÊÇ·ñÐ¯´øQosÐÅÏ¢,È±Ê¡Öµ:0; 0:Ð¯´ø;1:²»Ð¯´ø
+     bitFlag03: ÊÇ·ñ½øÐÐÁ¬½ÓÌ¬ÊÕµ½±¾ueµÄÒµÎñÑ°ºôºó½øÐÐÊÍ·Å,È±Ê¡Öµ:0; 0:ÊÍ·Å;1:²»ÊÍ·Å
+     bitFlag04: Ð£Ñé°²È«¹¦ÄÜ¿ª¹Ø,È±Ê¡Öµ:0; 0:´ò¿ª;1:¹Ø±Õ
      bitFlag05:
      bitFlag06:
-     bitFlag07: ???Å¹??Üº???Ö®Ç°??×°??????Ê±????DRB??????PDCP???Ú¶???,0Îª?Ø±Õ£?1Îª?ò¿ª¡?Ä¬??Îª?Ø±?
-     bitFlag08: PrintÊ±???Å»????Ø£?È±Ê¡Öµ:0; 0:??;1:??;????RRM????Ê±Ê±?Ô¶???Ð§??
-     bitFlag09: ??????Ï¢Ê±???Å»????Ø£?È±Ê¡Öµ:0; 0:??;1:??;
-     bitFlag10: MBMS??Ö§?Ö¿??Ø£?È±Ê¡Öµ:0; 0:??;1:??;
-     bitFlag11: SBM???????ó¿ª¹Ø£??Ø¶?bandÖ§???Ø¶??Ä´???.È±Ê¡Öµ:0; 0:??;1:??;
-     bitFlag12: ????????Ð¡???Ä´????Ç¶???Ð­??Æµ???Ú£?È±Ê¡Öµ:1; 0:??;1:??;
-     bitFlag13: ???Ô²?????,Ä£???Ð»?Ê§????????È±Ê¡Öµ:1; 0:??;1:??;
-     bitFlag14: DCM???????? GU??L???Ð»?NAS???Ð¶Ï±???TA;È±Ê¡Öµ:0; 0:??;1:??;
-     bitFlag15: ?Ç·?Ö§??ETWS????;È±Ê¡Öµ:1; 0:??;1:??;
-     bitFlag16: ?Ç·?Ö§??CMAS????;È±Ê¡Öµ:1; 0:??;1:??;
+     bitFlag07: ²¦ºÅ¹¦ÄÜºÏÈëÖ®Ç°£¬×°±¸²âÊÔÊ±ÉÏÐÐDRBÊý¾ÝÔÚPDCPÈë¿Ú¶ªµô,0Îª¹Ø±Õ£¬1Îª´ò¿ª¡£Ä¬ÈÏÎª¹Ø±Õ
+     bitFlag08: PrintÊ±ÑÓÓÅ»¯¿ª¹Ø£¬È±Ê¡Öµ:0; 0:¹Ø;1:¿ª;µ«ÊÇRRM²âÊÔÊ±Ê±×Ô¶¯ÉúÐ§µÄ
+     bitFlag09: ²ã¼äÏûÏ¢Ê±ÑÓÓÅ»¯¿ª¹Ø£¬È±Ê¡Öµ:0; 0:¹Ø;1:¿ª;
+     bitFlag10: MBMSµÄÖ§³Ö¿ª¹Ø£¬È±Ê¡Öµ:0; 0:¹Ø;1:¿ª;
+     bitFlag11: SBM¶¨ÖÆÐèÇó¿ª¹Ø£¬ÌØ¶¨bandÖ§³ÖÌØ¶¨µÄ´ø¿í.È±Ê¡Öµ:0; 0:¹Ø;1:¿ª;
+     bitFlag12: ¼ì²éÕû¸öÐ¡ÇøµÄ´ø¿íÊÇ¶¼ÔÚÐ­ÒéÆµ¶ÎÄÚ£¬È±Ê¡Öµ:1; 0:¹Ø;1:¿ª;
+     bitFlag13: ²âÊÔ²¿ÐèÇó,Ä£ÄâÇÐ»»Ê§°ÜÓÃÀý£¬È±Ê¡Öµ:1; 0:¹Ø;1:¿ª;
+     bitFlag14: DCM¶¨ÖÆÐèÇó GUµ½LµÄÇÐ»»NAS²»ÅÐ¶Ï±»½ûTA;È±Ê¡Öµ:0; 0:¹Ø;1:¿ª;
+     bitFlag15: ÊÇ·ñÖ§³ÖETWS¹¦ÄÜ;È±Ê¡Öµ:1; 0:¹Ø;1:¿ª;
+     bitFlag16: ÊÇ·ñÖ§³ÖCMAS¹¦ÄÜ;È±Ê¡Öµ:1; 0:¹Ø;1:¿ª;
      bitFlag17:
-     bitFlag18: L?Ø½?Ê±?Ç·?????UTRAN;È±Ê¡Öµ:1; 0:??;1:??;
-     bitFlag19: L?Ø½?Ê±?Ç·?????GSM;È±Ê¡Öµ:1; 0:??;1:??;
-     bitFlag20: ???Ö½??Õµ?ÏµÍ³??Ï¢Ê±,????Ð¡??RSRP????Ð¡???è¶¨Öµ???????Ð¶Ï·???ÒªbarÐ¡????;È±Ê¡Öµ:0; 0:??;1:??;
-     bitFlag21: NCC???????Ò»??Ç´?????????Ä¿Ç°????Ð­??Êµ?Ö£?È±Ê¡Öµ:0; 0??Ê¾????Ð­?é£¬1??Ê¾??????Ð­??
-     bitFlag22: ?Ç·?Ö§?Ö±???????,È±Ê¡Öµ:0;1:?Ø£?0:????
-     bitFlag23: ?Ø½?Ê±??Òª????GAP?Ç·???????????????Ò»???????ã£¬È±Ê¡Öµ:1; 1:????0:??
+     bitFlag18: LÖØ½¨Ê±ÊÇ·ñËÑË÷UTRAN;È±Ê¡Öµ:1; 0:¹Ø;1:¿ª;
+     bitFlag19: LÖØ½¨Ê±ÊÇ·ñËÑË÷GSM;È±Ê¡Öµ:1; 0:¹Ø;1:¿ª;
+     bitFlag20: ²¿·Ö½ÓÊÕµ½ÏµÍ³ÐÅÏ¢Ê±,Èç¹ûÐ¡ÇøRSRPÃÅÏÞÐ¡ÓÚÉè¶¨Öµ£¬ÓÃÓÚÅÐ¶Ï·ñÐèÒªbarÐ¡Çø£¬;È±Ê¡Öµ:0; 0:¹Ø;1:¿ª;
+     bitFlag21: NCC´Ó×óÏòÓÒ»¹ÊÇ´ÓÓÒÏò×ó£¬Ä¿Ç°°´ÕÕÐ­ÒéÊµÏÖ£¬È±Ê¡Öµ:0; 0±íÊ¾°´ÕÕÐ­Òé£¬1±íÊ¾²»°´ÕÕÐ­Òé
+     bitFlag22: ÊÇ·ñÖ§³Ö±³¾°ËÑË÷,È±Ê¡Öµ:0;1:¹Ø£¬0:¿ª£»
+     bitFlag23: ÖØ½¨Ê±ÐèÒª¸ù¾ÝGAPÊÇ·ñÓÐÅäÖÃÖØÐÂÅäÖÃÒ»ÏÂÎïÀí²ã£¬È±Ê¡Öµ:1; 1:¿ª£¬0:¹Ø
      bitFlag24:
      bitFlag25:
-     bitFlag26: IDLE????Ñ¡Ç°???Ð¶?NCC??È±Ê¡Öµ:0; 0??Ê¾??Òª?Ð¶Ï£?1??Ê¾???Ð¶Ï¡?
-     bitFlag27: V7R1?Õ±?DCOM??????È±Ê¡Öµ:0; 0:??;1:??;
-     bitFlag28: V7R1?Õ±?DCOM??????È±Ê¡Öµ:0; 0:??;1:??;
-     bitFlag29: V7R1?Õ±?DCOM??????È±Ê¡Öµ:0; 0:??;1:??;
-     bitFlag30: V7R1?Õ±?DCOM??????È±Ê¡Öµ:0; 0:??;1:??;
-     bitFlag31: V7R1?Õ±?DCOM??????È±Ê¡Öµ:0; 0:??;1:??;
-     bitFlag32: RRM????Ê±??È±Ê¡?Ø±Õ´?Ó¡?Ç·???Ð§??È±Ê¡Öµ:0; 1:????Ð§??0:??Ð§??
+     bitFlag26: IDLEÏÂÖØÑ¡Ç°²»ÅÐ¶ÏNCC£¬È±Ê¡Öµ:0; 0±íÊ¾ÐèÒªÅÐ¶Ï£»1±íÊ¾²»ÅÐ¶Ï¡£
+     bitFlag27: V7R1ÈÕ±¾DCOMÐèÇó£¬È±Ê¡Öµ:0; 0:¹Ø;1:¿ª;
+     bitFlag28: V7R1ÈÕ±¾DCOMÐèÇó£¬È±Ê¡Öµ:0; 0:¹Ø;1:¿ª;
+     bitFlag29: V7R1ÈÕ±¾DCOMÐèÇó£¬È±Ê¡Öµ:0; 0:¹Ø;1:¿ª;
+     bitFlag30: V7R1ÈÕ±¾DCOMÐèÇó£¬È±Ê¡Öµ:0; 0:¹Ø;1:¿ª;
+     bitFlag31: V7R1ÈÕ±¾DCOMÐèÇó£¬È±Ê¡Öµ:0; 0:¹Ø;1:¿ª;
+     bitFlag32: RRM²âÊÔÊ±£¬È±Ê¡¹Ø±Õ´òÓ¡ÊÇ·ñÉúÐ§£¬È±Ê¡Öµ:0; 1:²»ÉúÐ§£»0:ÉúÐ§¡£
     ****************************************************************************/
     LPS_NV_LONG_BIT_STRU                 stPsFunFlag01;
 
-    /************************stPsFunFlag02????BIT????***************************
-     bitFlag01: CA???Ô¿???:È±Ê¡Öµ:0; 0:??;1:??:;
+    /************************stPsFunFlag02¸÷¸öBITº¬Òå***************************
+     bitFlag01: CAÌØÐÔ¿ª¹Ø:È±Ê¡Öµ:0; 0:¿ª;1:¹Ø:;
      bitFlag02:
      bitFlag03:
-     bitFlag04: CMAS??×¤??Ö®Ç°????×¤??Ö®???Ï±???È±Ê¡Öµ:0;0: ×¤??Ö®???Ï±?; 1:×¤??Ç°?ó¶¼¿????Ï±?
+     bitFlag04: CMASÔÚ×¤ÁôÖ®Ç°»¹ÊÇ×¤ÁôÖ®ºóÉÏ±¨£¬È±Ê¡Öµ:0;0: ×¤ÁôÖ®ºóÉÏ±¨; 1:×¤ÁôÇ°ºó¶¼¿ÉÒÔÉÏ±¨
      bitFlag05:
      bitFlag06:
-     bitFlag07: ?????Ñ£?Ö»??L??Ä£.????GUÄ£????.È±Ê¡Öµ:0; 0:??;1:??;
-     bitFlag08: ETWS????Ê±??; 1:Á¢?????Í£?0:???????Ù·???
-     bitFlag09: TL L2?Ø¼??Â¼??Ï±?-È±Ê¡Öµ:0;0:??;1:??
-     bitFlag10: LTE L2 ??????Ï¢?Ï±?-È±Ê¡Öµ:0;0:??;1:??
-     bitFlag11: LIST????????Æµ???Ç·?????2?Î¡?0:??;1:??
-     bitFlag12: ????Ö¸??Ä£Ê½?Ø¶??????????Ç·?????????????Ä£Ê½???Ø¶???????; 0:????????Ö¸??Ä£Ê½???Ø¶???Ö®??????????????Ä£Ê½???Ø¶???;1:Ö»????????Ö¸??Ä£Ê½???Ø¶???
+     bitFlag07: ±³¾°ËÑ£¬Ö»ËÑLµ¥Ä£.²»ËÑGUÄ£¿ª¹Ø.È±Ê¡Öµ:0; 0:¹Ø;1:¿ª;
+     bitFlag08: ETWS·¢ÉúÊ±»ú; 1:Á¢¼´·¢ËÍ£¬0:ÊÕÆëºóÔÙ·¢ËÍ
+     bitFlag09: TL L2¹Ø¼üÊÂ¼þÉÏ±¨-È±Ê¡Öµ:0;0:¹Ø;1:¿ª
+     bitFlag10: LTE L2 Êý´«ÐÅÏ¢ÉÏ±¨-È±Ê¡Öµ:0;0:¹Ø;1:¿ª
+     bitFlag11: LISTËÑÍøÏÈÑéÆµµãÊÇ·ñËÑË÷2´Î¡£0:¹Ø;1:¿ª
+     bitFlag12: ÍøÂçÖ¸¶¨Ä£Ê½ÖØ¶¨Ïò½áÊøºóÊÇ·ñ¼ÌÐø·¢ÆðÆäËûÄ£Ê½µÄÖØ¶¨ÏòÁ÷³Ì; 0:·¢ÆðÍøÂçÖ¸¶¨Ä£Ê½µÄÖØ¶¨ÏòÖ®ºó¼ÌÐø·¢ÆðÆäËûÄ£Ê½µÄÖØ¶¨Ïò;1:Ö»·¢ÆðÍøÂçÖ¸¶¨Ä£Ê½µÄÖØ¶¨Ïò
      bitFlag13:
-     bitFlag14: LTE CAÐ¡??×´Ì¬??Ï¢?Ï±?-È±Ê¡Öµ:0;0:??;1:??
+     bitFlag14: LTE CAÐ¡Çø×´Ì¬ÐÅÏ¢ÉÏ±¨-È±Ê¡Öµ:0;0:¹Ø;1:¿ª
      bitFlag15:
      bitFlag16:
      bitFlag17:
@@ -809,9 +809,9 @@ typedef struct
 
     LPS_NV_LONG_BIT_STRU                 stPsFunFlag03;
 
-   /************************stPsFunFlag04????BIT????***************************
+   /************************stPsFunFlag04¸÷¸öBITº¬Òå***************************
      bitFlag01:
-     bitFlag02: ?Þ¿??????ò¿ª»??Á¿?Ê§?Ü£??Ç·?É¾????NV?ÐµÄ°?È«??????,È±Ê¡Öµ:1; 0:É¾??; 1:??É¾??
+     bitFlag02: ÎÞ¿¨¿ª»ú»ò¿ª»ú¶Á¿¨Ê§°Ü£¬ÊÇ·ñÉ¾³ýÁËNVÖÐµÄ°²È«ÉÏÏÂÎÄ,È±Ê¡Öµ:1; 0:É¾³ý; 1:²»É¾³ý
      bitFlag03:
      bitFlag04:
      bitFlag05:
@@ -849,20 +849,20 @@ typedef struct
 }LPS_SWITCH_PARA_STRU;
 
 /*****************************************************************************
- ?á¹¹??    : TPS_SWITCH_PARA_STRU
- Ð­??????  :
- ASN.1???? :
- ?á¹¹Ëµ??  : Ð­??Õ»?Äº?Ð­?é¹¦?????ØµÄ¿??ØµÄ½á¹¹??
+ ½á¹¹Ãû    : TPS_SWITCH_PARA_STRU
+ Ð­Òé±í¸ñ  :
+ ASN.1ÃèÊö :
+ ½á¹¹ËµÃ÷  : Ð­ÒéÕ»µÄºÍÐ­Òé¹¦ÄÜÏà¹ØµÄ¿ª¹ØµÄ½á¹¹Ìå
 *****************************************************************************/
 typedef struct
 {
-    /************************stTpsLayFliterFlag01????BIT????********************
-     bitFlag01:??????Ï¢OP_HL1_SCHEDULE_IND???Ë¿??Ø¡?Æ½Ì¨È±Ê¡ÖµÎª0
-               0:???? 1:??????
-     bitFlag02:??????Ï¢OP_T_RRC_trafficMeasPeriod???Ë¿??Ø¡?Æ½Ì¨È±Ê¡ÖµÎª0
-               0:???? 1:??????
-     bitFlag03:???Ö¶?Ì¬??Ó¡?Ø±Õ£?Ò»???????é¡¢Ñ­???È´?Òª??Ï¢?Ø±Õ¡?Æ½Ì¨È±Ê¡ÖµÎª0
-               0:?Ø±Õ´?Ó¡ 1:???Ø±Õ´?Ó¡
+    /************************stTpsLayFliterFlag01¸÷¸öBITº¬Òå********************
+     bitFlag01:²ã¼äÏûÏ¢OP_HL1_SCHEDULE_IND¹ýÂË¿ª¹Ø¡£Æ½Ì¨È±Ê¡ÖµÎª0
+               0:¹ýÂË 1:²»¹ýÂË
+     bitFlag02:²ã¼äÏûÏ¢OP_T_RRC_trafficMeasPeriod¹ýÂË¿ª¹Ø¡£Æ½Ì¨È±Ê¡ÖµÎª0
+               0:¹ýÂË 1:²»¹ýÂË
+     bitFlag03:²¿·Ö¶¯Ì¬´òÓ¡¹Ø±Õ£¬Ò»°ãÊÇÊý×é¡¢Ñ­»·µÈ´ÎÒªÐÅÏ¢¹Ø±Õ¡£Æ½Ì¨È±Ê¡ÖµÎª0
+               0:¹Ø±Õ´òÓ¡ 1:²»¹Ø±Õ´òÓ¡
      bitFlag04:
      bitFlag05:
      bitFlag06:
@@ -896,45 +896,45 @@ typedef struct
     ****************************************************************************/
     LPS_NV_LONG_BIT_STRU                 stTpsLayFliterFlag01;
 
-    /************************stTpsLayFliterFlag01????BIT????********************
+    /************************stTpsLayFliterFlag01¸÷¸öBITº¬Òå********************
      bitFlag01:
      bitFlag02:
     ****************************************************************************/
     LPS_NV_LONG_BIT_STRU                 stTpsLayFliterFlag02;
 
-    /************************stTPsGCFFlag01????BIT????**************************
-     bitFlag01: GCF?Ç·?????cs loop ???Ü¡?
+    /************************stTPsGCFFlag01¸÷¸öBITº¬Òå**************************
+     bitFlag01: GCFÊÇ·ñ´ò¿ªcs loop ¹¦ÄÜ¡£
                 Æ½Ì¨È±Ê¡ÖµÎª0
-                0:?Ø±?CsLoop????  1:?ò¿ª¹???
-                ?Ë¹????Ñ¾??Ô¶?Ê¶?????????ò¿ª¡?
+                0:¹Ø±ÕCsLoop¹¦ÄÜ  1:´ò¿ª¹¦ÄÜ
+                ´Ë¹¦ÄÜÒÑ¾­×Ô¶¯Ê¶±ð£¬ÎÞÐè´ò¿ª¡£
 
-     bitFlag02: TDS????????????,?Ç±ê¹¦?Ü¡????Ü´???Ê±TRRC??????S×¼????Ö±?Ó·??????????Ì¡?
+     bitFlag02: TDS¿ìËÙËÑÍø¹¦ÄÜ,·Ç±ê¹¦ÄÜ¡£¹¦ÄÜ´ò¿ªÊ±TRRC²»Âú×ãS×¼Ôò£¬Ö±½Ó·¢ÆðËÑÍøÁ÷³Ì¡£
                 Æ½Ì¨È±Ê¡ÖµÎª0
-                0:???Ü¹Ø±? 1:???Ü´???
+                0:¹¦ÄÜ¹Ø±Õ 1:¹¦ÄÜ´ò¿ª
 
-     bitFlag03: ×¼FR???Ô¿???
+     bitFlag03: ×¼FRÌØÐÔ¿ª¹Ø
                 Æ½Ì¨È±Ê¡ÖµÎª1
-                0:???Ü¹Ø±? 1:???Ü´???
+                0:¹¦ÄÜ¹Ø±Õ 1:¹¦ÄÜ´ò¿ª
 
-     bitFlag04: TG????????sOfIratsearch?????Å»????Ñ²?Ê¹?Ã¡?
+     bitFlag04: TG»¥²Ù×÷£¬sOfIratsearchÃÅÏÞÓÅ»¯£¬ÒÑ²»Ê¹ÓÃ¡£
                 Æ½Ì¨È±Ê¡ÖµÎª0
-                0:?Ø±Õ¹???  1:?ò¿ª¹???
+                0:¹Ø±Õ¹¦ÄÜ  1:´ò¿ª¹¦ÄÜ
 
-     bitFlag05: TG????????QrxLev?????Å»????Ñ²?Ê¹?Ã¡?
+     bitFlag05: TG»¥²Ù×÷£¬QrxLevÃÅÏÞÓÅ»¯£¬ÒÑ²»Ê¹ÓÃ¡£
                 Æ½Ì¨È±Ê¡ÖµÎª0
-                0:?Ø±Õ¹???  1:?ò¿ª¹???
+                0:¹Ø±Õ¹¦ÄÜ  1:´ò¿ª¹¦ÄÜ
 
-     bitFlag06: ??T??SÖµÐ¡??0Ê±??????GSM??SÖµ????0??Ð¡????Ö±????Ñ¡???Ñ²?Ê¹?Ã¡?
+     bitFlag06: µ±TµÄSÖµÐ¡ÓÚ0Ê±£¬Èç¹ûGSMÓÐSÖµ´óÓÚ0µÄÐ¡ÇøÔòÖ±½ÓÖØÑ¡£¬ÒÑ²»Ê¹ÓÃ¡£
                 Æ½Ì¨È±Ê¡ÖµÎª0
-                0:?Ø±Õ¹???  1:?ò¿ª¹???
+                0:¹Ø±Õ¹¦ÄÜ  1:´ò¿ª¹¦ÄÜ
 
-     bitFlag07: ??Ñ¡?Å»?,?Ç±ê¹¦?Ü¡?????????Á¿????????Î§?Ú£?????Á¿??6db????Ö¤??Ñ¡??tdsÊ±??t??Á¿?ã¹»Ç¿
+     bitFlag07: ÖØÑ¡ÓÅ»¯,·Ç±ê¹¦ÄÜ¡£Èç¹ûÊÇÄÜÁ¿ÔÚÕâ¸ö·¶Î§ÄÚ£¬°ÑÄÜÁ¿½µ6db£¬±£Ö¤ÖØÑ¡µ½tdsÊ±£¬tÄÜÁ¿×ã¹»Ç¿
                 Æ½Ì¨È±Ê¡ÖµÎª0
-                0:?Ø±Õ¹???  1:?ò¿ª¹???
+                0:¹Ø±Õ¹¦ÄÜ  1:´ò¿ª¹¦ÄÜ
 
-     bitFlag08: RRM×®??????Ö»?Ðµ??Ë¹??Ü´ò¿ª£?RRM???Ô²???Í¨????
+     bitFlag08: RRM×®º¯Êý£¬Ö»ÓÐµ±´Ë¹¦ÄÜ´ò¿ª£¬RRM²âÊÔ²ÅÄÜÍ¨¹ý¡£
                 Æ½Ì¨È±Ê¡ÖµÎª0
-                0:???Ü¹Ø±? 1:???Ü´???
+                0:¹¦ÄÜ¹Ø±Õ 1:¹¦ÄÜ´ò¿ª
 
      bitFlag09:
      bitFlag10:
@@ -963,48 +963,48 @@ typedef struct
     ****************************************************************************/
     LPS_NV_LONG_BIT_STRU                 stTPsGCFFlag01;
 
-    /************************stTPsGCFFlag02????BIT????**************************
+    /************************stTPsGCFFlag02¸÷¸öBITº¬Òå**************************
      bitFlag01:
      bitFlag02:
     ****************************************************************************/
     LPS_NV_LONG_BIT_STRU                 stTPsGCFFlag02;
 
-    /************************stTPsFunFlag01????BIT????**************************
-     bitFlag01: CellUpdate?????Å»?????T313??Ê±??????Ö»??PS??Ê±??????CellUpdateÖ±??,????IDL×´Ì¬
-                Æ½Ì¨È±Ê¡ÖµÎª1??
-                0:???Ü´??? 1:???Ü¹Ø±?
+    /************************stTPsFunFlag01¸÷¸öBITº¬Òå**************************
+     bitFlag01: CellUpdateÁ÷³ÌÓÅ»¯£¬ÔÚT313³¬Ê±£¬Èç¹ûÖ»ÓÐPSÓòÊ±²»·¢ÆðCellUpdateÖ±½Ó,½øÈëIDL×´Ì¬
+                Æ½Ì¨È±Ê¡ÖµÎª1¡£
+                0:¹¦ÄÜ´ò¿ª 1:¹¦ÄÜ¹Ø±Õ
 
-     bitFlag02: debug??Ï¢???í£¬??????×´Ì¬?Âµ?Ð¡????Ï¢??×´Ì¬?????Ý½??Ð±??æ£¬
+     bitFlag02: debugÐÅÏ¢´¦Àí£¬¶ÔÏà¹Ø×´Ì¬ÏÂµÄÐ¡ÇøÐÅÏ¢¡¢×´Ì¬µÈÊý¾Ý½øÐÐ±£´æ£¬
                 Æ½Ì¨È±Ê¡ÖµÎª0.
-                0:???Ü´??? 1:???Ü¹Ø±?
+                0:¹¦ÄÜ´ò¿ª 1:¹¦ÄÜ¹Ø±Õ
 
-     bitFlag03: debug??Ï¢?Ï±????Ü£???Debug??Ï¢?Ô²?????Ê½?Ï±???
-                Æ½Ì¨È±Ê¡ÖµÎª0??
-                0:???Ü´??? 1:???Ü¹Ø±?
+     bitFlag03: debugÐÅÏ¢ÉÏ±¨¹¦ÄÜ£¬½«DebugÐÅÏ¢ÒÔ²ã¼äÐÎÊ½ÉÏ±¨¡£
+                Æ½Ì¨È±Ê¡ÖµÎª0¡£
+                0:¹¦ÄÜ´ò¿ª 1:¹¦ÄÜ¹Ø±Õ
 
-     bitFlag04: SMCÊ¹??Í¬???????Ó¿ÚµÄ²???
+     bitFlag04: SMCÊ¹ÓÃÍ¬²½º¯Êý½Ó¿ÚµÄ²ÎÊý
                 Æ½Ì¨È±Ê¡ÖµÎª0
-                0:???Ü¹Ø±? 1:???Ü´???
+                0:¹¦ÄÜ¹Ø±Õ 1:¹¦ÄÜ´ò¿ª
 
-     bitFlag05: TCP ACK???????Ü¡?
+     bitFlag05: TCP ACK¶ªÆú¹¦ÄÜ¡£
                 Æ½Ì¨È±Ê¡ÖµÎª0
-                0:???Ü¹Ø±? 1:???Ü´???
+                0:¹¦ÄÜ¹Ø±Õ 1:¹¦ÄÜ´ò¿ª
 
-     bitFlag06: DetectCell???Ü¡?
+     bitFlag06: DetectCell¹¦ÄÜ¡£
                 Æ½Ì¨È±Ê¡ÖµÎª0
-                0:???Ü¹Ø±? 1:???Ü´???
+                0:¹¦ÄÜ¹Ø±Õ 1:¹¦ÄÜ´ò¿ª
 
-     bitFlag07: ????????????Ð§MeasCtrl?????Ø¶????ç»·????Ê¹??
+     bitFlag07: ¹æ±ÜÍøÂçµÄÎÞÐ§MeasCtrl£¬ÔÚÌØ¶¨ÍøÂç»·¾³ÏÂÊ¹ÓÃ
                 Æ½Ì¨È±Ê¡ÖµÎª0
-                0:???Ü¹Ø±? 1:???Ü´???
+                0:¹¦ÄÜ¹Ø±Õ 1:¹¦ÄÜ´ò¿ª
 
-     bitFlag08: CCCH??Ï¢?Ï±????Á±Îµ???????UE?Ä¿Õ¿?
+     bitFlag08: CCCHÏûÏ¢ÉÏ±¨£¬ÆÁ±Îµô²»ÊôÓÚUEµÄ¿Õ¿Ú
                 Æ½Ì¨È±Ê¡ÖµÎª1
-                0:???Ü¹Ø±? 1:???Ü´???
+                0:¹¦ÄÜ¹Ø±Õ 1:¹¦ÄÜ´ò¿ª
 
-     bitFlag09:ADRX???????? ,????Ñ°???Ø·???Ð¡???Ú£???Ð§???Ó³???DRX???????Ú£???????Ð§???Í´???????
-               Æ½Ì¨??È±Ê¡ÖµÎª0
-               0:???Ü¹Ø±? 1:???Ü´???
+     bitFlag09:ADRX¿ªÆô¹¦ÄÜ ,ÔÚÓÐÑ°ºôÖØ·¢µÄÐ¡ÇøÄÚ£¬ÓÐÐ§µÄÑÓ³¤µÄDRX»½ÐÑÖÜÆÚ£¬¿ÉÒÔÓÐÐ§½µµÍ´ý»ú¹¦ºÄ
+               Æ½Ì¨²ãÈ±Ê¡ÖµÎª0
+               0:¹¦ÄÜ¹Ø±Õ 1:¹¦ÄÜ´ò¿ª
 
      bitFlag10:
      bitFlag11:
@@ -1033,20 +1033,20 @@ typedef struct
     ****************************************************************************/
     LPS_NV_LONG_BIT_STRU                 stTPsFunFlag01;
 
-    /************************stTPsFunFlag02????BIT????**************************
-     bitFlag01: TDS DSDS ?????Ç·???DCH_CONFIG???Ã²???.Ä¬??Îª0
-                0:???Ü´???  1:???Ü¹Ø±?
-     bitFlag02: TDS DSDS ?????Ç·???500ms????SignalRel??Ä¬??Îª0.
-                0:???Ü´???  1:???Ü¹Ø±?
+    /************************stTPsFunFlag02¸÷¸öBITº¬Òå**************************
+     bitFlag01: TDS DSDS ¿ØÖÆÊÇ·ñÔÚDCH_CONFIGÉèÖÃ²»ÇÀ.Ä¬ÈÏÎª0
+                0:¹¦ÄÜ´ò¿ª  1:¹¦ÄÜ¹Ø±Õ
+     bitFlag02: TDS DSDS ¿ØÖÆÊÇ·ñÓÐ500ms·¢ÆðSignalRel¡£Ä¬ÈÏÎª0.
+                0:¹¦ÄÜ´ò¿ª  1:¹¦ÄÜ¹Ø±Õ
     ****************************************************************************/
     LPS_NV_LONG_BIT_STRU                 stTPsFunFlag02;
 }TPS_SWITCH_PARA_STRU;
 
 /*****************************************************************************
- ?á¹¹??    : TDS_CERSSI_REPORT_PARA_STRU
- Ð­??????  :
- ASN.1???? :
- ?á¹¹Ëµ??  : Ð­??Õ»?Äº?Ð­?é¹¦?????ØµÄ¿??ØµÄ½á¹¹??
+ ½á¹¹Ãû    : TDS_CERSSI_REPORT_PARA_STRU
+ Ð­Òé±í¸ñ  :
+ ASN.1ÃèÊö :
+ ½á¹¹ËµÃ÷  : Ð­ÒéÕ»µÄºÍÐ­Òé¹¦ÄÜÏà¹ØµÄ¿ª¹ØµÄ½á¹¹Ìå
 *****************************************************************************/
 typedef struct
 {
@@ -1055,76 +1055,76 @@ typedef struct
     VOS_UINT8                            aucRsv[4];
 }TDS_CERSSI_REPORT_PARA_STRU;
 /*****************************************************************************
- ?á¹¹??    : LPS_LTE_CONFIG_STRU
- Ð­??????  :
- ASN.1???? :
- ?á¹¹Ëµ??  : Ð­??Õ»?Äº?LTE???Øµ?????
+ ½á¹¹Ãû    : LPS_LTE_CONFIG_STRU
+ Ð­Òé±í¸ñ  :
+ ASN.1ÃèÊö :
+ ½á¹¹ËµÃ÷  : Ð­ÒéÕ»µÄºÍLTEÏà¹ØµÄÅäÖÃ
 *****************************************************************************/
 typedef struct
 {
-    /* LTE???ß¸??? */
+    /* LTEÌìÏß¸öÊý */
     VOS_UINT32                          ulPsCfgDspAntCnt;
 
     /*VOS_UINT32                          ulPsCfgDspRatMod;*/
-    /*Æµ???Å£?È¡Öµ??Î§??1??40???Ö±???Ó¦36.101??bandÈ¡Öµ,Ä¬??Îª20*/
+    /*Æµ´øºÅ£¬È¡Öµ·¶Î§´Ó1ÖÁ40£¬·Ö±ð¶ÔÓ¦36.101µÄbandÈ¡Öµ,Ä¬ÈÏÎª20*/
     VOS_UINT8                          ucEutraBand;
 
     VOS_UINT8                          aucRsv[3];
 
-    /* ????????Ö¡???È£?Ä¬??Îª1 */
+    /* ÉÏÏÂÐÐ×ÓÖ¡Åä±È£¬Ä¬ÈÏÎª1 */
     VOS_UINT32                          ulCfgSubFrameAssign;
 
-    /* ??????Ö¡???Ã£?Ä¬??Îª7 */
+    /* ÌØÊâ×ÓÖ¡ÅäÖÃ£¬Ä¬ÈÏÎª7 */
     VOS_UINT32                          ulSubFramePattern;
 }LPS_LTE_CONFIG_STRU;
 
 /*****************************************************************************
- ?á¹¹??    : LRRC_NV_CAND_CELL_LIST_STRU
- Ð­??????  :
- ASN.1???? :
- ?á¹¹Ëµ??  : ????Ð¡??NV?á¹¹
+ ½á¹¹Ãû    : LRRC_NV_CAND_CELL_LIST_STRU
+ Ð­Òé±í¸ñ  :
+ ASN.1ÃèÊö :
+ ½á¹¹ËµÃ÷  : ºò²¹Ð¡ÇøNV½á¹¹
 *****************************************************************************/
 typedef struct
 {
-    VOS_UINT16                          usFreqCount;                            /* ??Ð§??Æµ????Ä¿ */
+    VOS_UINT16                          usFreqCount;                            /* ÓÐÐ§µÄÆµÂÊÊýÄ¿ */
     VOS_UINT8                           aucReserved1[2];
-    RRC_NV_CSEL_CAND_FREQ_STRU          ausCandFreqs[RRC_NV_EACH_BAND_FREQ_COUNT];/* ????Æµ???Ð±? */
+    RRC_NV_CSEL_CAND_FREQ_STRU          ausCandFreqs[RRC_NV_EACH_BAND_FREQ_COUNT];/* ÏÈÑéÆµÂÊÁÐ±í */
 }LRRC_NV_CAND_CELL_LIST_STRU;
 
 /*****************************************************************************
- ?á¹¹??    : LRRC_NV_SUPPORT_BAND_LIST_STRU
- Ð­??????  :
- ASN.1???? :
- ?á¹¹Ëµ??  : UEÖ§??Æµ??NV?á¹¹
+ ½á¹¹Ãû    : LRRC_NV_SUPPORT_BAND_LIST_STRU
+ Ð­Òé±í¸ñ  :
+ ASN.1ÃèÊö :
+ ½á¹¹ËµÃ÷  : UEÖ§³ÖÆµ¶ÎNV½á¹¹
 *****************************************************************************/
 typedef struct
 {
-    VOS_UINT16                          usBandCount;                            /* ??Ð§??Æµ????Ä¿ */
+    VOS_UINT16                          usBandCount;                            /* ÓÐÐ§µÄÆµ´øÊýÄ¿ */
     VOS_UINT8                           aucReserved1[2];
     RRC_NV_CSEL_FREQ_BAND_INFO_STRU     astCandBands[RRC_NV_EACH_BAND_BANDS_COUNT];
 }LRRC_NV_SUPPORT_BAND_LIST_STRU;
 
 /*****************************************************************************
- ?á¹¹??    : RRC_NV_EACH_BAND_IND_INFO_STRU
- Ð­??????  :
- ASN.1???? :
- ?á¹¹Ëµ??  : Ã¿??Band?ÂµÄº?????Ï¢
+ ½á¹¹Ãû    : RRC_NV_EACH_BAND_IND_INFO_STRU
+ Ð­Òé±í¸ñ  :
+ ASN.1ÃèÊö :
+ ½á¹¹ËµÃ÷  : Ã¿¸öBandÏÂµÄºò²¹ÐÅÏ¢
 *****************************************************************************/
 typedef struct
 {
-    VOS_UINT8                           ucBandInd;                              /* Æµ??Ö¸Ê¾ */
-    PS_BOOL_ENUM_UINT8                  enFirstSearchFlg;                       /* Æµ????Æµ???????×¶Î£?????????????Æµ?? */
+    VOS_UINT8                           ucBandInd;                              /* Æµ¶ÎÖ¸Ê¾ */
+    PS_BOOL_ENUM_UINT8                  enFirstSearchFlg;                       /* Æµµã»òÆµ¶ÎËÑË÷½×¶Î£¬ÓÅÏÈËÑË÷Õâ¸öÆµ¶Î */
     VOS_UINT8                           aucReserved1[2];
-    LRRC_NV_CAND_CELL_LIST_STRU         stCandCellInfo;                         /* Band?Úº???Ð¡????Ï¢ */
-    LRRC_NV_SUPPORT_BAND_LIST_STRU      stCandBandsInfo;                        /* Band?Úº???Æµ????Ï¢ */
+    LRRC_NV_CAND_CELL_LIST_STRU         stCandCellInfo;                         /* BandÄÚºò²¹Ð¡ÇøÐÅÏ¢ */
+    LRRC_NV_SUPPORT_BAND_LIST_STRU      stCandBandsInfo;                        /* BandÄÚºò²¹Æµ¶ÎÐÅÏ¢ */
 }LRRC_NV_EACH_BAND_CAND_INFO_STRU;
 
 
 /*****************************************************************************
- ?á¹¹??    : LRRC_NV_CALIBRATION_BAND_LIST_STRU
- Ð­??????  :
- ASN.1???? :
- ?á¹¹Ëµ??  : UE??ÒªÐ£×¼??band??Ï¢
+ ½á¹¹Ãû    : LRRC_NV_CALIBRATION_BAND_LIST_STRU
+ Ð­Òé±í¸ñ  :
+ ASN.1ÃèÊö :
+ ½á¹¹ËµÃ÷  : UEÐèÒªÐ£×¼µÄbandÐÅÏ¢
 *****************************************************************************/
 typedef struct
 {
@@ -1134,10 +1134,10 @@ typedef struct
 }LRRC_NV_CALIBRATION_BAND_LIST_STRU;
 
 /*****************************************************************************
- ?á¹¹??    : LRRC_UE_CAP_MEAS_EUTRA_BAND_STRU
- Ð­??????  :
- ASN.1???? :
- ?á¹¹Ëµ??  : UE EUTRA??Á¦??MEAS->Band????
+ ½á¹¹Ãû    : LRRC_UE_CAP_MEAS_EUTRA_BAND_STRU
+ Ð­Òé±í¸ñ  :
+ ASN.1ÃèÊö :
+ ½á¹¹ËµÃ÷  : UE EUTRAÄÜÁ¦ÖÐMEAS->Band²ÎÊý
 *****************************************************************************/
 typedef struct
 {
@@ -1146,10 +1146,10 @@ typedef struct
 }LRRC_UE_CAP_MEAS_EUTRA_BAND_STRU;
 
 /*****************************************************************************
- ?á¹¹??    : RRC_UE_EUTRA_CAP_STRU
- Ð­??????  :
- ASN.1???? :
- ?á¹¹Ëµ??  : UE EUTRA??Á¦??Ï¢
+ ½á¹¹Ãû    : RRC_UE_EUTRA_CAP_STRU
+ Ð­Òé±í¸ñ  :
+ ASN.1ÃèÊö :
+ ½á¹¹ËµÃ÷  : UE EUTRAÄÜÁ¦ÐÅÏ¢
 *****************************************************************************/
 typedef struct
 {
@@ -1157,7 +1157,7 @@ typedef struct
     VOS_UINT32                          bitUeCapV920IesPresent        : 1;
     VOS_UINT32                          bitSpare                      : 30;
     VOS_UINT8                           aucReserved[2];
-    /* ??À´????UE???????æ±¾??1??Ö§?Ö£?0????Ö§?Ö£??ÓµÍµ???Î»?Ö±???À´Ö¸Ê¾Rel8,Rel9,.... */
+    /* ÓÃÀ´ÉèÖÃUE½ÓÈë²ã°æ±¾£¬1£ºÖ§³Ö£¬0£º²»Ö§³Ö£¬´ÓµÍµ½¸ßÎ»·Ö±ðÓÃÀ´Ö¸Ê¾Rel8,Rel9,.... */
     VOS_UINT8                           ucAsRelBitmap;
     RRC_UE_CATEGORY_ENUM_UINT8          enUeCatg;
     RRC_UE_CAP_PDCP_PARA_STRU           stPdcpPara;
@@ -1170,109 +1170,109 @@ typedef struct
 } LRRC_NV_UE_EUTRA_CAP_STRU;
 
 /*****************************************************************************
- ?á¹¹??    : LRRC_NV_RRC_CTRL_STRU
- Ð­??????  :
- ASN.1???? :
- ?á¹¹Ëµ??  : RRC???Æ¿??Ø½á¹¹
-             ??Ñ¡3db???Æ¿???,BARÐ¡????????????????,SIB???Õ¶?Ê±??Ñ¡?ñ¿ª¹?
+ ½á¹¹Ãû    : LRRC_NV_RRC_CTRL_STRU
+ Ð­Òé±í¸ñ  :
+ ASN.1ÃèÊö :
+ ½á¹¹ËµÃ÷  : RRC¿ØÖÆ¿ª¹Ø½á¹¹
+             ÖØÑ¡3db¿ØÖÆ¿ª¹Ø,BARÐ¡Çøºó×î´óËÑË÷´ÎÊý,SIB½ÓÊÕ¶¨Ê±Æ÷Ñ¡Ôñ¿ª¹Ø
 *****************************************************************************/
 typedef struct
 {
-    RRC_NV_SWITCH_ENUM_UINT32            en3dbCtlFlg;           /* Ä¬??ÖµÎª?Ø±? 0 */
+    RRC_NV_SWITCH_ENUM_UINT32            en3dbCtlFlg;           /* Ä¬ÈÏÖµÎª¹Ø±Õ 0 */
     VOS_UINT32                           ulMaxSeachCntOfBarFrq;
-    RRC_NV_TIMER_CHOICE_ENUM_UINT32      enSibTimerChoiceFlg;   /* Ä¬??Îª0 */
-    VOS_UINT32                           ulReserved;            /* Ô¤??1Î» */
+    RRC_NV_TIMER_CHOICE_ENUM_UINT32      enSibTimerChoiceFlg;   /* Ä¬ÈÏÎª0 */
+    VOS_UINT32                           ulReserved;            /* Ô¤Áô1Î» */
 }LRRC_NV_RRC_CTRL_STRU;
 
 enum LRRC_NV_LOCK_MODE
 {
-    LRRC_NV_LOCK_MODE_RoadTest                    = 0,/*Â·????Æµ??????ÆµÄ£Ê½??,??List????????*/
-    LRRC_NV_LOCK_MODE_POS                         = 1,/*POS?ú¡¢³­????Æµ??????ÆµÄ£Ê½?Â£?Òª????List????????*/
+    LRRC_NV_LOCK_MODE_RoadTest                    = 0,/*Â·²âËøÆµ£¬¸ÃËøÆµÄ£Ê½ÏÂ,¶ÔListËÑÓÐÏÞÖÆ*/
+    LRRC_NV_LOCK_MODE_POS                         = 1,/*POS»ú¡¢³­±íËøÆµ£¬¸ÃËøÆµÄ£Ê½ÏÂ£¬ÒªÇó¶ÔListËÑÎÞÏÞÖÆ*/
     LRRC_NV_LOCK_MODE_BUTT
 };
 typedef VOS_UINT8   LRRC_NV_LOCK_MODE_UINT8;
 
 /*****************************************************************************
- ?á¹¹??    : LRRC_NV_LOCK_INFO_STRU
- Ð­??????  :
- ASN.1???? :
- ?á¹¹Ëµ??  :NV??????Ï¢???Ý½á¹¹
+ ½á¹¹Ãû    : LRRC_NV_LOCK_INFO_STRU
+ Ð­Òé±í¸ñ  :
+ ASN.1ÃèÊö :
+ ½á¹¹ËµÃ÷  :NVÏîËøÐÅÏ¢Êý¾Ý½á¹¹
 *****************************************************************************/
 typedef struct
 {
     RRC_NV_LOCK_INFO_ENUM_UINT32         enLockInd;
     /*begin: add by wangmiao00272217 */
-    PS_BOOL_ENUM_UINT8                   ucActiveFlag;                   /*??Ð§??Ö¾Î»???????Âµç¶ªÊ§,PS_TRUE?Âµ???Ð§????????Ð§*/
-    LRRC_NV_LOCK_MODE_UINT8              ucLockMode;                     /*??ÆµÄ£Ê½,*/
-    /*end: add by wangmiao00272217 ??Ð§??Ö¾Î»???????Âµç¶ªÊ§,PS_TRUE?Âµ???Ð§????????Ð§*/
-    VOS_UINT8                            ucBandInd;                      /* Æµ??Ö¸Ê¾ */
-    VOS_UINT8                            ucForbidReselAndHO;             /* ??Æµ???????Ç·??????Ð»?????Ñ¡ */
-    VOS_UINT16                           usCellId;                       /* Ð¡??ID */
-    VOS_UINT16                           usFreqPoint;                    /* Æµ?? */
-    RRC_NV_CSEL_FREQ_BAND_INFO_STRU      stLockedBand;                   /* ????Band??Ï¢ */
+    PS_BOOL_ENUM_UINT8                   ucActiveFlag;                   /*ÓÐÐ§±êÖ¾Î»£¬ÓÃÓÚÏÂµç¶ªÊ§,PS_TRUEÏÂµçÓÐÐ§£¬·ñÔòÎÞÐ§*/
+    LRRC_NV_LOCK_MODE_UINT8              ucLockMode;                     /*ËøÆµÄ£Ê½,*/
+    /*end: add by wangmiao00272217 ÓÐÐ§±êÖ¾Î»£¬ÓÃÓÚÏÂµç¶ªÊ§,PS_TRUEÏÂµçÓÐÐ§£¬·ñÔòÎÞÐ§*/
+    VOS_UINT8                            ucBandInd;                      /* Æµ¶ÎÖ¸Ê¾ */
+    VOS_UINT8                            ucForbidReselAndHO;             /* ËøÆµ¹ý³ÌÖÐÊÇ·ñÔÊÐíÇÐ»»ºÍÖØÑ¡ */
+    VOS_UINT16                           usCellId;                       /* Ð¡ÇøID */
+    VOS_UINT16                           usFreqPoint;                    /* ÆµÂÊ */
+    RRC_NV_CSEL_FREQ_BAND_INFO_STRU      stLockedBand;                   /* Ëø¶¨BandÐÅÏ¢ */
 } LRRC_NV_LOCK_INFO_STRU;
 
 /* modify by lishangfeng begin */
 
 /*****************************************************************************
- ?á¹¹??    : LRRC_NV_CSQ_RPT_INFO_STRU
- Ð­??????  :
- ASN.1???? :
- ?á¹¹Ëµ??  : ??Á¿?Ï±??????Úº?????
+ ½á¹¹Ãû    : LRRC_NV_CSQ_RPT_INFO_STRU
+ Ð­Òé±í¸ñ  :
+ ASN.1ÃèÊö :
+ ½á¹¹ËµÃ÷  : ÄÜÁ¿ÉÏ±¨µÄÖÜÆÚºÍÃÅÏÞ
 *****************************************************************************/
 typedef struct
 {
     VOS_UINT32                       ulRssiReportLen;
-    VOS_UINT32                       ulDetaRssi;    /* ??Á¿?Ï±????? */
-    VOS_UINT16                       usMs;          /* ?Ï±?Ê±?????? */
-    VOS_UINT16                       usDetaSINR;    /* ?????????? (0,50)db*/
+    VOS_UINT32                       ulDetaRssi;    /* ÄÜÁ¿ÉÏ±¨ÃÅÏÞ */
+    VOS_UINT16                       usMs;          /* ÉÏ±¨Ê±¼ä¼ä¸ô */
+    VOS_UINT16                       usDetaSINR;    /* ÐÅÔë±ÈÃÅÏÞ (0,50)db*/
 } LRRC_NV_CSQ_RPT_INFO_STRU;
 
 /* modify by lishangfeng end */
 
 /* wangrui 20120817 begin */
 /*****************************************************************************
- ?á¹¹??    : LRRC_NV_LWCLASH_RANGE_STRU
- Ð­??????  :
- ASN.1???? :
- ?á¹¹Ëµ??  : ??Í»??Î§?????Þº?????
+ ½á¹¹Ãû    : LRRC_NV_LWCLASH_RANGE_STRU
+ Ð­Òé±í¸ñ  :
+ ASN.1ÃèÊö :
+ ½á¹¹ËµÃ÷  : ³åÍ»·¶Î§µÄÉÏÏÞºÍÏÂÏÞ
 *****************************************************************************/
 typedef struct
 {
-    VOS_UINT16                        usFreqBegin;        /*??Î§????Æµ?? ??Î»:100Khz*/
-    VOS_UINT16                        usFreqEnd;          /*??Î§????Æµ?? ??Î»:100Khz*/
+    VOS_UINT16                        usFreqBegin;        /*·¶Î§ÏÂÏÞÆµµã µ¥Î»:100Khz*/
+    VOS_UINT16                        usFreqEnd;          /*·¶Î§ÉÏÏÞÆµµã µ¥Î»:100Khz*/
 } LRRC_NV_LWCLASH_RANGE_INFO_STRU;
 /*****************************************************************************
- ?á¹¹??    : LRRC_NV_LWCLASH_RANGE_STRU
- Ð­??????  :
- ASN.1???? :
- ?á¹¹Ëµ??  : ??Í»??Î§?????Þº?????
+ ½á¹¹Ãû    : LRRC_NV_LWCLASH_RANGE_STRU
+ Ð­Òé±í¸ñ  :
+ ASN.1ÃèÊö :
+ ½á¹¹ËµÃ÷  : ³åÍ»·¶Î§µÄÉÏÏÞºÍÏÂÏÞ
 *****************************************************************************/
 typedef struct
 {
-    VOS_UINT16                        ulnum;                /*??Î§????Æµ?? ??Î»:100Khz*/
-    LRRC_NV_LWCLASH_RANGE_INFO_STRU   stBandRng[RRC_NV_LWCLASH_RANGE_COUNT]; /*??Î§????Æµ?? ??Î»:100Khz*/
+    VOS_UINT16                        ulnum;                /*·¶Î§ÏÂÏÞÆµµã µ¥Î»:100Khz*/
+    LRRC_NV_LWCLASH_RANGE_INFO_STRU   stBandRng[RRC_NV_LWCLASH_RANGE_COUNT]; /*·¶Î§ÉÏÏÞÆµµã µ¥Î»:100Khz*/
 } LRRC_NV_LWCLASH_RANGE_STRU;
 
 /* wangrui 20120817 end */
 /*****************************************************************************
- ?á¹¹??    : LRRC_NV_UE_RFRD_TYPE_STRU
- Ð­??????  :
- ASN.1???? :
- ?á¹¹Ëµ??  :NV????Æµ???Í½á¹¹
+ ½á¹¹Ãû    : LRRC_NV_UE_RFRD_TYPE_STRU
+ Ð­Òé±í¸ñ  :
+ ASN.1ÃèÊö :
+ ½á¹¹ËµÃ÷  :NVÏîÉäÆµÀàÐÍ½á¹¹
 *****************************************************************************/
 typedef struct
 {
-    RRC_NV_UE_RFRD_TYPE_ENUM_UINT8       enUeRfrdType;              /* ??Æµ???? */
+    RRC_NV_UE_RFRD_TYPE_ENUM_UINT8       enUeRfrdType;              /* ÉäÆµÀàÐÍ */
     VOS_UINT8                            aucReserved[3];
 
 } LRRC_NV_UE_RFRD_TYPE_STRU;
 
 /*****************************************************************************
- ?á¹¹??    : LRRC_NV_RF_HW_STRU
- Ð­??????  :
- ASN.1???? :
- ?á¹¹Ëµ??  :9361RF????
+ ½á¹¹Ãû    : LRRC_NV_RF_HW_STRU
+ Ð­Òé±í¸ñ  :
+ ASN.1ÃèÊö :
+ ½á¹¹ËµÃ÷  :9361RFÅäÖÃ
 *****************************************************************************/
 typedef struct
 {
@@ -1281,24 +1281,24 @@ typedef struct
 } LRRC_NV_RF_HW_STRU;
 
 /*****************************************************************************
- ?á¹¹??    : LTE_COMPENSATE_SWITCH_STRU
- Ð­??????  :
- ASN.1???? :
- ?á¹¹Ëµ??  : ????????, ??NV?Á³?????DSP
+ ½á¹¹Ãû    : LTE_COMPENSATE_SWITCH_STRU
+ Ð­Òé±í¸ñ  :
+ ASN.1ÃèÊö :
+ ½á¹¹ËµÃ÷  : ²¹³¥¿ª¹Ø, ´ÓNV¶Á³öÅäÖÃDSP
 *****************************************************************************/
 typedef struct
 {
-    VOS_UINT16 usFreqCmpnstSwitch;      /*0???Øµ?Æµ?Ê²??? 1:????Æµ?Ê²???*/
-    VOS_UINT16 usTempCmpnstSwitch;      /*0???Øµ??Â¶È²???  1:?????Â¶È²???*/
-    VOS_UINT16 usTxPwrCmpnstSwitch;     /*0???Øµ????ä¹¦?Ê²??? 1:?ò¿ª·??ä²¹?? ????Ç°?Ë¿???Ô¤??*/
+    VOS_UINT16 usFreqCmpnstSwitch;      /*0£º¹ØµôÆµÂÊ²¹³¥ 1:´ò¿ªÆµÂÊ²¹³¥*/
+    VOS_UINT16 usTempCmpnstSwitch;      /*0£º¹ØµôÎÂ¶È²¹³¥  1:´ò¿ªÎÂ¶È²¹³¥*/
+    VOS_UINT16 usTxPwrCmpnstSwitch;     /*0£º¹Øµô·¢Éä¹¦ÂÊ²¹³¥ 1:´ò¿ª·¢Éä²¹³¥ ¡£µ±Ç°´Ë¿ª¹ØÔ¤Áô*/
     VOS_UINT16 usReserved;
 }LTE_COMPENSATE_SWITCH_STRU;
 
 /*****************************************************************************
- ?á¹¹??    : LUPLINK_POWER_CONFIG_STRU
- Ð­??????  :
- ASN.1???? :
- ?á¹¹Ëµ??  : ????????, ??NV?Á³?????DSP
+ ½á¹¹Ãû    : LUPLINK_POWER_CONFIG_STRU
+ Ð­Òé±í¸ñ  :
+ ASN.1ÃèÊö :
+ ½á¹¹ËµÃ÷  : ¹¦¿ØÅäÖÃ, ´ÓNV¶Á³öÅäÖÃDSP
 *****************************************************************************/
 typedef struct
 {
@@ -1320,12 +1320,12 @@ typedef struct
 #if(FEATURE_MULTI_MODEM == FEATURE_ON)
 typedef struct
 {
-    PS_BOOL_ENUM_UINT8      enValidFlag;  /*?????Ç·???Ð§  */
-    VOS_UINT8               ucLrrcMTCLostThreshold; 	/* LTE??PSÇ¨??????,0~31 */
-    VOS_UINT8               ucLrrcMTCAvailableDValue;    /* LTE??PS??Ç¨??????Ç¨?????Þ²?Öµ,0~(31-ucLrrcMTCLostThresh) */
-    VOS_UINT8               ucMTCLostTimerLen;    /* LTE->CDMA??PSÇ¨?Æ¹??ÌµÄ¶?Ê±?÷³¤¶?,È¡Öµ??Î»:s */
-    VOS_INT16               sRsv; /*????*/
-    VOS_UINT16              usMTCAvailableTimerLen; /* CDMA->LTE??PSÇ¨?Æ¹??ÌµÄ¶?Ê±?÷³¤¶?,È¡Öµ??Î»:s */
+    PS_BOOL_ENUM_UINT8      enValidFlag;  /*ÃÅÏÞÊÇ·ñÓÐÐ§  */
+    VOS_UINT8               ucLrrcMTCLostThreshold; 	/* LTEµÄPSÇ¨ÒÆÃÅÏÞ,0~31 */
+    VOS_UINT8               ucLrrcMTCAvailableDValue;    /* LTEµÄPS»ØÇ¨ÃÅÏÞÓëÇ¨ÒÆÃÅÏÞ²îÖµ,0~(31-ucLrrcMTCLostThresh) */
+    VOS_UINT8               ucMTCLostTimerLen;    /* LTE->CDMAµÄPSÇ¨ÒÆ¹ý³ÌµÄ¶¨Ê±Æ÷³¤¶È,È¡Öµµ¥Î»:s */
+    VOS_INT16               sRsv; /*±£Áô*/
+    VOS_UINT16              usMTCAvailableTimerLen; /* CDMA->LTEµÄPSÇ¨ÒÆ¹ý³ÌµÄ¶¨Ê±Æ÷³¤¶È,È¡Öµµ¥Î»:s */
 }LTE_MTC_AREA_LOST_THRESHOLD_STRU;
 #endif
 /* MTC AREA LOST End */
@@ -1343,67 +1343,67 @@ typedef struct
 /* TCXo */
 #if (VOS_OS_VER == VOS_WIN32)
 /*****************************************************************************
- ?á¹¹??    : LTE_TCXO_DYNAMIC_CONFIG_STRU
- Ð­??????  :
- ASN.1???? :
- ?á¹¹Ëµ??  : TCXO??Ì¬??Ï¢
+ ½á¹¹Ãû    : LTE_TCXO_DYNAMIC_CONFIG_STRU
+ Ð­Òé±í¸ñ  :
+ ASN.1ÃèÊö :
+ ½á¹¹ËµÃ÷  : TCXO¶¯Ì¬ÐÅÏ¢
 *****************************************************************************/
 typedef struct
 {
-    VOS_UINT16 usVctcxoThdHigh;             /* ??Ì¬TCXO?????? */
-    VOS_UINT16 usVctcxoDynamic;             /* ??Ì¬TCXOÖµ, UE?Ïµ?Ê±??HPA??È¡NV??????DSP,
-                                               UE?Ïµç¿ª??????Á¬??Ì¬????DSP??È¡??Ð§ÖµÐ´??NV */
-    VOS_UINT16 usVctcxoFlag;                /* ??Ì¬TCXOÈ¡Öµ?Ç·???Ð§??Ê¶, DSP?É²???,
-                                               0: ??Ð§????????Ð§????Ð§Ê±usDynamicTcxoÖµ?????? */
-    VOS_UINT16 usVctcxoFuncSwitch;          /* ??Ì¬TCXO?????Ç·?Ê¹?Ã¿???, DSP?É²???,
-                                               ?Þ¸Äº?, ??Òª?Âµ????Ïµ??Å»???Ð§
-                                               0: ?Ø±?, ?Ø±?Ê±usVctcxoDynamicÈ¡ÖµusVctcxoInit
-                                               1: ???? */
+    VOS_UINT16 usVctcxoThdHigh;             /* ¶¯Ì¬TCXO¸ßÃÅÏÞ */
+    VOS_UINT16 usVctcxoDynamic;             /* ¶¯Ì¬TCXOÖµ, UEÉÏµçÊ±ÓÉHPA¶ÁÈ¡NV²¢ÅäÖÃDSP,
+                                               UEÉÏµç¿ª»ú½øÈëÁ¬½ÓÌ¬ºó´ÓDSP»ñÈ¡ÓÐÐ§ÖµÐ´ÈëNV */
+    VOS_UINT16 usVctcxoFlag;                /* ¶¯Ì¬TCXOÈ¡ÖµÊÇ·ñÓÐÐ§±êÊ¶, DSP¿É²»ÓÃ,
+                                               0: ÓÐÐ§£»ÆäÓàÎÞÐ§£¬ÎÞÐ§Ê±usDynamicTcxoÖµÎÞÒâÒå */
+    VOS_UINT16 usVctcxoFuncSwitch;          /* ¶¯Ì¬TCXO¹¦ÄÜÊÇ·ñÊ¹ÓÃ¿ª¹Ø, DSP¿É²»ÓÃ,
+                                               ÐÞ¸Äºó, ÐèÒªÏÂµçÔÙÉÏµç²Å»áÉúÐ§
+                                               0: ¹Ø±Õ, ¹Ø±ÕÊ±usVctcxoDynamicÈ¡ÖµusVctcxoInit
+                                               1: ´ò¿ª */
 }LTE_TCXO_DYNAMIC_CONFIG_STRU;
 #endif
 #if 0
 /*****************************************************************************
- ?á¹¹??    : LRRC_NV_UE_AD9361_INFO_STRU
- Ð­??????  :
- ASN.1???? :
- ?á¹¹Ëµ??  :NV????Æµ9361??Ï¢?á¹¹
+ ½á¹¹Ãû    : LRRC_NV_UE_AD9361_INFO_STRU
+ Ð­Òé±í¸ñ  :
+ ASN.1ÃèÊö :
+ ½á¹¹ËµÃ÷  :NVÏîÉäÆµ9361ÐÅÏ¢½á¹¹
 *****************************************************************************/
 typedef struct
 {
     /*Common NV List*/
-    VOS_UINT16 usVctcxoInit;                /*Vco??Öµ*/
+    VOS_UINT16 usVctcxoInit;                /*Vco³õÖµ*/
     VOS_UINT16 usRsvd;
-    VOS_UINT16 usAntModemLoss[16];          /*Modem?????????ß¼?????*/
-    VOS_UINT16 usTempSensorTable[20];       /*PA???????????âµ½??Æ½Ì¨?Â¶?×ª???Éµ?Ñ¹??????HKADC??????????Öµ*/
+    VOS_UINT16 usAntModemLoss[16];          /*ModemÓëÕû»úÌìÏß¼äÏßËð*/
+    VOS_UINT16 usTempSensorTable[20];       /*PAÈÈÃôµç×è¼ì²âµ½µÄÆ½Ì¨ÎÂ¶È×ª±ä³ÉµçÑ¹£¬ÔÙÓÃHKADC²ÉÑùºóµÄÊýÖµ*/
     /*Rx NV List*/
-    VOS_UINT16 usRxCalibrFreqList[16];      /*RxÆµ??Ð£×¼??*/
-    VOS_UINT32 ulRxAgcTableAnt1[128];       /*??Ó¦????ad9361??agc tabel*/
+    VOS_UINT16 usRxCalibrFreqList[16];      /*RxÆµÂÊÐ£×¼±í*/
+    VOS_UINT32 ulRxAgcTableAnt1[128];       /*¶ÔÓ¦µÄÊÇad9361µÄagc tabel*/
     VOS_UINT32 ulRxAgcTableAnt2[128];
-    VOS_UINT8  ucRxAagcGainIdxTblAnt1[128]; /*aagc?ß¼?????????????*/
-    VOS_UINT8  ucRxAagcGainIdxTblAnt2[128]; /*aagc?ß¼?????????????*/
-    VOS_UINT16 usRxAgcTableAnt1Err[128];      /*??Ó¦lna???Ä¸???Î»*/
+    VOS_UINT8  ucRxAagcGainIdxTblAnt1[128]; /*aagcÂß¼­µÄÔöÒæË÷Òý±í*/
+    VOS_UINT8  ucRxAagcGainIdxTblAnt2[128]; /*aagcÂß¼­µÄÔöÒæË÷Òý±í*/
+    VOS_UINT16 usRxAgcTableAnt1Err[128];      /*¶ÔÓ¦lnaµÄËÄ¸öµµÎ»*/
     VOS_UINT16 usRxAgcTableAnt2Err[128];
-    VOS_UINT16 usLnaGain0FreqComp[2][16];   /*Lna?Úµ?Î»0Ê±??Ó¦?Ä²?Í¬???ßº?Æµ???ÂµÄ²???Öµ*/
-    VOS_UINT16 usLnaGain1FreqComp[2][16];   /*Lna?Úµ?Î»1Ê±??Ó¦?Ä²?Í¬???ßº?Æµ???ÂµÄ²???Öµ*/
-    VOS_UINT16 usLnaGain2FreqComp[2][16];   /*Lna?Úµ?Î»2Ê±??Ó¦?Ä²?Í¬???ßº?Æµ???ÂµÄ²???Öµ*/
-    VOS_UINT16 usLnaGain3FreqComp[2][16];   /*Lna?Úµ?Î»3Ê±??Ó¦?Ä²?Í¬???ßº?Æµ???ÂµÄ²???Öµ*/
-    VOS_INT16 sLnaGain0TmpComp[20];        /*Lna?Úµ?Î»0Ê±??Ó¦?Ä²?Í¬?Â¶?Ê±?ÄµÄ²???Öµ*/
-    VOS_INT16 sLnaGain1TmpComp[20];        /*Lna?Úµ?Î»1Ê±??Ó¦?Ä²?Í¬?Â¶?Ê±?ÄµÄ²???Öµ*/
-    VOS_INT16 sLnaGain2TmpComp[20];        /*Lna?Úµ?Î»2Ê±??Ó¦?Ä²?Í¬?Â¶?Ê±?ÄµÄ²???Öµ*/
-    VOS_INT16 sLnaGain3TmpComp[20];        /*Lna?Úµ?Î»3Ê±??Ó¦?Ä²?Í¬?Â¶?Ê±?ÄµÄ²???Öµ*/
+    VOS_UINT16 usLnaGain0FreqComp[2][16];   /*LnaÔÚµµÎ»0Ê±¶ÔÓ¦µÄ²»Í¬ÌìÏßºÍÆµµãÏÂµÄ²¹³¥Öµ*/
+    VOS_UINT16 usLnaGain1FreqComp[2][16];   /*LnaÔÚµµÎ»1Ê±¶ÔÓ¦µÄ²»Í¬ÌìÏßºÍÆµµãÏÂµÄ²¹³¥Öµ*/
+    VOS_UINT16 usLnaGain2FreqComp[2][16];   /*LnaÔÚµµÎ»2Ê±¶ÔÓ¦µÄ²»Í¬ÌìÏßºÍÆµµãÏÂµÄ²¹³¥Öµ*/
+    VOS_UINT16 usLnaGain3FreqComp[2][16];   /*LnaÔÚµµÎ»3Ê±¶ÔÓ¦µÄ²»Í¬ÌìÏßºÍÆµµãÏÂµÄ²¹³¥Öµ*/
+    VOS_INT16 sLnaGain0TmpComp[20];        /*LnaÔÚµµÎ»0Ê±¶ÔÓ¦µÄ²»Í¬ÎÂ¶ÈÊ±µÄµÄ²¹³¥Öµ*/
+    VOS_INT16 sLnaGain1TmpComp[20];        /*LnaÔÚµµÎ»1Ê±¶ÔÓ¦µÄ²»Í¬ÎÂ¶ÈÊ±µÄµÄ²¹³¥Öµ*/
+    VOS_INT16 sLnaGain2TmpComp[20];        /*LnaÔÚµµÎ»2Ê±¶ÔÓ¦µÄ²»Í¬ÎÂ¶ÈÊ±µÄµÄ²¹³¥Öµ*/
+    VOS_INT16 sLnaGain3TmpComp[20];        /*LnaÔÚµµÎ»3Ê±¶ÔÓ¦µÄ²»Í¬ÎÂ¶ÈÊ±µÄµÄ²¹³¥Öµ*/
     /*Tx NV List*/
-    VOS_UINT16 usTxCalibrFreqList[16];      /*TxÆµ??Ð£×¼??*/
-    VOS_UINT16 usTxApcHighGainTable[32];    /*apc????????*/
-    VOS_UINT16 usTxApcLowGainTable[60];     /*apc????????*/
-    VOS_UINT16 usTxApcHighThrd;             /*apc?????æµ½??????????*/
-    VOS_UINT16 usTxApcLowThrd;              /*apc?????æµ½??????????*/
-    VOS_UINT16 ausTxApcHighPwr[4];         /* ?????æ¹¦?Êµ? */
-    VOS_UINT16 ausTxApcLowPwr[4];          /* ?????æ¹¦?Êµ? */
-    VOS_UINT16 usTxApcFreqCompHighGain[4][16]; /*paÆµ?Ê²?????0.25db????*/
+    VOS_UINT16 usTxCalibrFreqList[16];      /*TxÆµÂÊÐ£×¼±í*/
+    VOS_UINT16 usTxApcHighGainTable[32];    /*apc¸ßÔöÒæ±í*/
+    VOS_UINT16 usTxApcLowGainTable[60];     /*apcµÍÔöÒæ±í*/
+    VOS_UINT16 usTxApcHighThrd;             /*apc¸ßÔöÒæµ½µÍÔöÒæÃÅÏÞ*/
+    VOS_UINT16 usTxApcLowThrd;              /*apcµÍÔöÒæµ½¸ßÔöÒæÃÅÏÞ*/
+    VOS_UINT16 ausTxApcHighPwr[4];         /* ¸ßÔöÒæ¹¦ÂÊµã */
+    VOS_UINT16 ausTxApcLowPwr[4];          /* µÍÔöÒæ¹¦ÂÊµã */
+    VOS_UINT16 usTxApcFreqCompHighGain[4][16]; /*paÆµÂÊ²¹³¥£¬0.25db¾«¶È*/
     VOS_UINT16 usTxApcFreqCompLowGain[4][16];
-    VOS_INT16 sTxApcTempCompHighGain[20];  /*???Ú²?????Í¬?Â¶??Âµ?PA??????????*/
-    VOS_INT16 sTxApcTempCompLowGain[20];   /*???Ú²?????Í¬?Â¶??Âµ?PA??????????*/
-    VOS_UINT16 usTxPowerDetVoltage[16];     /*PA???Ê¼???Ä£???????Äµ?Ñ¹??Êµ?Ê·??Í¹??ÊµÄ¹?Ïµ*/
+    VOS_INT16 sTxApcTempCompHighGain[20];  /*ÓÃÓÚ²¹³¥²»Í¬ÎÂ¶ÈÏÂµÄPA¸ßÔöÒæÎó²î*/
+    VOS_INT16 sTxApcTempCompLowGain[20];   /*ÓÃÓÚ²¹³¥²»Í¬ÎÂ¶ÈÏÂµÄPAµÍÔöÒæÎó²î*/
+    VOS_UINT16 usTxPowerDetVoltage[16];     /*PA¹¦ÂÊ¼ì²âÄ£¿éÊä³öµÄµçÑ¹ÓëÊµ¼Ê·¢ËÍ¹¦ÂÊµÄ¹ØÏµ*/
     LTE_COMPENSATE_SWITCH_STRU   stCmpnstSwitch;
     LUPLINK_POWER_CONFIG_STRU stUlPwrCfg;
     /*Timer NV List*/
@@ -1428,58 +1428,58 @@ typedef struct
 
 #endif
 /*****************************************************************************
- ?á¹¹??    : LTE_GATE_CLOCK_CONFIG_STRU
- Ð­??????  :
- ASN.1???? :
- ?á¹¹Ëµ??  :Ê±???Å¿?
+ ½á¹¹Ãû    : LTE_GATE_CLOCK_CONFIG_STRU
+ Ð­Òé±í¸ñ  :
+ ASN.1ÃèÊö :
+ ½á¹¹ËµÃ÷  :Ê±ÖÓÃÅ¿Ø
 *****************************************************************************/
 typedef struct
 {
-    VOS_UINT16 usGateClockEnableFlag;       /* 0:invalid, 1:Valid, Ä¬?? 0 */
+    VOS_UINT16 usGateClockEnableFlag;       /* 0:invalid, 1:Valid, Ä¬ÈÏ 0 */
     VOS_UINT16 usRsvd;
 } LTE_GATE_CLOCK_CONFIG_STRU;
 
 /*****************************************************************************
- ?á¹¹??    : FC_LTE_CPU_CONFIG_STRU
- Ð­??????  :
- ASN.1???? :
- ?á¹¹Ëµ??  : ????LTE CPU???????Ã½á¹¹
+ ½á¹¹Ãû    : FC_LTE_CPU_CONFIG_STRU
+ Ð­Òé±í¸ñ  :
+ ASN.1ÃèÊö :
+ ½á¹¹ËµÃ÷  : ¶¨ÒåLTE CPUÁ÷¿ØÅäÖÃ½á¹¹
 *****************************************************************************/
 typedef struct
 {
-    VOS_UINT16          usFirstDelay;           /* ?Ó³Ù½???????×´Ì¬??Á¬?????????Ú¸?????Öµ?Å½??????? */
-    VOS_UINT16          usUlDownRate;           /* ???Ð½??Ù²????Ù·Ö±? */
-    VOS_UINT16          usUlUpRate;             /* ???????Ù²????Ù·Ö±? */
-    VOS_UINT16          usUlMinThr;             /* ???Ð½??????? kbps */
-    VOS_UINT16          usHqDownRate;           /* HARQ???Ù²????Ù·Ö±? */
-    VOS_UINT16          usHqUpRate;             /* HARQ???Ù²????Ù·Ö±? */
-    VOS_UINT16          usHqMaxDiscardRate;     /* HARQ???????? */
-    VOS_UINT16          usDowngradeThres;       /* ??????Öµ??CPUÕ¼???Ê¸??Ú¸?ÖµÊ±????Ê¼???? */
-    VOS_UINT16          usUpgradeThres;         /* ??????Öµ??CPUÕ¼???Êµ??Ú¸?ÖµÊ±????Ê¼???? */
+    VOS_UINT16          usFirstDelay;           /* ÑÓ³Ù½øÈëÁ÷¿Ø×´Ì¬£¬Á¬Ðø¼¸¸öÖÜÆÚ¸ßÓÚãÐÖµ²Å½øÐÐÁ÷¿Ø */
+    VOS_UINT16          usUlDownRate;           /* ÉÏÐÐ½µËÙ²½³¤°Ù·Ö±È */
+    VOS_UINT16          usUlUpRate;             /* ÉÏÐÐÉýËÙ²½³¤°Ù·Ö±È */
+    VOS_UINT16          usUlMinThr;             /* ÉÏÐÐ½µËÙÏÂÏÞ kbps */
+    VOS_UINT16          usHqDownRate;           /* HARQ½µËÙ²½³¤°Ù·Ö±È */
+    VOS_UINT16          usHqUpRate;             /* HARQÉýËÙ²½³¤°Ù·Ö±È */
+    VOS_UINT16          usHqMaxDiscardRate;     /* HARQ¶ª°üÉÏÏÞ */
+    VOS_UINT16          usDowngradeThres;       /* ½µËÙãÐÖµ£¬CPUÕ¼ÓÃÂÊ¸ßÓÚ¸ÃÖµÊ±£¬¿ªÊ¼½µËÙ */
+    VOS_UINT16          usUpgradeThres;         /* ÉýËÙãÐÖµ£¬CPUÕ¼ÓÃÂÊµÍÓÚ¸ÃÖµÊ±£¬¿ªÊ¼ÉýËÙ */
 	VOS_UINT16          usResv;
 } FC_LTE_CPU_CONFIG_STRU;
 
 /*****************************************************************************
- ?á¹¹??    : FC_LTE_TEMPERATURE_CONFIG_STRU
- Ð­??????  :
- ASN.1???? :
- ?á¹¹Ëµ??  : ????LTE ?Â¿????Ã½á¹¹
+ ½á¹¹Ãû    : FC_LTE_TEMPERATURE_CONFIG_STRU
+ Ð­Òé±í¸ñ  :
+ ASN.1ÃèÊö :
+ ½á¹¹ËµÃ÷  : ¶¨ÒåLTE ÎÂ¿ØÅäÖÃ½á¹¹
 *****************************************************************************/
 #define FC_UL_THROUGHPUT_THRES_CNT_NV          (12)
 typedef struct
 {
-    VOS_UINT8           ucInitialPos;           /* ???Ù¿?Ê¼Î»??0~11, Ä¬??4 */
-    VOS_UINT8           ucZeroSupport;          /* ?Ç·?Ö§?????Ê½???0,0??Ê¾??Ö§?Ö£?Ä¬??0 */
-    VOS_UINT8           ucResv[2];              /* ????Î» */
-    VOS_UINT32          ulTemperSteps[FC_UL_THROUGHPUT_THRES_CNT_NV];      /* ?Â¿????Êµ?Î»kbps????Öµ[50000, 40000, 30000, 25000, 20000, 15000, 10000, 5000, 2000, 0, 0, 0] */
-    VOS_UINT32          ulMinBsrThr;            /* BSR?Ü¹????Æµ???Ð¡????kbps??Ä¬??120 */
+    VOS_UINT8           ucInitialPos;           /* ½µËÙ¿ªÊ¼Î»ÖÃ0~11, Ä¬ÈÏ4 */
+    VOS_UINT8           ucZeroSupport;          /* ÊÇ·ñÖ§³ÖËÙÂÊ½µµ½0,0±íÊ¾²»Ö§³Ö£¬Ä¬ÈÏ0 */
+    VOS_UINT8           ucResv[2];              /* ±£ÁôÎ» */
+    VOS_UINT32          ulTemperSteps[FC_UL_THROUGHPUT_THRES_CNT_NV];      /* ÎÂ¿ØËÙÂÊµµÎ»kbps£¬³õÖµ[50000, 40000, 30000, 25000, 20000, 15000, 10000, 5000, 2000, 0, 0, 0] */
+    VOS_UINT32          ulMinBsrThr;            /* BSRÄÜ¹»¿ØÖÆµÄ×îÐ¡ËÙÂÊkbps£¬Ä¬ÈÏ120 */
 } FC_LTE_TEMPERATURE_CONFIG_STRU;
 
 /*****************************************************************************
- ?á¹¹??    : FLOWCTRL_LTE_CONFIG_STRU
- Ð­??????  :
- ASN.1???? :
- ?á¹¹Ëµ??  : ????LTE???????Ã½á¹¹
+ ½á¹¹Ãû    : FLOWCTRL_LTE_CONFIG_STRU
+ Ð­Òé±í¸ñ  :
+ ASN.1ÃèÊö :
+ ½á¹¹ËµÃ÷  : ¶¨ÒåLTEÁ÷¿ØÅäÖÃ½á¹¹
 *****************************************************************************/
 typedef struct
 {
@@ -1493,29 +1493,29 @@ typedef struct
 #define NV_MAX_FDD_FREQ_BANDS_NUM                 (32)
 
 /*
-NVIM_UE_SUPPORT_FREQ_BAND_STRU?á¹¹Ëµ??:
-usWcdmaBand??usGsmBand??BitÎ»??Ê¾?Ã»????Ãµ?Æµ?Î£?bit1????Æµ??I,bit2????Æµ??II,
-?À´?????,????Î»Îª1,??Ê¾Ö§?Ö¸?Æµ??.?Â±??Ç±???Î»??Æµ?Î¶?Ó¦??Ïµ:
+NVIM_UE_SUPPORT_FREQ_BAND_STRU½á¹¹ËµÃ÷:
+usWcdmaBandºÍusGsmBandÓÃBitÎ»±íÊ¾ÓÃ»§ÉèÖÃµÄÆµ¶Î£¬bit1´ú±íÆµ¶ÎI,bit2´ú±íÆµ¶ÎII,
+ÒÀ´ÎÀàÍÆ,±ÈÌØÎ»Îª1,±íÊ¾Ö§³Ö¸ÃÆµ¶Î.ÏÂ±íÊÇ±ÈÌØÎ»ºÍÆµ¶Î¶ÔÓ¦¹ØÏµ:
 -------------------------------------------------------------------------------
         bit8       bit7      bit6     bit5    bit4     bit3      bit2     bit1
 -------------------------------------------------------------------------------
 WCDMA   900(VIII)  2600(VII) 800(VI)  850(V)  1700(IV) 1800(III) 1900(II) 2100(I) oct1
         spare      spare     spare    spare   spare    spare     spare   J1700(IX)oct2
 -------------------------------------------------------------------------------
-GSMÆµ?? 1900(VIII) 1800(VII) E900(VI) R900(V) P900(IV) 850(III)  480(II)  450(I)  oct3
+GSMÆµ¶Î 1900(VIII) 1800(VII) E900(VI) R900(V) P900(IV) 850(III)  480(II)  450(I)  oct3
         spare      spare     spare    spare   spare    spare     spare    700(IX) oct4
 -------------------------------------------------------------------------------
-aucUeSupportWcdmaBand??aucUeSupportGsmBand????????Ê¾UEÖ§?Öµ?Æµ??,???Ô´æ´¢Ë³????
-?Èº???Ê¾Æµ??????Ë³??,??0xff??Ê¾??Ð§.
+aucUeSupportWcdmaBandºÍaucUeSupportGsmBandÓÃÊý×é±íÊ¾UEÖ§³ÖµÄÆµ¶Î,²¢ÒÔ´æ´¢Ë³ÐòµÄ
+ÏÈºó±íÊ¾Æµ¶ÎÓÅÏÈË³Ðò,ÓÃ0xff±íÊ¾ÎÞÐ§.
 
-????:
-oct1-oct4?Ö±??Ç£?0x03,0x00,0x7B,0x00
-   ???????Ã»?????Æµ??Îª??W??WCDMA-I-2100, WCDMA-II-1900
-                         G??850(III),P900(IV),R900(V),E900(VI),1800(VII)
-oct5-oct16?Ö±???:2,5,1,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff
-   ??????UEÖ§??WÆµ??I,II,V,????Ë³????:II,V,I.
-oct17-oct28?Ö±???:4,5,8,7,6,3,0xff,0xff,0xff,0xff,0xff,0xff
-   ??????UEÖ§??GÆµ??III,IV,V,VI,VII,VIII,????Ë³????:IV,V,VIII,VII,VI,III.
+ÀýÈç:
+oct1-oct4·Ö±ðÊÇ£º0x03,0x00,0x7B,0x00
+   Ôò´ú±íÓÃ»§ÉèÖÃÆµ¶ÎÎª£ºW£ºWCDMA-I-2100, WCDMA-II-1900
+                         G£º850(III),P900(IV),R900(V),E900(VI),1800(VII)
+oct5-oct16·Ö±ðÊÇ:2,5,1,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff
+   Ôò´ú±íUEÖ§³ÖWÆµ¶ÎI,II,V,ÓÅÏÈË³ÐòÊÇ:II,V,I.
+oct17-oct28·Ö±ðÊÇ:4,5,8,7,6,3,0xff,0xff,0xff,0xff,0xff,0xff
+   Ôò´ú±íUEÖ§³ÖGÆµ¶ÎIII,IV,V,VI,VII,VIII,ÓÅÏÈË³ÐòÊÇ:IV,V,VIII,VII,VI,III.
 */
 typedef struct
 {
@@ -1527,61 +1527,61 @@ typedef struct
 }NV_UE_SUPPORT_FREQ_BAND_STRU;
 
 /*****************************************************************************
- ?á¹¹??    : NV_UE_EUTRA_FREQ_BAND_INFO_STRU
- Ð­??????  :
- ASN.1???? :
- ?á¹¹Ëµ??  : LTEÖ§?Öµ?Ò»??Æµ?Îµ?Æµ????Ï¢?á¹¹
+ ½á¹¹Ãû    : NV_UE_EUTRA_FREQ_BAND_INFO_STRU
+ Ð­Òé±í¸ñ  :
+ ASN.1ÃèÊö :
+ ½á¹¹ËµÃ÷  : LTEÖ§³ÖµÄÒ»¸öÆµ¶ÎµÄÆµµãÐÅÏ¢½á¹¹
 *****************************************************************************/
 typedef struct
 {
-    VOS_UINT8                           ucBandNo;                               /* band?Å£?ÖµÎª(1-64) */
-    VOS_UINT8                           ucDuplexModeFlg;                        /* Ë«??Ä£Ê½Ö¸Ê¾??1Îª??Ë«????0ÎªÈ«Ë«????Ä¬??Îª0 */
+    VOS_UINT8                           ucBandNo;                               /* bandºÅ£¬ÖµÎª(1-64) */
+    VOS_UINT8                           ucDuplexModeFlg;                        /* Ë«¹¤Ä£Ê½Ö¸Ê¾£¬1Îª°ëË«¹¤£¬0ÎªÈ«Ë«¹¤£¬Ä¬ÈÏÎª0 */
     VOS_UINT8                           aucReserve[2];
 }NV_UE_EUTRA_FREQ_BAND_INFO_STRU;
 /*******************************************************************************
- ?á¹¹??    : NV_UE_EUTRA_SUPPORT_FREQ_BAND_LIST_STRU
- Ð­??????  :
- ASN.1???? :
- ?á¹¹Ëµ??  : LTEÖ§?Öµ???Á¦?á¹¹,??LTE,WAS GAS??Í¬??È¡????À¨FDD,TDD,?Ô¼?LTEÖ§?Öµ?Æµ????Ï¢
+ ½á¹¹Ãû    : NV_UE_EUTRA_SUPPORT_FREQ_BAND_LIST_STRU
+ Ð­Òé±í¸ñ  :
+ ASN.1ÃèÊö :
+ ½á¹¹ËµÃ÷  : LTEÖ§³ÖµÄÄÜÁ¦½á¹¹,ÓÉLTE,WAS GAS¹²Í¬¶ÁÈ¡£¬°üÀ¨FDD,TDD,ÒÔ¼°LTEÖ§³ÖµÄÆµ¶ÎÐÅÏ¢
 
-LTEÃ¿??BAND????Ê¼Æµ????
-1  0     ?C 599
+LTEÃ¿¸öBANDµÄÆðÊ¼ÆµµãºÅ
+1  0     ¨C 599
 2  600   -  1199
-3  1200  ?C 1949
-4  1950  ?C 2399
-5  2400  ?C 2649
-6  2650  ?C 2749
-7  2750  ?C 3449
-83 450   ?C 3799
-93 800   ?C 4149
-10 4150  ?C 4749
-11 4750  ?C 4949
+3  1200  ¨C 1949
+4  1950  ¨C 2399
+5  2400  ¨C 2649
+6  2650  ¨C 2749
+7  2750  ¨C 3449
+83 450   ¨C 3799
+93 800   ¨C 4149
+10 4150  ¨C 4749
+11 4750  ¨C 4949
 12 5010  -  5179
-13 5180  ?C 5279
-14 5280  ?C 5379
+13 5180  ¨C 5279
+14 5280  ¨C 5379
 ...
-17 5730  ?C 5849
-18 5850  ?C 5999
-19 6000  ?C 6149
-20 6150  ?C 6449
-21 6450  ?C 6599
+17 5730  ¨C 5849
+18 5850  ¨C 5999
+19 6000  ¨C 6149
+20 6150  ¨C 6449
+21 6450  ¨C 6599
 ...
-33 36000 ?C 36199
-34 36200 ?C 36349
-35 36350 ?C 36949
-36 36950 ?C 37549
-37 37550 ?C 37749
-38 37750 ?C 38249
+33 36000 ¨C 36199
+34 36200 ¨C 36349
+35 36350 ¨C 36949
+36 36950 ¨C 37549
+37 37550 ¨C 37749
+38 37750 ¨C 38249
 39 38250 -  38649
 40 38650 -  39649
 64 25450 -  25749
 *******************************************************************************/
 typedef struct
 {
-    VOS_UINT16                              usBandCnt;                          /* LTE band????  Ä¬??Öµ4 */
-    VOS_UINT8                               aucReserved1[2];                    /* ?????Ö½Ú£??Ô±??? */
+    VOS_UINT16                              usBandCnt;                          /* LTE band¸öÊý  Ä¬ÈÏÖµ4 */
+    VOS_UINT8                               aucReserved1[2];                    /* ±£Áô×Ö½Ú£¬ÒÔ±¸ÓÃ */
 
-    /* LTEÖ§?Öµ?band??????????Îª64 ??Ä¬??Ö§??7??20??38 40?????a
+    /* LTEÖ§³ÖµÄband¸öÊý£¬×î´óÎª64 £¬Ä¬ÈÏÖ§³Ö7£¬20£¬38 40£¬¼´£a
         stCandBands[0].ucBandNo  =  7
         astCandBands[1].ucBandNo = 20
         astCandBands[2].ucBandNo = 38
@@ -1590,10 +1590,10 @@ typedef struct
 }NV_UE_EUTRA_SUPPORT_FREQ_BAND_LIST_STRU;
 
 /*****************************************************************************
- ?á¹¹??    : NV_GUL_SUPPORT_FREQ_BAND_STRU
- Ð­??????  :
- ASN.1???? :
- ?á¹¹Ëµ??  : ??Â¼SYSCFG????GUL????Ð§??band?á¹¹
+ ½á¹¹Ãû    : NV_GUL_SUPPORT_FREQ_BAND_STRU
+ Ð­Òé±í¸ñ  :
+ ASN.1ÃèÊö :
+ ½á¹¹ËµÃ÷  : ¼ÇÂ¼SYSCFGÅäÖÃGULµÄÓÐÐ§µÄband½á¹¹
 *****************************************************************************/
 typedef struct
 {
@@ -1617,23 +1617,23 @@ enum RRC_NV_D2DA_BANDXX_FUNC_FLAG_ENUM
 typedef VOS_UINT16 RRC_NV_D2DA_BANDXX_FUNC_FLAG_ENUM_UINT16;
 
 /*****************************************************************************
- ?á¹¹??    : LRRC_NV_CUSTOM_BAND_INFO_STRU
- Ð­??????  :
- ASN.1???? :
- ?á¹¹Ëµ??  : band??????Ï¢
+ ½á¹¹Ãû    : LRRC_NV_CUSTOM_BAND_INFO_STRU
+ Ð­Òé±í¸ñ  :
+ ASN.1ÃèÊö :
+ ½á¹¹ËµÃ÷  : band¶¨ÖÆÐÅÏ¢
 *****************************************************************************/
 typedef struct
 {
-    VOS_UINT8                         ucBandWidth;/* 0-5?Ö±???Ó¦:1.4m??3m??5m??10m??15m??20m */
+    VOS_UINT8                         ucBandWidth;/* 0-5·Ö±ð¶ÔÓ¦:1.4m¡¢3m¡¢5m¡¢10m¡¢15m¡¢20m */
     VOS_UINT8                         aucReserved1[3];
     RRC_NV_CSEL_FREQ_BAND_INFO_STRU   stCandBands;
 }LRRC_NV_CUSTOM_BAND_INFO_STRU;
 
 /*****************************************************************************
- ?á¹¹??    : LRRC_NV_BANDXX_CAND_INFO_STRU
- Ð­??????  :
- ASN.1???? :
- ?á¹¹Ëµ??  : band??????Ï¢?Ð±?
+ ½á¹¹Ãû    : LRRC_NV_BANDXX_CAND_INFO_STRU
+ Ð­Òé±í¸ñ  :
+ ASN.1ÃèÊö :
+ ½á¹¹ËµÃ÷  : band¶¨ÖÆÐÅÏ¢ÁÐ±í
 *****************************************************************************/
 typedef struct
 {
@@ -1644,10 +1644,10 @@ typedef struct
 }LRRC_NV_BANDXX_CAND_INFO_STRU;
 
 /*****************************************************************************
- ?á¹¹??    : NV_ID_BANDXX_CAND_INFO_GROUP_STRU
- Ð­??????  :
- ASN.1???? :
- ?á¹¹Ëµ??  : ????band???Æ½á¹¹
+ ½á¹¹Ãû    : NV_ID_BANDXX_CAND_INFO_GROUP_STRU
+ Ð­Òé±í¸ñ  :
+ ASN.1ÃèÊö :
+ ½á¹¹ËµÃ÷  : ÌØÊâband¶¨ÖÆ½á¹¹
 *****************************************************************************/
 typedef struct
 {
@@ -1665,13 +1665,13 @@ typedef struct
 }LRRC_NV_CSEL_GET_SIB_THRESHOLD_STRU;
 typedef struct
 {
-    PS_BOOL_ENUM_UINT8    ucOffSetEnableFlg; /* offset NVÊ¹?Ü±???*/
-    PS_BOOL_ENUM_UINT8    enR8BasedCellReselFlg;  /* ?Ç·??Ç»???R8????Ñ¡×¼??*/
-    VOS_UINT8              aucReservel[2];         /* ????Î»*/
-    VOS_UINT16             usWRscpThresh;        /* W????Ð¡????RSCP???Þ£????Ú´????Þ²???Ê¹??offset??È¡????Öµ*/
-    VOS_UINT16             usWEcnoThresh;        /* W????Ð¡????ECNO???Þ£????Ú´????Þ²???Ê¹??offset??È¡????Öµ*/
-    VOS_UINT16             usEutranCellRsrpOffset;  /* EUTRANÐ¡????RSRP OFFSET*/
-    VOS_UINT16             usEutranCellRsrqOffset;  /* EUTRANÐ¡????RSRQ OFFSET*/
+    PS_BOOL_ENUM_UINT8    ucOffSetEnableFlg; /* offset NVÊ¹ÄÜ±ê¼Ç*/
+    PS_BOOL_ENUM_UINT8    enR8BasedCellReselFlg;  /* ÊÇ·ñÊÇ»ùÓÚR8µÄÖØÑ¡×¼Ôò*/
+    VOS_UINT8              aucReservel[2];         /* ±£ÁôÎ»*/
+    VOS_UINT16             usWRscpThresh;        /* W·þÎñÐ¡ÇøµÄRSCPÃÅÏÞ£¬´óÓÚ´ËÃÅÏÞ²ÅÄÜÊ¹ÓÃoffset£¬È¡¾ø¶ÔÖµ*/
+    VOS_UINT16             usWEcnoThresh;        /* W·þÎñÐ¡ÇøµÄECNOÃÅÏÞ£¬´óÓÚ´ËÃÅÏÞ²ÅÄÜÊ¹ÓÃoffset£¬È¡¾ø¶ÔÖµ*/
+    VOS_UINT16             usEutranCellRsrpOffset;  /* EUTRANÐ¡ÇøµÄRSRP OFFSET*/
+    VOS_UINT16             usEutranCellRsrqOffset;  /* EUTRANÐ¡ÇøµÄRSRQ OFFSET*/
     VOS_UINT16             usLteServRsrpOffSet;
     VOS_UINT16             usLteServRsrqOffSet;
     VOS_UINT16             usUtranRscpOffSet;
@@ -1700,29 +1700,29 @@ typedef struct
 
 /* CMCC-BEGIN */
 /*****************************************************************************
- ?á¹¹??    : LTE_IRAT_REDIR_SWITCH_STRU
- Ð­??????  :
- ASN.1???? :
- ?á¹¹Ëµ??  : ??ÏµÍ³?Ø¶?????CMCC G2L?Ø¶???4s???????Æ¿??Øº?G2L?????Ø¶???2s???????Æ¿???
-            É³?? W2L?Ø¶????????Ø¶???2s???????Æ¿??????Ý½á¹¹
+ ½á¹¹Ãû    : LTE_IRAT_REDIR_SWITCH_STRU
+ Ð­Òé±í¸ñ  :
+ ASN.1ÃèÊö :
+ ½á¹¹ËµÃ÷  : ÒìÏµÍ³ÖØ¶¨Ïò£¬CMCC G2LÖØ¶¨Ïò4sÐèÇó¿ØÖÆ¿ª¹ØºÍG2L×ÔÖ÷ÖØ¶¨Ïò2sÐèÇó¿ØÖÆ¿ª¹Ø
+            É³ÌØ W2LÖØ¶¨Ïò×ÔÖ÷ÖØ¶¨Ïò2sÐèÇó¿ØÖÆ¿ª¹ØÊý¾Ý½á¹¹
 *****************************************************************************/
 typedef struct
 {
-    VOS_UINT8                                   ucG2LRedirFlag;                 /* G2L?Ø¶???4s???????Æ¿??? */
-    VOS_UINT8                                   ucG2LAutoRedirFlag;             /* G2L?????Ø¶???2s???????Æ¿??? */
-    VOS_UINT8                                   ucW2LAutoRedirFlag;             /* W2L?????Ø¶???2s???????Æ¿??? */
+    VOS_UINT8                                   ucG2LRedirFlag;                 /* G2LÖØ¶¨Ïò4sÐèÇó¿ØÖÆ¿ª¹Ø */
+    VOS_UINT8                                   ucG2LAutoRedirFlag;             /* G2L×ÔÖ÷ÖØ¶¨Ïò2sÐèÇó¿ØÖÆ¿ª¹Ø */
+    VOS_UINT8                                   ucW2LAutoRedirFlag;             /* W2L×ÔÖ÷ÖØ¶¨Ïò2sÐèÇó¿ØÖÆ¿ª¹Ø */
     VOS_UINT8                                   aucReservd1[5];
-    VOS_UINT16                                  usG2LRedirTimeLen;              /* G2L?Ø¶???Ê±????Ä¬??ÖµÎª4s????Î»Îªms */
-    VOS_UINT16                                  usG2LAutoRedirTimeLen;          /* G2L?????Ø¶???Ê±????Ä¬??ÖµÎª2s????Î»Îªms */
-    VOS_UINT16                                  usW2LAutoRedirTimeLen;          /* W2L?????Ø¶???Ê±????Ä¬??ÖµÎª2s????Î»Îªms */
+    VOS_UINT16                                  usG2LRedirTimeLen;              /* G2LÖØ¶¨ÏòÊ±³¤£¬Ä¬ÈÏÖµÎª4s£¬µ¥Î»Îªms */
+    VOS_UINT16                                  usG2LAutoRedirTimeLen;          /* G2L×ÔÖ÷ÖØ¶¨ÏòÊ±³¤£¬Ä¬ÈÏÖµÎª2s£¬µ¥Î»Îªms */
+    VOS_UINT16                                  usW2LAutoRedirTimeLen;          /* W2L×ÔÖ÷ÖØ¶¨ÏòÊ±³¤£¬Ä¬ÈÏÖµÎª2s£¬µ¥Î»Îªms */
     VOS_UINT8                                   aucReservd2[6];
 }LTE_IRAT_REDIR_SWITCH_STRU;
 /* CMCC-END */
 /*****************************************************************************
- ?á¹¹??    : FC_LTE_TEMPERATURE_LIMIT_CONFIG_STRU
- Ð­??????  :
- ASN.1???? :
- ?á¹¹Ëµ??  : ????LTE ?Â¿????Ã½á¹¹
+ ½á¹¹Ãû    : FC_LTE_TEMPERATURE_LIMIT_CONFIG_STRU
+ Ð­Òé±í¸ñ  :
+ ASN.1ÃèÊö :
+ ½á¹¹ËµÃ÷  : ¶¨ÒåLTE ÎÂ¿ØÅäÖÃ½á¹¹
 *****************************************************************************/
 #define FC_UL_THROUGHPUT_MIN_COUNT_NV          (0x03)
 typedef struct
@@ -1732,10 +1732,10 @@ typedef struct
 } FC_LTE_TEMPERATURE_LIMIT_CONFIG_STRU;
 
 /*****************************************************************************
- ?á¹¹??    : LTE_APT_TOTAL_SWITCH
- Ð­??????  :
- ASN.1???? :
- ?á¹¹Ëµ??  : LTE NV?Ü¿???
+ ½á¹¹Ãû    : LTE_APT_TOTAL_SWITCH
+ Ð­Òé±í¸ñ  :
+ ASN.1ÃèÊö :
+ ½á¹¹ËµÃ÷  : LTE NV×Ü¿ª¹Ø
 *****************************************************************************/
 typedef struct
 {
@@ -1753,20 +1753,20 @@ typedef struct
     VOS_UINT32                          ulMnc;              /* MNC,2 or 3 bytes */
 } LRRC_PLMN_ID_STRU;
 
-/* É¨Æµ?Å³? band NV??Ï¢ */
+/* É¨ÆµÅÅ³ý band NVÐÅÏ¢ */
 typedef struct
 {
     LRRC_PLMN_ID_STRU                 stPlmnID;
-    VOS_UINT32                       ulBandNum;                                    /* ???Ãµ?Band???? */
-    VOS_UINT8                        ucBand[LTE_MTC_ABAN_BAND_NUM_MAX];            /* ??Â¼????ÒªÉ¨Æµ??Band */
+    VOS_UINT32                       ulBandNum;                                    /* ÅäÖÃµÄBand¸öÊý */
+    VOS_UINT8                        ucBand[LTE_MTC_ABAN_BAND_NUM_MAX];            /* ¼ÇÂ¼²»ÐèÒªÉ¨ÆµµÄBand */
 } LTE_MTC_PLMN_ABAN_BAND_LIST;
 
 /*Delete FDD Band */
 typedef struct
 {
-    VOS_UINT8                     ucSwitchFlag;                                   /* ?????Ü¿Ø¿???,0 close; 1 open */
+    VOS_UINT8                     ucSwitchFlag;                                   /* ¹¦ÄÜ×Ü¿Ø¿ª¹Ø,0 close; 1 open */
     VOS_UINT8                     ucReserved;
-    VOS_UINT16                    usMcc;                                          /* Ä¬????Ð´ 460  */
+    VOS_UINT16                    usMcc;                                          /* Ä¬ÈÏÌîÐ´ 460  */
 }LTE_CUSTOM_MCC_INFO_STRU;
 
 extern  LTE_CUSTOM_MCC_INFO_STRU g_stLRrcDelFddBand;
@@ -1775,15 +1775,15 @@ extern  LTE_CUSTOM_MCC_INFO_STRU g_stLRrcDelFddBand;
 typedef struct
 {
     VOS_UINT32                        ulPlmnNum;
-    LTE_MTC_PLMN_ABAN_BAND_LIST       astAbandPlmnList[LTE_MTC_ABAN_PLMN_NUM_MAX]; /* Plmn??BandList */
+    LTE_MTC_PLMN_ABAN_BAND_LIST       astAbandPlmnList[LTE_MTC_ABAN_PLMN_NUM_MAX]; /* PlmnºÍBandList */
 } LTE_MTC_ABANDON_EUTRA_BAND_SCAN_STRU;
 
 
-/* É¨Æµ????band ??????Ï¢ */
+/* É¨ÆµÌØÊâband ÉèÖÃÐÅÏ¢ */
 typedef struct
 {
-     VOS_UINT8                      ucBand;                                        /* Ö¸Ê¾Band??Ï¢ */
-     VOS_UINT8                      aucRsv[3];                                     /*????Î»*/
+     VOS_UINT8                      ucBand;                                        /* Ö¸Ê¾BandÐÅÏ¢ */
+     VOS_UINT8                      aucRsv[3];                                     /*±£ÁôÎ»*/
      VOS_UINT16                     usFreqBegin;
      VOS_UINT16                     usFreqEnd;
 }LTE_MTC_SPAC_BAND_CONFIG_LIST;
@@ -1792,7 +1792,7 @@ typedef struct
 {
      VOS_UINT32                     ulBandNum;
      VOS_UINT32                     ulSpacBandSwitch;                               /* 0 close; 1 open*/
-     LTE_MTC_SPAC_BAND_CONFIG_LIST  astSpacBandList[LTE_MTC_SPAC_BAND_NUM_MAX];     /* ??Â¼??ÒªÉ¨Æµ???????Ãµ?Band */
+     LTE_MTC_SPAC_BAND_CONFIG_LIST  astSpacBandList[LTE_MTC_SPAC_BAND_NUM_MAX];     /* ¼ÇÂ¼ÐèÒªÉ¨ÆµÌØÊâÅäÖÃµÄBand */
 } LTE_MTC_SPAC_BAND_SCAN_CONFIG_STRU;
 extern LTE_MTC_ABANDON_EUTRA_BAND_SCAN_STRU g_stAbandEutraBandInfo;
 extern LTE_MTC_SPAC_BAND_SCAN_CONFIG_STRU   g_stSpacBandInfo;
@@ -1800,27 +1800,27 @@ extern LTE_MTC_SPAC_BAND_SCAN_CONFIG_STRU   g_stSpacBandInfo;
 /* MTC NOTCH add begin  */
 typedef struct
 {
-     VOS_UINT16                     usSwitchFlag;                                   /* ?????Ü¿Ø¿??? */
-     VOS_UINT8                      aucRcve[2];                                     /* ????Î» */
+     VOS_UINT16                     usSwitchFlag;                                   /* ¹¦ÄÜ×Ü¿Ø¿ª¹Ø */
+     VOS_UINT8                      aucRcve[2];                                     /* ±£ÁôÎ» */
 } LTE_MTC_NOTCH_FEATURE_STRU;
 
 /* MTC NOTCH add end  */
 /*****************************************************************************
- ?á¹¹??    : LTE_RRC_THRESHOLD_STRU
- Ð­??????  :
- ASN.1???? :
-        ulCdrxPeriod:Ê¹??Balong????Öµ
-        lGeranBasiclag: Ê¹??Balong????Öµ
-        lGeranBasiStartThres:Ê¹??Balong????Öµ
-        ulCdrxFilterSwitch:Ê¹??Balong????Öµ
-        ulAbandinFristItraMeasFlg:??????Ò»????ÏµÍ³??Á¿??????0:????????1:??????Balong????Ä¬??Öµ:0.
-        ulTdsT315Len:  T315??Ê±?÷³¤¶È£???Î»?ë¡£Balong????Ä¬??ÖµÎª0????????Òª???????Ã£?????Öµ 5.
-        ulHrpdIdleMeasIndInterTime:hrpd?Ï±?????Ì¬??Á¿Ind??Ê±?????ô£¬µ?Î»????.Balong????Ä¬??Öµ:200.
-        ulHrpdConnMeasIndInterTime:hrpd?Ï±?Á¬??Ì¬??Á¿Ind??Ê±?????ô£¬µ?Î»????.Balong????Ä¬??Öµ:200.
-        ultimerLrrcWaitCdmaCnfLen:?È´?hrpd??Ñ¡???Ø¶???????IND??Ê±??Ê±??,??Î»????.Balong????Ä¬??Öµ:30000.
-        ulTReselectUtran: ?Ô¶???3G??Ñ¡??Ê±?÷³¤¶?.??Î»:?ë¡£Balong????Ä¬??ÖµÎª0????????Òª???????Ã£?????Öµ 60.
-        ulTReselectGsm: ?Ô¶???2G??Ñ¡??Ê±?÷³¤¶?.??Î»:?ë¡£Balong????Ä¬??ÖµÎª0????????Òª???????Ã£?????Öµ 50.
- ?á¹¹Ëµ??  : LTE RRC ??Öµ
+ ½á¹¹Ãû    : LTE_RRC_THRESHOLD_STRU
+ Ð­Òé±í¸ñ  :
+ ASN.1ÃèÊö :
+        ulCdrxPeriod:Ê¹ÓÃBalong»ùÏßÖµ
+        lGeranBasiclag: Ê¹ÓÃBalong»ùÏßÖµ
+        lGeranBasiStartThres:Ê¹ÓÃBalong»ùÏßÖµ
+        ulCdrxFilterSwitch:Ê¹ÓÃBalong»ùÏßÖµ
+        ulAbandinFristItraMeasFlg:¶ªÆúµÚÒ»´ÎÒìÏµÍ³²âÁ¿½á¹û£¬0:²»¶ªÆú¡£1:¶ªÆú¡£Balong»ùÏßÄ¬ÈÏÖµ:0.
+        ulTdsT315Len:  T315¶¨Ê±Æ÷³¤¶È£¬µ¥Î»Ãë¡£Balong»ùÏßÄ¬ÈÏÖµÎª0£¬²úÏßÐèÒª×ÔÐÐÉèÖÃ£¬½¨ÒéÖµ 5.
+        ulHrpdIdleMeasIndInterTime:hrpdÉÏ±¨¿ÕÏÐÌ¬²âÁ¿IndµÄÊ±¼ä¼ä¸ô£¬µ¥Î»ºÁÃë.Balong»ùÏßÄ¬ÈÏÖµ:200.
+        ulHrpdConnMeasIndInterTime:hrpdÉÏ±¨Á¬½ÓÌ¬²âÁ¿IndµÄÊ±¼ä¼ä¸ô£¬µ¥Î»ºÁÃë.Balong»ùÏßÄ¬ÈÏÖµ:200.
+        ultimerLrrcWaitCdmaCnfLen:µÈ´ýhrpdÖØÑ¡¡¢ÖØ¶¨Ïò½á¹ûIND¶¨Ê±Æ÷Ê±³¤,µ¥Î»ºÁÃë.Balong»ùÏßÄ¬ÈÏÖµ:30000.
+        ulTReselectUtran: ×Ô¶¨Òå3GÖØÑ¡¶¨Ê±Æ÷³¤¶È.µ¥Î»:Ãë¡£Balong»ùÏßÄ¬ÈÏÖµÎª0£¬²úÏßÐèÒª×ÔÐÐÉèÖÃ£¬½¨ÒéÖµ 60.
+        ulTReselectGsm: ×Ô¶¨Òå2GÖØÑ¡¶¨Ê±Æ÷³¤¶È.µ¥Î»:Ãë¡£Balong»ùÏßÄ¬ÈÏÖµÎª0£¬²úÏßÐèÒª×ÔÐÐÉèÖÃ£¬½¨ÒéÖµ 50.
+ ½á¹¹ËµÃ÷  : LTE RRC ãÐÖµ
 *****************************************************************************/
 /* begin:Abandon Frist Itra Meas Result */
 typedef struct
@@ -1869,19 +1869,19 @@ extern VOS_UINT8    g_ucTReselectGsm;
 #define         MAX_IRAT_TDS_UE_CAPABILITY_LENGHT           (100)
 typedef struct
 {
-     VOS_UINT16                     usSwitchFlag;                                   /* ?????Ü¿Ø¿???: Ä¬?Ï´???Ê¹??NV???Ãµ?ue??Á¦????????????????Ê¹???Ô¼?????????*/
-     VOS_UINT16                     usLength;                                       /* UE??Á¦???÷³¤¶? */
-     VOS_UINT8                      aucCapInfo[MAX_IRAT_TDS_UE_CAPABILITY_LENGHT];                                /* UE??Á¦???? */
+     VOS_UINT16                     usSwitchFlag;                                   /* ¹¦ÄÜ×Ü¿Ø¿ª¹Ø: Ä¬ÈÏ´ò¿ªÊ¹ÓÃNVÅäÖÃµÄueÄÜÁ¦ÂëÁ÷£¬ÌØÊâÇé¿öÏÂÊ¹ÓÃ×Ô¼º´úÂëÀïµÄ*/
+     VOS_UINT16                     usLength;                                       /* UEÄÜÁ¦ÂëÁ÷³¤¶È */
+     VOS_UINT8                      aucCapInfo[MAX_IRAT_TDS_UE_CAPABILITY_LENGHT];                                /* UEÄÜÁ¦ÂëÁ÷ */
 } LTE_IRAT_TDS_UE_CAPABILITY_STRU;
 /*****************************************************************************
- ?á¹¹??    : LTE_RRC_EXTBANDINFO_STRU
- Ð­??????  :
- ASN.1???? :
- ?á¹¹Ëµ??  : Band28È«Æµ??????????NV
-             ucflag:1??Ê¾À©Õ¹BAND???Ü´ò¿ª£?0??Ê¾?Ø±?
-             ucBandnum:??Ê¾?Ð¼???BAND??Òª?Ãµ?À©Õ¹BAND??
-             aucRsv[]:Ô¤??
-             aucBandInd[]:??ÒªÀ©Õ¹BAND?Åµ?BAND?Ð±?
+ ½á¹¹Ãû    : LTE_RRC_EXTBANDINFO_STRU
+ Ð­Òé±í¸ñ  :
+ ASN.1ÃèÊö :
+ ½á¹¹ËµÃ÷  : Band28È«Æµ¶ÎÌØÐÔÐÂÔöNV
+             ucflag:1±íÊ¾À©Õ¹BAND¹¦ÄÜ´ò¿ª£»0±íÊ¾¹Ø±Õ
+             ucBandnum:±íÊ¾ÓÐ¼¸¸öBANDÐèÒªÓÃµ½À©Õ¹BANDºÅ
+             aucRsv[]:Ô¤Áô
+             aucBandInd[]:ÐèÒªÀ©Õ¹BANDºÅµÄBANDÁÐ±í
 *****************************************************************************/
 typedef struct
 {
@@ -1892,39 +1892,39 @@ typedef struct
 }LTE_RRC_EXTBANDINFO_STRU;
 
 /*****************************************************************************
- ?á¹¹??    : LRRC_NV_EXT_BAND_LIST_STRU
- Ð­??????  :
- ASN.1???? :
- ?á¹¹Ëµ??  : ?Ú²?Í¬?????ÂµÄ·Ö¶?Æµ??NV?á¹¹
+ ½á¹¹Ãû    : LRRC_NV_EXT_BAND_LIST_STRU
+ Ð­Òé±í¸ñ  :
+ ASN.1ÃèÊö :
+ ½á¹¹ËµÃ÷  : ÔÚ²»Í¬´ø¿íÏÂµÄ·Ö¶ÎÆµ¶ÎNV½á¹¹
 *****************************************************************************/
 typedef struct
 {
-    VOS_UINT16                          usBandInd;      /* ??????BAND ??*/
-    VOS_UINT16                          usScellBandInd;      /* Scell??BAND ??*/
+    VOS_UINT16                          usBandInd;      /* »ù±¾µÄBAND ºÅ*/
+    VOS_UINT16                          usScellBandInd;      /* ScellµÄBAND ºÅ*/
     
-	/* Band?Úºò²¹´???Æµ????Ï¢ */
+	/* BandÄÚºò²¹´ø¿íÆµ¶ÎÐÅÏ¢ */
     LRRC_NV_SUPPORT_BAND_LIST_STRU      astBandInfoWithBandWidth[6];/*RRC_BAND_WIDTH_BUTT*/
 }LRRC_NV_EXT_BAND_LIST_STRU;
 
 /*****************************************************************************
- ?á¹¹??    : LTE_RRC_EXTBANDINFO_WITH_BANDWIDTH_STRU
- Ð­??????  :
- ASN.1???? :
- ?á¹¹Ëµ??  : UEÖ§?Öµ?Æµ???Ú²?Í¬?????ÂµÄ·Ö¶?Æµ??NV?á¹¹
+ ½á¹¹Ãû    : LTE_RRC_EXTBANDINFO_WITH_BANDWIDTH_STRU
+ Ð­Òé±í¸ñ  :
+ ASN.1ÃèÊö :
+ ½á¹¹ËµÃ÷  : UEÖ§³ÖµÄÆµ¶ÎÔÚ²»Í¬´ø¿íÏÂµÄ·Ö¶ÎÆµ¶ÎNV½á¹¹
 *****************************************************************************/
 typedef struct
 {
     VOS_UINT8          ucActive;
     VOS_UINT8          ucScellEnable;
     VOS_UINT16         usBandCount;
-    LRRC_NV_EXT_BAND_LIST_STRU          stCandBandsInfo[8]; /*Ö§??????8??Æµ???Æ·?Æµ*/
+    LRRC_NV_EXT_BAND_LIST_STRU          stCandBandsInfo[8]; /*Ö§³Ö×î¶à8¸öÆµ¶¨ÖÆ·ÖÆµ*/
 }LTE_RRC_EXTBANDINFO_WITH_BANDWIDTH_STRU;
 
 /*****************************************************************************
- ?á¹¹??    : LRRC_NV_DSDS_CONFIG_STRU
- Ð­??????  :
- ASN.1???? :
- ?á¹¹Ëµ??  : DSDS????????NV
+ ½á¹¹Ãû    : LRRC_NV_DSDS_CONFIG_STRU
+ Ð­Òé±í¸ñ  :
+ ASN.1ÃèÊö :
+ ½á¹¹ËµÃ÷  : DSDSÌØÐÔÅäÖÃNV
 *****************************************************************************/
 typedef struct
 {
@@ -1952,96 +1952,96 @@ extern  VOS_UINT32  g_enBandHI6360NvId[PS_BAND_BUTT][PS_NV_IDX_BUTT];
 extern VOS_UINT32  g_enBandNvId[PS_BAND_BUTT][PS_NV_IDX_BUTT];
 #endif
 #if (VOS_OS_VER != VOS_WIN32)
-/*?Ø±?TA Timer?Ä¿??Ø£?0:???Ø¹Ø±Õ£???TA Timer??Ð§ 1:???Ø´ò¿ª£???TA Timer????Ð§*/
+/*¹Ø±ÕTA TimerµÄ¿ª¹Ø£¬0:¿ª¹Ø¹Ø±Õ£¬¼´TA TimerÉúÐ§ 1:¿ª¹Ø´ò¿ª£¬¼´TA Timer²»ÉúÐ§*/
 extern VOS_UINT32  g_ulCloseTaTimer;
 
-/*?Ø±?SR?????????????Ä¿??Ø£?0:???Ø¹Ø±Õ£???SR??????????????Ð§ 1:???Ø´ò¿ª£???SR???????????ë²»??Ð§*/
+/*¹Ø±ÕSR´¥·¢Ëæ»ú½ÓÈëµÄ¿ª¹Ø£¬0:¿ª¹Ø¹Ø±Õ£¬¼´SR´¥·¢Ëæ»ú½ÓÈëÉúÐ§ 1:¿ª¹Ø´ò¿ª£¬¼´SR´¥·¢Ëæ»ú½ÓÈë²»ÉúÐ§*/
 extern VOS_UINT32  g_ulCloseSrRandFlag;
 
-/*?Ø±?SR???????Æ¿??Ø£?0:???Ø¹Ø±Õ£???SR???Ô¹???BSR????ÎªÇ°?? 1:???Ø´ò¿ª£???SR?Ô¹???BSR????ÎªÇ°??*/
+/*¹Ø±ÕSR´¥·¢»úÖÆ¿ª¹Ø£¬0:¿ª¹Ø¹Ø±Õ£¬¼´SR²»ÒÔ¹æÕûBSR´¥·¢ÎªÇ°Ìá 1:¿ª¹Ø´ò¿ª£¬¼´SRÒÔ¹æÕûBSR´¥·¢ÎªÇ°Ìá*/
 extern VOS_UINT32  g_ulSrTrigFlag;
 
-/*?????Ç·ñ½«°?????Ï¢×ª??Ò»????PC?Ô½???????*/
+/*ÉèÖÃÊÇ·ñ½«°å¼äÏûÏ¢×ª·¢Ò»·ÝÖÁPCÒÔ½âÎö·ÖÎö*/
 extern VOS_UINT32  g_ulIfForwardToPc;
 
-/* ???ÜµÄ¿???:0-?ò¿ª¼??Ü£?1-?Ø±Õ¼???*/
+/* ¼ÓÃÜµÄ¿ª¹Ø:0-´ò¿ª¼ÓÃÜ£¬1-¹Ø±Õ¼ÓÃÜ*/
 extern VOS_UINT32  g_ulSmcControl;
 
-/* DCM??????????GU??L???Ð»??????Ç±???TA?Ä¿??? */
+/* DCM¶¨ÖÆÐèÇó£¬GUµ½LµÄÇÐ»»²»¿¼ÂÇ±»½ûTAµÄ¿ª¹Ø */
 extern VOS_UINT32  g_ulHoIgnoreForbidTaFlag;
 
-/*?â³¡????×®???ë¿ª?? 0:?Ø±?  1:????.Ä¬??Îª?Ø±?*/
+/*Íâ³¡²âÊÔ×®´úÂë¿ª¹Ø 0:¹Ø±Õ  1:´ò¿ª.Ä¬ÈÏÎª¹Ø±Õ*/
 extern VOS_UINT32 g_ulFieldTestSwitch;
 
-/*????eNB??TDD?Ä½???????*/
+/*¹æ±ÜeNBµÄTDDµÄ½ÓÈëÎÊÌâ*/
 
-/*?Ð¶??Ç·?BARÐ¡??*/
+/*ÅÐ¶ÏÊÇ·ñBARÐ¡Çø*/
 extern VOS_UINT32 g_ulCloseBarCell;
 
 /* DRX Control Flag  0: Close 1: Open */
 extern VOS_UINT32 g_ulDrxControlFlag;
 
-/* ????????Ö¡???È£?Ä¬??Îª1 */
+/* ÉÏÏÂÐÐ×ÓÖ¡Åä±È£¬Ä¬ÈÏÎª1 */
 extern VOS_UINT32 g_ulCfgSubFrameAssign;
 
-/* ??????Ö¡???Ã£?Ä¬??Îª7 */
+/* ÌØÊâ×ÓÖ¡ÅäÖÃ£¬Ä¬ÈÏÎª7 */
 extern VOS_UINT32 g_ulSubFramePattern;
 
-/* ???ß¸??? */
+/* ÌìÏß¸öÊý */
 extern VOS_UINT32 g_ulPsCfgDspAntCnt;
 
 #if 0
 extern VOS_UINT32 g_ulPsCfgDspRatMod;
 #endif
 
-/* PCO???Ü¿??Ø£?0Îª?Ø±Õ£?1Îª?ò¿ª¡?Ä¬??Îª???? */
+/* PCO¹¦ÄÜ¿ª¹Ø£¬0Îª¹Ø±Õ£¬1Îª´ò¿ª¡£Ä¬ÈÏÎª´ò¿ª */
 extern VOS_UINT32 g_ulPcoFlag;
 
-/* É¾??SDFÊ±?Ç·?Ð¯??Qos??Ï¢???Ü¿??Ø£?0Îª?Ø±Õ£?1Îª?ò¿ª¡?Ä¬??Îª?Ø±? */
+/* É¾³ýSDFÊ±ÊÇ·ñÐ¯´øQosÐÅÏ¢¹¦ÄÜ¿ª¹Ø£¬0Îª¹Ø±Õ£¬1Îª´ò¿ª¡£Ä¬ÈÏÎª¹Ø±Õ */
 extern VOS_UINT32 g_ulDelSdfWithQosFlag;
 
-/* UE??È«??Á¦Ð£?é¿ª?Ø£?0Îª?ò¿ª£?8Îª?Ø±Õ¡?Ä¬??Îª???? */
+/* UE°²È«ÄÜÁ¦Ð£Ñé¿ª¹Ø£¬0Îª´ò¿ª£¬8Îª¹Ø±Õ¡£Ä¬ÈÏÎª´ò¿ª */
 extern VOS_UINT32 g_ulUeSecuCapMatch;
 
-/* TAU??Ï¢???Ü¿??Ø£?0Îª???Ü£?1Îª?????Ü¡?Ä¬??Îª?????? */
+/* TAUÏûÏ¢¼ÓÃÜ¿ª¹Ø£¬0Îª¼ÓÃÜ£¬1Îª²»¼ÓÃÜ¡£Ä¬ÈÏÎª²»¼ÓÃÜ */
 extern VOS_UINT32 g_ulTauCipheredFlag;
 
-/*?????ã·¨????*/
+/*Á÷¿ØËã·¨¿ª¹Ø*/
 extern VOS_UINT32  g_ulFlowCtrlFlag;
 
-/*???Øµ???CPUÊ£??Ä¿??Öµ*/
+/*Á÷¿Øµ÷ÕûCPUÊ£ÓàÄ¿±êÖµ*/
 extern VOS_UINT32  g_ulFcPdcpTarget;
 
-/*Â©Í°?ã·¨??????Öµ*/
+/*Â©Í°Ëã·¨µÄ×î´óÖµ*/
 extern VOS_UINT32   g_ulTargetIPMax;
 extern VOS_UINT32   g_ulSendSduMax;
 
-/*????Â©Í°?ã·¨??Öµ*/
+/*¶¨ÒåÂ©Í°Ëã·¨ãÐÖµ*/
 extern VOS_UINT32  g_ulDlSduMax;
 extern VOS_UINT32  g_ulULIpMax;
 
-/*Â©Í°?ã·¨?Ä²?Á¿???Ú£???Î»ms*/
+/*Â©Í°Ëã·¨µÄ²âÁ¿ÖÜÆÚ£¬µ¥Î»ms*/
 extern VOS_UINT32  g_ulMeasGap;
 extern VOS_UINT32  g_ulSduGap;
-/*???Ø³?Ê¼??Ñ¡??*/
+/*Á÷¿Ø³õÊ¼»¯Ñ¡Ôñ*/
 extern VOS_UINT32  g_ulFcInitFlag ;
 
-/*???Ú¶?Msg4 6??Í·??Ê½??CR?Þ¸?Ç°?Ä½??????í£¬1??Ê¾???Ô½??????????Øµ?Msg4Í·??
-??Ê¾Ö»?Ü½???????Ð­???æ¶¨??6?Ö¸?Ê½??Ä¬????0*/
+/*ÓÃÓÚ¶ÔMsg4 6ÖÖÍ·¸ñÊ½µÄCRÐÞ¸ÄÇ°µÄ½âÎö´¦Àí£¬1±íÊ¾¿ÉÒÔ½âÎöËùÓÐÏà¹ØµÄMsg4Í·£¬
+±íÊ¾Ö»ÄÜ½âÎö×îÐÂÐ­Òé¹æ¶¨µÄ6ÖÖ¸ñÊ½£¬Ä¬ÈÏÊÇ0*/
 extern VOS_UINT32  g_ulMsg4ForOldCrFlag;
 
-/* GCF?Ç·?Ö§??24.301 Table D.1.1?Ð½?Á´Ô­?????? 0x00000004,Ö§?Ö£?0??Ö§?? */
+/* GCFÊÇ·ñÖ§³Ö24.301 Table D.1.1ÖÐ½¨Á´Ô­ÒòÉèÖÃ 0x00000004,Ö§³Ö£¬0²»Ö§³Ö */
 extern VOS_UINT32 g_ulGcfEstCauseFlag;
 
-/* SMC?????Ç·?Ö§?Ö²???Ä£Ê½??È±Ê¡Ö§?Ö£?È¡ÖµÎª0x00000008 */
+/* SMC¹¦ÄÜÊÇ·ñÖ§³Ö²âÊÔÄ£Ê½£¬È±Ê¡Ö§³Ö£¬È¡ÖµÎª0x00000008 */
 extern VOS_UINT32  g_ulSmcFuncTestMode;
 
-/* GCF??×®Í¨??CDRX??????????Êµ?Ê³???Îª?Ë½????Ä²??ò¿ª¸Ã¿??Ø£?Î»?ò¿ª¹?,0??Ê¾Ä¬?Ï²??ò¿ª¶?Ó¦?â³¡????
-1??Ê¾?ò¿ª¶?Ó¦GCF???Ô£?Ä¬??Öµ??0
+/* GCF´ò×®Í¨¹ýCDRXÏà¹ØÓÃÀý£¬Êµ¼Ê³¡¾°ÎªÁË½µ¹¦ºÄ²»´ò¿ª¸Ã¿ª¹Ø£¬Î»Óò¿ª¹Ø,0±íÊ¾Ä¬ÈÏ²»´ò¿ª¶ÔÓ¦Íâ³¡²âÊÔ
+1±íÊ¾´ò¿ª¶ÔÓ¦GCF²âÊÔ£¬Ä¬ÈÏÖµÊÇ0
 extern VOS_UINT32  g_ulGcfConnDrxStubFlag;*/
 
 #endif
-/* ??Æ·Ñ¡?ñ¿ª¹? */
+/* ²úÆ·Ñ¡Ôñ¿ª¹Ø */
 extern VOS_UINT32  g_ulPsSupportBand64Flg;
 extern VOS_UINT32  g_ulPsPagingConnRelFlg;
 extern VOS_UINT32  g_ulPsUlDrbDiscardFlag;
@@ -2054,7 +2054,7 @@ extern VOS_UINT32  g_ulHoFailFlag;
 extern VOS_UINT16  g_usHoFailT304;
 /* gaojishan-SYSCFG-SAVENV-Begin */
 extern VOS_UINT32  gulJpSbmDualImsiSwitch;
-extern VOS_UINT32  gulLteDelWcdmaBandInJapan;           /*NV?????Ð£???ÒªÉ¾????*/
+extern VOS_UINT32  gulLteDelWcdmaBandInJapan;           /*NVÅäÖÃÖÐ£¬ÐèÒªÉ¾³ýµÄ*/
 
 /*Begin: for sbm delete wcdma band9  */
 extern VOS_UINT8       gucJpUband1MncCnt;
@@ -2076,7 +2076,7 @@ extern VOS_UINT32 g_ulLTEConnToIdleFlag;
 
 /* gaojishan-PLMN_EXACTLY_COMPARE_FLG */
 extern VOS_UINT32 g_ulPlmnExactCmpFlg;
-/* gaojishan-SoftBank-???Æ±?Ö¾:true,set Band41 range */
+/* gaojishan-SoftBank-¶¨ÖÆ±êÖ¾:true,set Band41 range */
 extern VOS_UINT32 gulSoftBankFlag ;
 /* gaojishan-nccpermit-2 */
 extern VOS_UINT32 g_ulNoIdleNccPermitFlag;

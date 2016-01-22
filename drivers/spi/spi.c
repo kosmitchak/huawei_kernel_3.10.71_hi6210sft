@@ -1507,9 +1507,9 @@ static void spi_complete(void *arg)
 {
 	complete(arg);
 }
-
+#ifdef CONFIG_HUAWEI_DSM
 extern int get_spi_client(struct dsm_client **dev);
-
+#endif
 void dev_spi_dsm_client_notify(const char* content, int errNum, struct spi_device *spi) {
 
     if (s_dev_spi_dsm_client == NULL) {
@@ -1517,7 +1517,9 @@ void dev_spi_dsm_client_notify(const char* content, int errNum, struct spi_devic
             dev_err(&spi->dev, "spi dev_spi_dsm_client == NULL, get client\n");
         else
             pr_err("spi dev_spi_dsm_client == NULL, get client\n");
+#ifdef CONFIG_HUAWEI_DSM
         get_spi_client(&s_dev_spi_dsm_client);
+#endif
     }
 
     if(s_dev_spi_dsm_client && !dsm_client_ocuppy(s_dev_spi_dsm_client)) {

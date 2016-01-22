@@ -111,6 +111,7 @@ typedef int (*cmd_process_func)(struct krn_param_io_buf *);
 struct cmd_func_pair {
 	int cmd_id;
 	cmd_process_func func;
+	char cmd_name[50];
 };
 
 void hi6402_hifi_cfg_before_pll_switch(void);

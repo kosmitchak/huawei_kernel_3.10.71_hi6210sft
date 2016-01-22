@@ -27,6 +27,9 @@
 #include <linux/of.h>
 #include <linux/of_gpio.h>
 #include "drv2605.h"
+#ifdef CONFIG_HUAWEI_HW_DEV_DCT
+#include <linux/hw_dev_dec.h>
+#endif
 
 #define GPIO_LEVEL_LOW 0
 #define GPIO_LEVEL_HIGH 1
@@ -34,6 +37,15 @@
  * DRV2605 built-in effect bank/library
  */
 #define EFFECT_LIBRARY LIBRARY_F
+
+#define MAX_REVISION_STRING_SIZE 20
+#define GUARANTEE_AUTOTUNE_BRAKE_TIME  1
+static struct i2c_client* client_temp = NULL;
+static bool g_bAmpEnabled = false;
+
+#ifndef ACTUATOR_NAME
+#define ACTUATOR_NAME "act???"
+#endif
 
 /*
  * Rated Voltage:
@@ -72,8 +84,8 @@
 #define ERM_OVERDRIVE_CLAMP_VOLTAGE     0x90
 #endif
 
-#define LRA_RATED_VOLTAGE               0x50
-#define LRA_OVERDRIVE_CLAMP_VOLTAGE     0x95
+#define LRA_RATED_VOLTAGE               0x45
+#define LRA_OVERDRIVE_CLAMP_VOLTAGE     0x76
 
 #define SKIP_LRA_AUTOCAL        1
 #define GO_BIT_POLL_INTERVAL    15
@@ -114,6 +126,8 @@ struct drv2605_pdata {
 	int max_timeout_ms;
 	char *name;
 };
+
+static struct drv2605_pdata *pdata = NULL;
 
 static char g_effect_bank = EFFECT_LIBRARY;
 static int device_id = -1;
@@ -296,12 +310,10 @@ static void vibrator_off(struct drv2605_data *data)
 	if (vibrator_is_playing) {
 		vibrator_is_playing = NO;
 
-		drv2605_change_mode(data->client, MODE_INTERNAL_TRIGGER);
-		gpio_direction_output(data->gpio_enable, GPIO_LEVEL_LOW);
+		drv2605_change_mode(data->client, MODE_STANDBY);
 	}
 
 	dev_info(&(data->client->dev), "drv2605 off!");
-	//wake_unlock(&vibdata.wklock);
 }
 
 static void vibrator_enable(struct timed_output_dev *dev, int value)
@@ -316,17 +328,14 @@ static void vibrator_enable(struct timed_output_dev *dev, int value)
 	cancel_work_sync(&data->work);
 
 	if (value) {
-		//wake_lock(&vibdata.wklock);
-
-		gpio_direction_output(data->gpio_enable, GPIO_LEVEL_HIGH);
-		udelay(30);
+		drv2605_change_mode(data->client, MODE_DEVICE_READY);
+		udelay(1000);
 
 		/* Only change the mode if not already in RTP mode; RTP input already set at init */
 		if ((drv2605_read_reg(data->client, MODE_REG) & DRV260X_MODE_MASK)
 			!= MODE_REAL_TIME_PLAYBACK) {
 			drv2605_set_rtp_val(data->client, REAL_TIME_PLAYBACK_STRENGTH);
 			drv2605_change_mode(data->client, MODE_REAL_TIME_PLAYBACK);
-			drv2605_set_go_bit(data->client, GO);
 			vibrator_is_playing = YES;
 		}
 
@@ -335,7 +344,7 @@ static void vibrator_enable(struct timed_output_dev *dev, int value)
 				value = data->max_timeout_ms;
 			}
 
-		hrtimer_start(&data->timer, ns_to_ktime((u64)value * NSEC_PER_MSEC),
+			hrtimer_start(&data->timer, ns_to_ktime((u64)value * NSEC_PER_MSEC),
 			HRTIMER_MODE_REL);
 		}
 	} else {
@@ -368,9 +377,9 @@ static void play_effect(struct work_struct *work)
 
 	data = container_of(work, struct drv2605_data, work_play_eff);
 
-	gpio_direction_output(data->gpio_enable, GPIO_LEVEL_HIGH);
-	udelay(30);
-	drv2605_change_mode(data->client, MODE_INTERNAL_TRIGGER);
+	 /* device ready and Internal trigger*/
+	drv2605_change_mode(data->client, MODE_DEVICE_READY);
+	udelay(1000);
 	drv2605_set_waveform_sequence(data->client, data->sequence, sizeof(data->sequence));
 	drv2605_set_go_bit(data->client, GO);
 
@@ -378,10 +387,173 @@ static void play_effect(struct work_struct *work)
 		schedule_timeout_interruptible(msecs_to_jiffies(GO_BIT_POLL_INTERVAL));
 	}
 
-	//wake_unlock(&vibdata.wklock);
-	drv2605_change_mode(data->client, MODE_INTERNAL_TRIGGER);
-	gpio_direction_output(data->gpio_enable, GPIO_LEVEL_LOW);
-	//drv2605_change_mode(MODE_DEFAULT);
+	drv2605_change_mode(data->client, MODE_STANDBY);
+}
+
+#if GUARANTEE_AUTOTUNE_BRAKE_TIME
+#define AUTOTUNE_BRAKE_TIME 25
+static VibeInt8 g_lastForce = 0;
+static bool g_brake = false;
+
+static void autotune_brake_complete(struct work_struct *work)
+{
+	/* new nForce value came in before workqueue terminated */
+	if (g_lastForce > 0)
+		return;
+
+	/* Put hardware in standby */
+	drv2605_change_mode(client_temp,MODE_STANDBY);
+}
+
+DECLARE_DELAYED_WORK(g_brake_complete, autotune_brake_complete);
+
+static struct workqueue_struct *g_workqueue;
+
+#endif
+
+int ImmVibeSPI_ForceOut_AmpDisable(VibeUInt8 nActuatorIndex)
+{
+	if (g_bAmpEnabled)
+	{
+		printk(KERN_ERR "tspdrv:ImmVibeSPI_ForceOut_AmpDisable.\n");
+
+		/* Set the force to 0 */
+		drv2605_set_rtp_val(client_temp,0);
+
+#if GUARANTEE_AUTOTUNE_BRAKE_TIME
+		/* if a brake signal arrived from daemon, let the chip stay on
+		* extra time to allow it to brake */
+		if (g_brake && g_workqueue)
+		{
+			queue_delayed_work(g_workqueue,
+	                           &g_brake_complete,
+	                           msecs_to_jiffies(AUTOTUNE_BRAKE_TIME));
+		}
+		else /* disable immediately (smooth effect style) */
+#endif
+		{
+			/* Put hardware in standby via i2c */
+			drv2605_change_mode(client_temp,MODE_STANDBY);
+		}
+
+		g_bAmpEnabled = false;
+	}
+	return 0;
+}
+
+/*
+** Called to enable amp (enable output force)
+*/
+int ImmVibeSPI_ForceOut_AmpEnable(VibeUInt8 nActuatorIndex)
+{
+	if (!g_bAmpEnabled)
+	{
+		printk(KERN_ERR "tspdrv:ImmVibeSPI_ForceOut_AmpEnable.\n");
+
+#if GUARANTEE_AUTOTUNE_BRAKE_TIME
+		cancel_delayed_work_sync(&g_brake_complete);
+#endif
+
+		drv2605_change_mode(client_temp,MODE_DEVICE_READY);
+		udelay(1000);
+
+		drv2605_change_mode(client_temp, MODE_REAL_TIME_PLAYBACK);
+		g_bAmpEnabled = true;
+	}
+	return 0;
+}
+
+/*
+** Called by the real-time loop to set the force
+*/
+int ImmVibeSPI_ForceOut_SetSamples(VibeUInt8 nActuatorIndex, VibeUInt16 nOutputSignalBitDepth, VibeUInt16 nBufferSizeInBytes, VibeInt8* pForceOutputBuffer)
+{
+#if GUARANTEE_AUTOTUNE_BRAKE_TIME
+	VibeInt8 force = pForceOutputBuffer[0];
+	if (force > 0 && g_lastForce <= 0)
+	{
+		g_brake = false;
+		ImmVibeSPI_ForceOut_AmpEnable(nActuatorIndex);
+	}
+	else if (force <= 0 && g_lastForce > 0)
+	{
+		g_brake = force < 0;
+		ImmVibeSPI_ForceOut_AmpDisable(nActuatorIndex);
+	}
+
+	if (g_lastForce != force)
+	{
+		/* AmpDisable sets force to zero, so need to here */
+		if (force > 0)
+			drv2605_set_rtp_val(client_temp, pForceOutputBuffer[0]);
+		g_lastForce = force;
+	}
+#else
+	drv2605_set_rtp_val(client_temp, pForceOutputBuffer[0]);
+#endif
+	return 0;
+}
+
+/*
+** Called to set force output frequency parameters
+*/
+int ImmVibeSPI_ForceOut_SetFrequency(VibeUInt8 nActuatorIndex, VibeUInt16 nFrequencyParameterID, VibeUInt32 nFrequencyParameterValue)
+{
+	if (nActuatorIndex != 0)
+		return 0;
+
+	switch (nFrequencyParameterID)
+	{
+		case VIBE_KP_CFG_FREQUENCY_PARAM1:
+			/* Update frequency parameter 1 */
+			break;
+
+		case VIBE_KP_CFG_FREQUENCY_PARAM2:
+			/* Update frequency parameter 2 */
+			break;
+
+		case VIBE_KP_CFG_FREQUENCY_PARAM3:
+			/* Update frequency parameter 3 */
+			break;
+
+		case VIBE_KP_CFG_FREQUENCY_PARAM4:
+			/* Update frequency parameter 4 */
+			break;
+
+		case VIBE_KP_CFG_FREQUENCY_PARAM5:
+			/* Update frequency parameter 5 */
+			break;
+
+		case VIBE_KP_CFG_FREQUENCY_PARAM6:
+			/* Update frequency parameter 6 */
+			break;
+		default:
+			printk(KERN_ERR "unknow nFrequencyParameterID.\n");
+			break;
+	}
+	return 0;
+}
+
+/*
+** Called to get the device name (device name must be returned as ANSI char)
+*/
+int ImmVibeSPI_Device_GetName(VibeUInt8 nActuatorIndex, char *szDevName, int nSize)
+{
+	char szRevision[MAX_REVISION_STRING_SIZE];
+
+	if ((!szDevName) || (nSize < 1))
+		return -1;
+
+	dev_info(&client_temp->dev, "ImmVibeSPI_Device_GetName.\n");
+
+	/* Append revision number to the device name */
+	snprintf(szRevision, MAX_REVISION_STRING_SIZE, "r%d %s", (drv2605_read_reg(client_temp, SILICON_REVISION_REG) & SILICON_REVISION_MASK), ACTUATOR_NAME);
+	if ((strlen(szRevision) + strlen(szDevName)) < nSize-1)
+		strcat(szDevName, szRevision);
+
+	szDevName[nSize - 1] = '\0'; /* make sure the string is NULL terminated */
+
+	return 0;
 }
 
 static int drv2605_parse_dt(struct device *dev, struct drv2605_pdata *pdata)
@@ -392,6 +564,7 @@ static int drv2605_parse_dt(struct device *dev, struct drv2605_pdata *pdata)
 	rc = of_property_read_string(dev->of_node, "ti,label", &pdata->name);
 	/* set vibrator as default name */
 	if (rc < 0) {
+		pdata->name = kmalloc(sizeof(DEFAULT_NAME), GFP_KERNEL);
 		strncpy(pdata->name, DEFAULT_NAME, sizeof(DEFAULT_NAME));
 	}
 
@@ -410,18 +583,108 @@ static int drv2605_parse_dt(struct device *dev, struct drv2605_pdata *pdata)
 	return 0;
 }
 
+static ssize_t vibrator_dbc_test_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct i2c_client *client = NULL;
+	unsigned char erm_mode = 0,erm_loop = 0;
+	uint64_t value = 0;
+	int error = 0;
+	char device_ready[2]={0}, erm_select[2] = {0}, erm_openloop[2]={0}, overdriver_val[2] = {0};
+	char rtp_out1[2]={0}, rtp_out2[2] = {0}, mode_open[2]={0}, mode_close[2] = {0};
+
+
+	dev_info(dev, "start vibrator_dbc_test!\n");
+	client = container_of(dev,struct i2c_client, dev);
+
+	drv2605_change_mode(client, MODE_DEVICE_READY);
+	udelay(1000);
+
+	erm_mode = drv2605_read_reg(client, FEEDBACK_CONTROL_REG);
+	erm_loop = drv2605_read_reg(client, Control3_REG);
+	dev_info(dev, "ERM default erm_mode:%d,erm_loop:%d\n",erm_mode,erm_loop);
+	erm_mode = 0x7f&erm_mode;
+	erm_loop = 0x20|erm_loop;
+	dev_info(dev, "ERM set erm_mode:%d,erm_loop:%d\n",erm_mode,erm_loop);
+
+	device_ready[0] = MODE_REG;
+	device_ready[1] = 0x00;
+
+	erm_select[0] = FEEDBACK_CONTROL_REG;
+	erm_select[1] = erm_mode;
+
+	erm_openloop[0] = Control3_REG;
+	erm_openloop[1] = erm_loop;
+
+	overdriver_val[0] = OVERDRIVE_CLAMP_VOLTAGE_REG;
+	overdriver_val[1] = 0xff;
+
+	rtp_out1[0] = REAL_TIME_PLAYBACK_REG;
+	rtp_out1[1] = 0x7f;
+
+	rtp_out2[0] = REAL_TIME_PLAYBACK_REG;
+	rtp_out2[1] = 0x81;
+
+	mode_open[0] = MODE_REG;
+	mode_open[1] = 0x05;
+
+	mode_close[0] = MODE_REG;
+	mode_close[1] = 0x00;
+
+	//drv2605_write_reg_val(client, device_ready, sizeof(device_ready));
+	drv2605_write_reg_val(client, erm_select, sizeof(erm_select));
+	drv2605_write_reg_val(client, erm_openloop, sizeof(erm_openloop));
+	drv2605_write_reg_val(client, overdriver_val, sizeof(overdriver_val));
+
+	if (strict_strtoull(buf, 16, &value)){
+		dev_info(dev, "vibrator dbc test read value error\n");
+		error = -EINVAL;
+		goto out;
+	}
+
+	if (value == 1) {
+		dev_info(dev, "vibrator dbc test out+\n");
+		drv2605_write_reg_val(client, rtp_out1, sizeof(rtp_out1));
+		drv2605_write_reg_val(client, mode_open, sizeof(mode_open));
+	}else if(value == 0){
+		dev_info(dev, "vibrator dbc test close\n");
+		drv2605_write_reg_val(client, mode_close, sizeof(mode_close));
+		drv2605_change_mode(client, MODE_STANDBY);
+	}else if(value == 2){
+		dev_info(dev, "vibrator dbc test out-\n");
+		drv2605_write_reg_val(client, rtp_out2, sizeof(rtp_out2));
+		drv2605_write_reg_val(client, mode_open, sizeof(mode_open));
+	}else{
+		dev_info(dev, "vibrator dbc test value is invalid:%d\n",value);
+	}
+	error = count;
+out:
+	return error;
+}
+
+static DEVICE_ATTR(vibrator_dbc_test, S_IRUSR|S_IWUSR, NULL, vibrator_dbc_test_store);
+
+static struct attribute *vb_attributes[] = {
+	&dev_attr_vibrator_dbc_test.attr,
+	NULL
+};
+
+static const struct attribute_group vb_attr_group = {
+	.attrs = vb_attributes,
+};
+
 static int drv2605_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
-	char status;
-	int rc;
+	char status = 0;
+	int rc = 0,ret = 0;
 	struct drv2605_data *data;
-	struct drv2605_pdata *pdata;
+
 
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		dev_err(&client->dev, "i2c is not supported\n");
 		return -EIO;
 	}
 
+       client_temp = client;
 	if (client->dev.of_node) {
 		pdata = devm_kzalloc(&client->dev, sizeof(struct drv2605_pdata), GFP_KERNEL);
 		if (!pdata) {
@@ -467,6 +730,11 @@ static int drv2605_probe(struct i2c_client *client, const struct i2c_device_id *
 		goto free_gpio_enable;
 	}
 
+	ret = sysfs_create_group(&client->dev.kobj, &vb_attr_group);
+	if (ret) {
+		dev_err(&client->dev, "unable create vibrator's sysfs,DBC check IC fail\n");
+	}
+
 	hrtimer_init(&data->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	data->timer.function = vibrator_timer_func;
 	INIT_WORK(&data->work, vibrator_work);
@@ -481,7 +749,7 @@ static int drv2605_probe(struct i2c_client *client, const struct i2c_device_id *
 	rc = timed_output_dev_register(&data->dev);
 	if (rc) {
 		dev_err(&client->dev, "unable to register with timed_output\n");
-		goto timed_output_dev_unregister;
+		goto unregister_timed_output_dev;
 	}
 
 	/* enable the drv2605 chip */
@@ -502,50 +770,26 @@ static int drv2605_probe(struct i2c_client *client, const struct i2c_device_id *
 	}
 #endif
 
-	/* Wait until the procedure is done */
-	drv2605_poll_go_bit(data->client);
-
-	/* Read status */
-	status = drv2605_read_reg(data->client, STATUS_REG);
-
-#if	SKIP_LRA_AUTOCAL == 0
-	/* Check result */
-	if ((status & DIAG_RESULT_MASK) == AUTO_CAL_FAILED) {
-		dev_err(&client->dev, "drv2605 auto-cal failed.\n");
-		if (g_effect_bank == LIBRARY_F) {
-			drv2605_write_reg_val(data->client, LRA_autocal_sequence,
-					sizeof(LRA_autocal_sequence));
-		} else {
-			drv2605_write_reg_val(data->client, ERM_autocal_sequence,
-					sizeof(ERM_autocal_sequence));
-		}
-		drv2605_poll_go_bit(data->client);
-		status = drv2605_read_reg(data->client, STATUS_REG);
-		if ((status & DIAG_RESULT_MASK) == AUTO_CAL_FAILED) {
-			dev_err(&client->dev, "drv2605 auto-cal retry failed.\n");
-		}
-	}
-#endif
-
-	/* Read calibration results */
-	drv2605_read_reg(data->client, AUTO_CALI_RESULT_REG);
-	drv2605_read_reg(data->client, AUTO_CALI_BACK_EMF_RESULT_REG);
-	drv2605_read_reg(data->client, FEEDBACK_CONTROL_REG);
-
 	/* Choose default effect library */
 	drv2605_select_library(data->client, g_effect_bank);
 
-	drv2605_change_mode(data->client, MODE_INTERNAL_TRIGGER);
+	drv2605_change_mode(data->client, MODE_STANDBY);
 
-	/* Enable power to the chip */
-	gpio_direction_output(data->gpio_enable, GPIO_LEVEL_LOW);
+#if GUARANTEE_AUTOTUNE_BRAKE_TIME
+    g_workqueue = create_workqueue("tspdrv_workqueue");
+#endif
+
+#ifdef CONFIG_HUAWEI_HW_DEV_DCT
+	set_hw_dev_flag(DEV_I2C_VIBRATOR_LRA);
+#endif
 
 	dev_info(&client->dev, "drv2605 probe succeeded.\n");
 
 	return 0;
 
-timed_output_dev_unregister:
+unregister_timed_output_dev:
 	timed_output_dev_unregister(&data->dev);
+	sysfs_remove_group(&client->dev.kobj, &vb_attr_group);
 	hrtimer_cancel(&data->timer);
 	gpio_free(data->gpio_pwm);
 free_gpio_enable:
@@ -562,8 +806,17 @@ static int drv2605_remove(struct i2c_client *client)
 {
 	struct drv2605_data *data = i2c_get_clientdata(client);
 
+#if GUARANTEE_AUTOTUNE_BRAKE_TIME
+	if (g_workqueue)
+	{
+		destroy_workqueue(g_workqueue);
+		g_workqueue = 0;
+	}
+#endif
+
 	mutex_destroy(&data->lock);
 	timed_output_dev_unregister(&data->dev);
+	sysfs_remove_group(&client->dev.kobj, &vb_attr_group);
 	hrtimer_cancel(&data->timer);
 	cancel_work_sync(&data->work);
 	cancel_work_sync(&data->work_play_eff);

@@ -153,9 +153,9 @@ const fpc1020_setup_t fpc1020_setup_default_1021_a2b1 = {
 };
 
 const fpc1020_setup_t fpc1020_setup_default_1150_a1 = {
-    .adc_gain       = {0, 0, 4},
-    .adc_shift      = {14, 7, 6},
-    .pxl_ctrl       = {0x0f1b, 0x0f1f, 0x0f1b},
+    .adc_gain       = {10, 10, 10},//{0, 0, 4},
+    .adc_shift      = {8, 8, 8},//{14, 7, 6},
+    .pxl_ctrl       = {0x0f1b, 0x0f1f, 0x0f1b},//{0x0f1b, 0x0f1f, 0x0f1b},
     .capture_settings_mux   = 0,
     .capture_count      = 1,
     .capture_mode       = FPC1020_MODE_WAIT_AND_CAPTURE,
@@ -164,7 +164,7 @@ const fpc1020_setup_t fpc1020_setup_default_1150_a1 = {
     .capture_col_start  = 0,
     .capture_col_groups = FPC1150_COLUMNS / FPC102X_ADC_GROUP_SIZE,
     .capture_finger_up_threshold = 0,
-    .capture_finger_down_threshold = 7,
+    .capture_finger_down_threshold = 6,
     .finger_detect_threshold = 0x50,
     .wakeup_detect_rows = {72, 128},
     .wakeup_detect_cols = {4, 4},
@@ -333,8 +333,8 @@ int fpc1020_setup_defaults(fpc1020_data_t *fpc1020)
     if (fpc1020->chip.type == FPC1020_CHIP_1020A) {
         if (gpio_is_valid(fpc1020->moduleID_gpio))
         {
-            printk("fingerprint module ID = %d  chip_revision =%d \n",gpio_get_value(fpc1020->moduleID_gpio),fpc1020->chip.revision);
-            if(gpio_get_value(fpc1020->moduleID_gpio))
+            printk("fingerprint module ID = %d  chip_revision =%d \n",gpio_get_value_cansleep(fpc1020->moduleID_gpio),fpc1020->chip.revision);
+            if(gpio_get_value_cansleep(fpc1020->moduleID_gpio))
             {
                 printk("fingerprint module CT high \n");
                 ptr = (fpc1020->chip.revision == 1) ? &fpc1020_setup_default_CT_a1a2 :
@@ -1005,7 +1005,7 @@ static int fpc1020_write_sensor_1021_setup(fpc1020_data_t *fpc1020)
     if (error)
         goto out;
 
-    temp_u8 = 0x02; /* internal supply */
+    temp_u8 = 0x12; /* no internal supply */
     FPC1020_MK_REG_WRITE(reg, FPC102X_REG_FINGER_DRIVE_CONF, &temp_u8);
     error = fpc1020_reg_access(fpc1020, &reg);
     if (error)
@@ -1066,19 +1066,19 @@ static int fpc1020_write_sensor_1150a_setup(fpc1020_data_t *fpc1020)
     if (rev == 0)
         return -EINVAL;
 
-    temp_u8 = 0x09;
+    temp_u8 = 0x38;
     FPC1020_MK_REG_WRITE(reg, FPC102X_REG_FINGER_DRIVE_DLY, &temp_u8);
     error = fpc1020_reg_access(fpc1020, &reg);
     if (error)
         goto out;
 
-    temp_u64 = 0x0808080814141414;
+    temp_u64 = 0x373737373F3F3F3F;
     FPC1020_MK_REG_WRITE(reg, FPC102X_REG_SAMPLE_PX_DLY, &temp_u64);
     error = fpc1020_reg_access(fpc1020, &reg);
     if (error)
         goto out;
 
-    temp_u8 =  0x02;    /* internal supply */
+    temp_u8 =  0x12;    /* no internal supply */
     FPC1020_MK_REG_WRITE(reg, FPC102X_REG_FINGER_DRIVE_CONF, &temp_u8);
     error = fpc1020_reg_access(fpc1020, &reg);
     if (error)
@@ -1105,14 +1105,29 @@ static int fpc1020_write_sensor_1150a_setup(fpc1020_data_t *fpc1020)
     if (error)
         goto out;
 
-    temp_u32 = fpc1020->fp_thredhold;
-    FPC1020_MK_REG_WRITE(reg,FPC1150_REG_FNGR_DET_THRES, &temp_u32);
+
+    temp_u16 = fpc1020->fp_thredhold; //0x60;
+    FPC1020_MK_REG_WRITE(reg,FPC1020_REG_FNGR_DET_THRES, &temp_u16);
     error = fpc1020_reg_access(fpc1020, &reg);
     if (error)
         goto out;
 
-    temp_u32 = 0x190100ff;
-    FPC1020_MK_REG_WRITE(reg,FPC1150_REG_FNGR_DET_CNTR, &temp_u32);
+
+    temp_u16 = 0x0005;
+    FPC1020_MK_REG_WRITE(reg,FPC1020_REG_FNGR_DET_CNTR, &temp_u16);
+    error = fpc1020_reg_access(fpc1020, &reg);
+    if (error)
+        goto out;
+
+
+    temp_u64 = 0x5540002D24;
+    FPC1020_MK_REG_WRITE(reg, FPC102X_REG_ADC_SETUP, &temp_u64);
+    error = fpc1020_reg_access(fpc1020, &reg);
+    if (error)
+        goto out;
+
+    temp_u8 = 0x2F;
+    FPC1020_MK_REG_WRITE(reg, FPC102X_REG_PXL_RST_DLY, &temp_u8);
     error = fpc1020_reg_access(fpc1020, &reg);
     if (error)
         goto out;
@@ -1614,8 +1629,9 @@ int fpc1020_cmd(fpc1020_data_t *fpc1020,
         error = fpc1020_wait_for_irq(fpc1020,
                     FPC1020_IRQ_TIMEOUT_AFTER_CMD_MS);
 
-        if (error >= 0)
+        if (error >= 0) {
             error = fpc1020_read_irq(fpc1020, true);
+        }
         else{
             if (!dsm_client_ocuppy(fpc1020->dsm_fingerprint_client)) {
                 dsm_client_record(fpc1020->dsm_fingerprint_client, "wait for irq after cmd error=%d\n", error);
@@ -1644,6 +1660,58 @@ int fpc1020_dummy_capture(fpc1020_data_t *fpc1020)
     if (error < 0)
         return error;
     return error;
+}
+/* -------------------------------------------------------------------- */
+
+int fpc1020_nav_wait_finger_present(fpc1020_data_t *fpc1020)
+{
+	int error = 0;
+
+	dev_dbg(&fpc1020->spi->dev, "%s\n", __func__);
+
+	error = fpc1020_read_irq(fpc1020, true);
+	if (error < 0)
+		return error;
+
+	error = fpc1020_cmd(fpc1020,
+			FPC1020_CMD_WAIT_FOR_FINGER_PRESENT, 0);
+
+	if (error < 0)
+		return error;
+
+	while (1) {
+		error = fpc1020_wait_for_irq(fpc1020,
+						FPC1020_WAIT_FNGR_TIMEOUT_MS);
+
+		if (error >= 0) {
+			error = fpc1020_read_irq(fpc1020, true);
+			if (error < 0)
+				return error;
+
+			if (error &
+				(FPC_1020_IRQ_REG_BIT_FINGER_DOWN |
+				FPC_1020_IRQ_REG_BIT_COMMAND_DONE)) {
+
+				dev_dbg(&fpc1020->spi->dev, "Finger down\n");
+
+				error = 0;
+			} else {
+				dev_dbg(&fpc1020->spi->dev,
+					"%s Unexpected IRQ = %d\n", __func__,
+					error);
+
+				error = -EIO;
+			}
+			return error;
+		}
+
+		if (error < 0) {
+			if (fpc1020->worker.stop_request)
+				return -EINTR;
+			if (error != -ETIMEDOUT)
+				return error;
+		}
+	}
 }
 /* -------------------------------------------------------------------- */
 int fpc1020_wait_finger_present(fpc1020_data_t *fpc1020)
@@ -1886,7 +1954,7 @@ int fpc1020_fetch_image(fpc1020_data_t *fpc1020,
     const u8 tx_data[2] = {FPC1020_CMD_READ_IMAGE , 0};
     unsigned int spi_failed_times = 0;
 
-    dev_dbg(&fpc1020->spi->dev, "%s (+%d, buff_size=%d , image_byte_size =%d memory)\n", __func__, offset, buff_size, image_size_bytes);
+    //dev_dbg(&fpc1020->spi->dev, "%s (+%d, buff_size=%d , image_byte_size =%d memory)\n", __func__, offset, buff_size, image_size_bytes);
 
     if ((offset + (int)image_size_bytes) > buff_size) {
         dev_err(&fpc1020->spi->dev,

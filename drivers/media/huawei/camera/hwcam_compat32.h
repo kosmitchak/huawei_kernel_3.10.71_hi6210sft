@@ -104,6 +104,7 @@ typedef struct _tag_hwcam_buf_status32
 #define HWCAM_V4L2_IOCTL_REQUEST_ACK32   _IOW('A', BASE_VIDIOC_PRIVATE + 0x20, struct v4l2_event32)
 #define HWCAM_V4L2_IOCTL_NOTIFY32	_IOW('A', BASE_VIDIOC_PRIVATE + 0x21, struct v4l2_event32)
 #define HWCAM_V4L2_IOCTL_THERMAL_GUARD32 _IOWR('A', BASE_VIDIOC_PRIVATE + 0x22, struct v4l2_event32)
+#define HWCAM_V4L2_IOCTL_GET_ION_AVAILABLE32  _IOR('A', BASE_VIDIOC_PRIVATE + 0x23, hwcam_ionsize_info_t)
 
 #define HWISP_STREAM_IOCTL_ENQUEUE_BUF32   _IOW('A', BASE_VIDIOC_PRIVATE + 0x01, hwisp_stream_buf_info_t32)
 #define HWISP_STREAM_IOCTL_DEQUEUE_BUF32   _IOR('A', BASE_VIDIOC_PRIVATE + 0x02, hwisp_stream_buf_info_t32)

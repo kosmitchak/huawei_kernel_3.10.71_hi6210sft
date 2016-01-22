@@ -900,6 +900,11 @@ dhdsdio_clk_kso_enab(dhd_bus_t *bus, bool on)
 #ifdef KSO_ERROR_FIX
 	if (err)
 	{
+#ifdef HW_WIFI_DMD_LOG
+		hw_wifi_dsm_client_notify(DSM_WIFI_KSO_ERROR,
+		    "%s> op:%s, ERROR: try_cnt:%d, rd_val:%x, ERR:%x \n",
+			__FUNCTION__, (on ? "KSO_SET" : "KSO_CLR"), try_cnt, rd_val, err);
+#endif
 		DHD_ERROR(("%s> hang to recover from KSO error\n", __FUNCTION__));
 		dhd_os_send_hang_message(bus->dhd);
 	}
@@ -6022,8 +6027,15 @@ clkwait:
 		txlimit -= framecnt;
 	}
 	/* Resched the DPC if ctrl cmd is pending on bus credit */
-	if (bus->ctrl_frame_stat)
+	if (bus->ctrl_frame_stat) {
+#ifdef HW_WIFI_SDIO_MORE_SCHEDULE
+		set_current_state(TASK_INTERRUPTIBLE);
+		if (!kthread_should_stop())
+			schedule_timeout(1);
+		set_current_state(TASK_RUNNING);
+#endif
 		resched = TRUE;
+	}
 
 	/* Resched if events or tx frames are pending, else await next interrupt */
 	/* On failed register access, all bets are off: no resched or interrupts */
@@ -8320,6 +8332,7 @@ dhd_bus_devreset(dhd_pub_t *dhdp, uint8 flag)
 	if (flag == TRUE) {
 		if (!bus->dhd->dongle_reset) {
 			dhd_os_sdlock(dhdp);
+			printk("%s: unlock the watchdog wakelock and stop wd_timer.\n", __FUNCTION__);
 			dhd_os_wd_timer(dhdp, 0);
 #if !defined(IGNORE_ETH0_DOWN)
 			/* Force flow control as protection when stop come before ifconfig_down */

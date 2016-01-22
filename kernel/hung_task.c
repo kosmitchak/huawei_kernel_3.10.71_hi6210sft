@@ -326,6 +326,9 @@ static void check_hung_task(struct task_struct *t, unsigned long timeout)
 
 		last_switch_count_table[idx].last_swithc_count = switch_count;
 		return;
+	} else {
+		pr_err("switch_count = %ld, last_switch_count = %ld\n", \
+			switch_count, last_switch_count_table[idx].last_swithc_count);
 	}
 
 #else

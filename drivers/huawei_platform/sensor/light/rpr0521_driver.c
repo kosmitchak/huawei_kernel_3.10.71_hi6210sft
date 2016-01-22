@@ -45,6 +45,7 @@
 #include <linux/gpio.h>
 #include <linux/board_sensors.h>
 #include <huawei_platform/sensor/sensor_info.h>
+#include <huawei_platform/log/log_jank.h>
 
 #ifdef CONFIG_HUAWEI_HW_DEV_DCT
 #include <linux/hw_dev_dec.h>
@@ -347,7 +348,8 @@ static void rpr0521_change_ps_threshold(struct i2c_client *client)
             
             Rpr0521_i2c_write(client, REG_PSTL,RPR_FAR_THRESHOLD(rpr_threshold_value),RPR0521_I2C_WORD);
 	     Rpr0521_i2c_write(client,REG_PSTH, REG_PSTH_MAX,RPR0521_I2C_WORD);
-
+        
+		 LOG_JANK_D(JLID_PROXIMITY_SENSOR_NEAR, "%s", "JL_PROXIMITY_SENSOR_NEAR");
 		 als_ps_INFO("[ALS_PS]apds990x report 0\n");
 	     data->ps_direction=1;
             input_report_abs(data->input_dev_ps, ABS_DISTANCE, 0);/* FAR-to-NEAR detection */
@@ -368,6 +370,7 @@ static void rpr0521_change_ps_threshold(struct i2c_client *client)
 	     }
 	     data->ps_direction=0;
 
+		 LOG_JANK_D(JLID_PROXIMITY_SENSOR_FAR, "%s", "JL_PROXIMITY_SENSOR_FAR");
 		 als_ps_INFO("[ALS_PS]apds990x report 1\n");
             input_report_abs(data->input_dev_ps, ABS_DISTANCE, 1);/* NEAR-to-FAR detection */
 	     input_sync(data->input_dev_ps);
@@ -1461,7 +1464,7 @@ static ssize_t rpr521_store_enable_als_sensor(struct device *dev,
 			}
 			tmp = tmp | 0x80;
 			rpr521_set_enable(client, tmp);	//ALS on
-			als_polling_count=0;
+			als_polling_count=1;
 		}
 		
 		spin_lock_irqsave(&als_ps->update_lock.wait_lock, flags); 

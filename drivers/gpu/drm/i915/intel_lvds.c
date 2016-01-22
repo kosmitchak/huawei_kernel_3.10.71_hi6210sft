@@ -861,6 +861,19 @@ bool intel_lvds_init(struct drm_device *dev)
 	int pipe;
 	u8 pin;
 
+	/*
+	 * Unlock registers and just leave them unlocked. Do this before
+	 * checking quirk lists to avoid bogus WARNINGs.
+	 */
+	if (HAS_PCH_SPLIT(dev)) {
+		I915_WRITE(PCH_PP_CONTROL,
+			   I915_READ(PCH_PP_CONTROL) | PANEL_UNLOCK_REGS);
+	} else {
+		I915_WRITE(PP_CONTROL,
+			   I915_READ(PP_CONTROL) | PANEL_UNLOCK_REGS);
+	}
+	if (!intel_lvds_supported(dev))
+		return false;
 	/* Skip init on machines we know falsely report LVDS */
 	if (dmi_check_system(intel_no_lvds))
 		return false;
@@ -1014,27 +1027,12 @@ bool intel_lvds_init(struct drm_device *dev)
 		goto failed;
 
 out:
-	if (HAS_PCH_SPLIT(dev)) {
-		u32 pwm;
+	lvds_encoder->is_dual_link = compute_is_dual_link_lvds(lvds_encoder);
+	DRM_DEBUG_KMS("detected %s-link lvds configuration\n",
+		      lvds_encoder->is_dual_link ? "dual" : "single");
 
-		pipe = (I915_READ(PCH_LVDS) & LVDS_PIPEB_SELECT) ? 1 : 0;
-
-		/* make sure PWM is enabled and locked to the LVDS pipe */
-		pwm = I915_READ(BLC_PWM_CPU_CTL2);
-		if (pipe == 0 && (pwm & PWM_PIPE_B))
-			I915_WRITE(BLC_PWM_CPU_CTL2, pwm & ~PWM_ENABLE);
-		if (pipe)
-			pwm |= PWM_PIPE_B;
-		else
-			pwm &= ~PWM_PIPE_B;
-		I915_WRITE(BLC_PWM_CPU_CTL2, pwm | PWM_ENABLE);
-
-		pwm = I915_READ(BLC_PWM_PCH_CTL1);
-		pwm |= PWM_PCH_ENABLE;
-		I915_WRITE(BLC_PWM_PCH_CTL1, pwm);
-	}
-	dev_priv->lid_notifier.notifier_call = intel_lid_notify;
-	if (acpi_lid_notifier_register(&dev_priv->lid_notifier)) {
+	lvds_connector->lid_notifier.notifier_call = intel_lid_notify;
+	if (acpi_lid_notifier_register(&lvds_connector->lid_notifier)) {
 		DRM_DEBUG_KMS("lid notifier registration failed\n");
 		dev_priv->lid_notifier.notifier_call = NULL;
 	}

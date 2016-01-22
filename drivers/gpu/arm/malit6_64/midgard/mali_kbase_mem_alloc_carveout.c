@@ -58,9 +58,9 @@ static struct page *kbase_carveout_get_page(struct kbase_mem_allocator *allocato
 		dma_addr_t dma_addr;
 #if defined(CONFIG_ARM) && !defined(CONFIG_HAVE_DMA_ATTRS) && LINUX_VERSION_CODE < KERNEL_VERSION(3, 5, 0)
 		/* DMA cache sync fails for HIGHMEM before 3.5 on ARM */
-		gfp = GFP_USER;
+		gfp = GFP_USER | __GFP_ZERO;
 #else
-		gfp = GFP_HIGHUSER;
+		gfp = GFP_HIGHUSER | __GFP_ZERO;
 #endif
 
 		if (current->flags & PF_KTHREAD) {
@@ -288,7 +288,6 @@ void kbase_mem_allocator_term(struct kbase_mem_allocator *allocator)
 mali_error kbase_mem_allocator_alloc(struct kbase_mem_allocator *allocator, size_t nr_pages, phys_addr_t *pages)
 {
 	struct page *p;
-	void *mp;
 	int i;
 	int num_from_free_list;
 	struct list_head from_free_list = LIST_HEAD_INIT(from_free_list);
@@ -325,18 +324,11 @@ mali_error kbase_mem_allocator_alloc(struct kbase_mem_allocator *allocator, size
 		if (NULL == p)
 			goto err_out_roll_back;
 
-		mp = kmap(p);
-		if (NULL == mp) {
-			kbase_carveout_put_page(p, allocator);
-			goto err_out_roll_back;
-		}
-		memset(mp, 0x00, PAGE_SIZE); /* instead of __GFP_ZERO, so we can
 						do cache maintenance */
 		dma_sync_single_for_device(allocator->kbdev->dev,
 					   kbase_dma_addr(p),
 					   PAGE_SIZE,
 					   DMA_BIDIRECTIONAL);
-		kunmap(p);
 		pages[i] = PFN_PHYS(page_to_pfn(p));
 	}
 

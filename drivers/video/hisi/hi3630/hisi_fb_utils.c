@@ -13,6 +13,8 @@
 
 #include "hisi_fb.h"
 #include "hisi_overlay_utils.h"
+#include "hisi_dpe_utils.h"
+#include <linux/mtd/hisi_nve_interface.h>
 
 extern int g_enable_dirty_region_updt;
 
@@ -975,13 +977,18 @@ static ssize_t hisifb_lcd_comform_mode_show(struct device *dev,
 	BUG_ON(pdata == NULL);
 
 	down(&hisifd->blank_sem);
-
+	if (!hisifd->panel_power_on) {
+		HISI_FB_ERR("fb%d, panel power off!\n", hisifd->index);
+		ret = -EINVAL;
+		goto err_out;
+	}
 	if (pdata->lcd_comform_mode_show) {
 		hisifb_activate_vsync(hisifd);
 		ret = pdata->lcd_comform_mode_show(hisifd->pdev, buf);
 		hisifb_deactivate_vsync(hisifd);
 	}
 
+err_out:
 	up(&hisifd->blank_sem);
 
 	return ret;
@@ -1004,13 +1011,19 @@ static ssize_t hisifb_lcd_comform_mode_store(struct device *dev,
 	BUG_ON(pdata == NULL);
 
 	down(&hisifd->blank_sem);
-
+	if (!hisifd->panel_power_on) {
+		dpe_update_g_comform_discount(0);
+		HISI_FB_ERR("fb%d, panel power off!\n", hisifd->index);
+		ret = -EINVAL;
+		goto err_out;
+	}
 	if (pdata->lcd_comform_mode_store) {
 		hisifb_activate_vsync(hisifd);
 		ret = pdata->lcd_comform_mode_store(hisifd->pdev, buf, count);
 		hisifb_deactivate_vsync(hisifd);
 	}
 
+err_out:
 	up(&hisifd->blank_sem);
 	return count;
 }
@@ -1032,13 +1045,18 @@ static ssize_t hisifb_lcd_starlight_mode_show(struct device *dev,
 	BUG_ON(pdata == NULL);
 
 	down(&hisifd->blank_sem);
-
+	if (!hisifd->panel_power_on) {
+		HISI_FB_ERR("fb%d, panel power off!\n", hisifd->index);
+		ret = -EINVAL;
+		goto err_out;
+	}
 	if (pdata->lcd_starlight_mode_show) {
 		hisifb_activate_vsync(hisifd);
 		ret = pdata->lcd_starlight_mode_show(hisifd->pdev, buf);
 		hisifb_deactivate_vsync(hisifd);
 	}
 
+err_out:
 	up(&hisifd->blank_sem);
 
 	return ret;
@@ -1061,16 +1079,155 @@ static ssize_t hisifb_lcd_starlight_mode_store(struct device *dev,
 	BUG_ON(pdata == NULL);
 
 	down(&hisifd->blank_sem);
-
+	if (!hisifd->panel_power_on) {
+		HISI_FB_ERR("fb%d, panel power off!\n", hisifd->index);
+		ret = -EINVAL;
+		goto err_out;
+	}
 	if (pdata->lcd_starlight_mode_store) {
 		hisifb_activate_vsync(hisifd);
 		ret = pdata->lcd_starlight_mode_store(hisifd->pdev, buf, count);
 		hisifb_deactivate_vsync(hisifd);
 	}
 
+err_out:
 	up(&hisifd->blank_sem);
 	return count;
 }
+
+static ssize_t hisifb_lcd_ic_color_enhancement_mode_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	ssize_t ret = 0;
+	struct fb_info *fbi = NULL;
+	struct hisi_fb_data_type *hisifd = NULL;
+	struct hisi_fb_panel_data *pdata = NULL;
+
+	BUG_ON(dev == NULL);
+	fbi = dev_get_drvdata(dev);
+	BUG_ON(fbi == NULL);
+	hisifd = (struct hisi_fb_data_type *)fbi->par;
+	BUG_ON(hisifd == NULL);
+	pdata = dev_get_platdata(&hisifd->pdev->dev);
+	BUG_ON(pdata == NULL);
+
+	down(&hisifd->blank_sem);
+	if (!hisifd->panel_power_on) {
+		HISI_FB_ERR("fb%d, panel power off!\n", hisifd->index);
+		ret = -EINVAL;
+		goto err_out;
+	}
+	if (pdata->lcd_ic_color_enhancement_mode_show) {
+		hisifb_activate_vsync(hisifd);
+		ret = pdata->lcd_ic_color_enhancement_mode_show(hisifd->pdev, buf);
+		hisifb_deactivate_vsync(hisifd);
+	}
+err_out:
+	up(&hisifd->blank_sem);
+
+	return ret;
+}
+
+static ssize_t hisifb_lcd_ic_color_enhancement_mode_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	ssize_t ret = 0;
+	struct fb_info *fbi = NULL;
+	struct hisi_fb_data_type *hisifd = NULL;
+	struct hisi_fb_panel_data *pdata = NULL;
+
+	BUG_ON(dev == NULL);
+	fbi = dev_get_drvdata(dev);
+	BUG_ON(fbi == NULL);
+	hisifd = (struct hisi_fb_data_type *)fbi->par;
+	BUG_ON(hisifd == NULL);
+	pdata = dev_get_platdata(&hisifd->pdev->dev);
+	BUG_ON(pdata == NULL);
+
+	down(&hisifd->blank_sem);
+	if (!hisifd->panel_power_on) {
+		HISI_FB_ERR("fb%d, panel power off!\n", hisifd->index);
+		ret = -EINVAL;
+		goto err_out;
+	}
+	if (pdata->lcd_ic_color_enhancement_mode_store) {
+		hisifb_activate_vsync(hisifd);
+		ret = pdata->lcd_ic_color_enhancement_mode_store(hisifd->pdev, buf, count);
+		hisifb_deactivate_vsync(hisifd);
+	}
+err_out:
+	up(&hisifd->blank_sem);
+	return count;
+}
+
+static ssize_t hisifb_lcd_acm_state_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	ssize_t ret = 0;
+	struct fb_info *fbi = NULL;
+	struct hisi_fb_data_type *hisifd = NULL;
+	struct hisi_fb_panel_data *pdata = NULL;
+
+	BUG_ON(dev == NULL);
+	fbi = dev_get_drvdata(dev);
+	BUG_ON(fbi == NULL);
+	hisifd = (struct hisi_fb_data_type *)fbi->par;
+	BUG_ON(hisifd == NULL);
+	pdata = dev_get_platdata(&hisifd->pdev->dev);
+	BUG_ON(pdata == NULL);	
+
+	down(&hisifd->blank_sem);
+	if (!hisifd->panel_power_on) {
+		HISI_FB_ERR("fb%d, panel power off!\n", hisifd->index);
+		ret = -EINVAL;
+		goto err_out;
+	}
+	if (pdata->lcd_acm_state_show) {
+		hisifb_activate_vsync(hisifd);
+		ret = pdata->lcd_acm_state_show(hisifd->pdev, buf);
+		hisifb_deactivate_vsync(hisifd);
+	}
+
+err_out:
+	up(&hisifd->blank_sem);
+	
+	return ret;
+}
+
+static ssize_t hisifb_lcd_acm_state_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	ssize_t ret = 0;
+	struct fb_info *fbi = NULL;
+	struct hisi_fb_data_type *hisifd = NULL;
+	struct hisi_fb_panel_data *pdata = NULL;
+
+	BUG_ON(dev == NULL);
+	fbi = dev_get_drvdata(dev);
+	BUG_ON(fbi == NULL);
+	hisifd = (struct hisi_fb_data_type *)fbi->par;
+	BUG_ON(hisifd == NULL);
+	pdata = dev_get_platdata(&hisifd->pdev->dev);
+	BUG_ON(pdata == NULL);
+
+	down(&hisifd->blank_sem);
+	if (!hisifd->panel_power_on) {
+		HISI_FB_ERR("fb%d, panel power off!\n", hisifd->index);
+		ret = -EINVAL;
+		goto err_out;
+	}
+	if (pdata->lcd_acm_state_store) {
+		hisifb_activate_vsync(hisifd);
+		ret = pdata->lcd_acm_state_store(hisifd->pdev, buf, count);
+		hisifb_deactivate_vsync(hisifd);
+	}
+
+err_out:
+	up(&hisifd->blank_sem);
+	
+	return count;
+}
+
 static ssize_t hisifb_lcd_voltage_enable_store(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
 {
@@ -1144,15 +1301,15 @@ static ssize_t hisifb_sbl_ctrl_store(struct device *dev,
 		ret = hisifd->sbl_ctrl_fnc(fbi, val);
 	}
 
+#ifdef CONFIG_FB_3630
 	down(&hisifd->blank_sem);
-
 	if (pdata->amoled_hbm_store) {
 		hisifb_activate_vsync(hisifd);
 		ret = pdata->amoled_hbm_store(hisifd->pdev, buf, count);
 		hisifb_deactivate_vsync(hisifd);
 	}
-
 	up(&hisifd->blank_sem);
+#endif
 
 	return count;
 }
@@ -1226,7 +1383,7 @@ static ssize_t hisifb_lcd_func_switch_show(struct device *dev,
 static ssize_t hisifb_lcd_func_switch_store(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
 {
-	ssize_t ret = 0;
+	//ssize_t ret = 0;
 	struct fb_info *fbi = NULL;
 	struct hisi_fb_data_type *hisifd = NULL;
 	struct hisi_fb_panel_data *pdata = NULL;
@@ -1335,7 +1492,7 @@ static ssize_t hisifb_lcd_region_limit_store(struct device* dev,
     hisifd = (struct hisi_fb_data_type *)fbi->par;
     BUG_ON(hisifd == NULL);
 
-    cur = buf;
+    cur = (char *)buf;
     while (token = strsep(&cur, ",")) {
         limit_value[i++] = (int)simple_strtol(token, NULL, 0);
     }
@@ -1436,9 +1593,44 @@ static ssize_t hisifb_amoled_acl_store(struct device *dev,
 		goto err_out;
 	}
 
-	if (pdata->lcd_gram_check_store) {
+	if (pdata->amoled_acl_store) {
 		hisifb_activate_vsync(hisifd);
 		ret = pdata->amoled_acl_store(hisifd->pdev, buf, count);
+		hisifb_deactivate_vsync(hisifd);
+	}
+
+err_out:
+	up(&hisifd->blank_sem);
+
+	return count;
+}
+
+static ssize_t hisifb_amoled_hbm_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	ssize_t ret = 0;
+	struct fb_info *fbi = NULL;
+	struct hisi_fb_data_type *hisifd = NULL;
+	struct hisi_fb_panel_data *pdata = NULL;
+
+	BUG_ON(dev == NULL);
+	fbi = dev_get_drvdata(dev);
+	BUG_ON(fbi == NULL);
+	hisifd = (struct hisi_fb_data_type *)fbi->par;
+	BUG_ON(hisifd == NULL);
+	pdata = dev_get_platdata(&hisifd->pdev->dev);
+	BUG_ON(pdata == NULL);
+
+	down(&hisifd->blank_sem);
+
+	if (!hisifd->panel_power_on) {
+		HISI_FB_ERR("fb%d, panel power off!\n", hisifd->index);
+		goto err_out;
+	}
+
+	if (pdata->amoled_hbm_show) {
+		hisifb_activate_vsync(hisifd);
+		ret = pdata->amoled_hbm_show(hisifd->pdev, buf);
 		hisifb_deactivate_vsync(hisifd);
 	}
 
@@ -1448,11 +1640,289 @@ err_out:
 	return ret;
 }
 
+static ssize_t hisifb_amoled_hbm_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	ssize_t ret = 0;
+	struct fb_info *fbi = NULL;
+	struct hisi_fb_data_type *hisifd = NULL;
+	struct hisi_fb_panel_data *pdata = NULL;
+
+	BUG_ON(dev == NULL);
+	fbi = dev_get_drvdata(dev);
+	BUG_ON(fbi == NULL);
+	hisifd = (struct hisi_fb_data_type *)fbi->par;
+	BUG_ON(hisifd == NULL);
+	pdata = dev_get_platdata(&hisifd->pdev->dev);
+	BUG_ON(pdata == NULL);
+
+	down(&hisifd->blank_sem);
+
+	if (!hisifd->panel_power_on) {
+		HISI_FB_ERR("fb%d, panel power off!\n", hisifd->index);
+		ret = -EINVAL;
+		goto err_out;
+	}
+
+	if (pdata->amoled_hbm_store) {
+		hisifb_activate_vsync(hisifd);
+		ret = pdata->amoled_hbm_store(hisifd->pdev, buf, count);
+		hisifb_deactivate_vsync(hisifd);
+	}
+
+err_out:
+	up(&hisifd->blank_sem);
+
+	return count;
+}
+
 static ssize_t lcd_status_check_show(struct device* dev,
         struct device_attribute* attr, char* buf)
 {
 	int return_value = 1;
 	return snprintf(buf, PAGE_SIZE, "%d\n", return_value);
+}
+
+static ssize_t hisifb_lcd_test_config_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	ssize_t ret = 0;
+	struct fb_info *fbi = NULL;
+	struct hisi_fb_data_type *hisifd = NULL;
+	struct hisi_fb_panel_data *pdata = NULL;
+
+	BUG_ON(dev == NULL);
+	fbi = dev_get_drvdata(dev);
+	BUG_ON(fbi == NULL);
+	hisifd = (struct hisi_fb_data_type *)fbi->par;
+	BUG_ON(hisifd == NULL);
+	pdata = dev_get_platdata(&hisifd->pdev->dev);
+	BUG_ON(pdata == NULL);
+
+	down(&hisifd->blank_sem);
+
+	if (pdata->lcd_test_config_show) {
+		hisifb_activate_vsync(hisifd);
+		ret = pdata->lcd_test_config_show(hisifd->pdev, buf);
+		hisifb_deactivate_vsync(hisifd);
+	}
+
+	up(&hisifd->blank_sem);
+
+	return ret;
+}
+
+static ssize_t hisifb_lcd_test_config_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	ssize_t ret = 0;
+	struct fb_info *fbi = NULL;
+	struct hisi_fb_data_type *hisifd = NULL;
+	struct hisi_fb_panel_data *pdata = NULL;
+
+	BUG_ON(dev == NULL);
+	fbi = dev_get_drvdata(dev);
+	BUG_ON(fbi == NULL);
+	hisifd = (struct hisi_fb_data_type *)fbi->par;
+	BUG_ON(hisifd == NULL);
+	pdata = dev_get_platdata(&hisifd->pdev->dev);
+	BUG_ON(pdata == NULL);
+
+	down(&hisifd->blank_sem);
+
+	if (pdata->lcd_test_config_store) {
+		hisifb_activate_vsync(hisifd);
+		ret = pdata->lcd_test_config_store(hisifd->pdev, buf, count);
+		hisifb_deactivate_vsync(hisifd);
+	}
+
+	up(&hisifd->blank_sem);
+
+	return count;
+}
+
+static ssize_t hisifb_lcd_filter_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	ssize_t ret = 0;
+	struct fb_info *fbi = NULL;
+	struct hisi_fb_data_type *hisifd = NULL;
+	struct hisi_fb_panel_data *pdata = NULL;
+
+	BUG_ON(dev == NULL);
+	fbi = dev_get_drvdata(dev);
+	BUG_ON(fbi == NULL);
+	hisifd = (struct hisi_fb_data_type *)fbi->par;
+	BUG_ON(hisifd == NULL);
+	pdata = dev_get_platdata(&hisifd->pdev->dev);
+	BUG_ON(pdata == NULL);
+
+	down(&hisifd->blank_sem);
+
+	if (!hisifd->panel_power_on) {
+		HISI_FB_ERR("fb%d, panel power off!\n", hisifd->index);
+		goto err_out;
+	}
+
+	if (pdata->amoled_acl_show) {
+		hisifb_activate_vsync(hisifd);
+		ret = pdata->lcd_filter_show(hisifd->pdev, buf);
+		hisifb_deactivate_vsync(hisifd);
+	}
+
+err_out:
+	up(&hisifd->blank_sem);
+
+	return ret;
+}
+
+static void hisifb_write_grayscale_to_nv(struct hisi_fb_data_type *hisifd)
+{
+	int ret = 0;
+	struct hisi_nve_info_user user_info;
+
+	memset(&user_info, 0, sizeof(user_info));
+	user_info.nv_operation = NV_WRITE;
+	user_info.nv_number = 335;
+	user_info.valid_size = 8;
+	strncpy(user_info.nv_name, "GREY-D", sizeof(user_info.nv_name));
+	user_info.nv_name[sizeof(user_info.nv_name)-1] = '\0';
+	if (hisifd->grayscale_enabled == 1)
+		user_info.nv_data[0] = 1;
+	else
+		user_info.nv_data[0] = 0;
+	ret = hisi_nve_direct_access(&user_info);
+	if (ret) {
+		HISI_FB_INFO("hisi_nve_direct_access write error(%d)\n", ret);
+	}
+
+	return;
+}
+
+static void hisifb_read_grayscale_from_nv(struct hisi_fb_data_type *hisifd)
+{
+	int ret = 0;
+	struct hisi_nve_info_user user_info;
+
+	memset(&user_info, 0, sizeof(user_info));
+
+	user_info.nv_operation = NV_READ;
+	user_info.nv_number = 335;
+	user_info.valid_size = 8;
+	strncpy(user_info.nv_name, "GREY-D", sizeof(user_info.nv_name));
+	user_info.nv_name[sizeof(user_info.nv_name) - 1] = "\0";
+	ret = hisi_nve_direct_access(&user_info);
+	if (ret) {
+		HISI_FB_INFO("hisi_nve_direct_access read error(%d)\n", ret);
+		hisifd->grayscale_enabled = 0;
+		return;
+	}
+
+	if (user_info.nv_data[0] == 1)
+		hisifd->grayscale_enabled = 1;
+	else
+		hisifd->grayscale_enabled = 0;
+
+	HISI_FB_INFO("grayscale from nv is %d, grayscale_enabled is %d\n", user_info.nv_data[0], hisifd->grayscale_enabled);
+	return;
+}
+
+static ssize_t hisifb_get_grayscale_mode(struct device*dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct fb_info *fbi = NULL;
+	struct hisi_fb_data_type *hisifd = NULL;
+	//struct hisi_fb_panel_data *pdata = NULL;
+
+	BUG_ON(dev == NULL);
+	fbi = dev_get_drvdata(dev);
+	BUG_ON(fbi == NULL);
+	hisifd = (struct hisi_fb_data_type *)fbi->par;
+	BUG_ON(hisifd == NULL);
+
+	if (!hisifd->panel_info.grayscale_support) {
+		HISI_FB_ERR("not support grayscale\n");
+		hisifd->grayscale_enabled = 0;
+		return snprintf(buf, PAGE_SIZE, "%d\n", hisifd->grayscale_enabled);
+	}
+
+	down(&hisifd->blank_sem);
+	hisifb_read_grayscale_from_nv(hisifd);
+	up(&hisifd->blank_sem);
+
+	return snprintf(buf, PAGE_SIZE, "%d\n", hisifd->grayscale_enabled);
+}
+
+static ssize_t hisifb_set_grayscale_mode(struct device*dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	u8 cmd = 0;
+	struct fb_info *fbi = NULL;
+	struct hisi_fb_data_type *hisifd = NULL;
+	//struct hisi_fb_panel_data *pdata = NULL;
+
+	BUG_ON(dev == NULL);
+	fbi = dev_get_drvdata(dev);
+	BUG_ON(fbi == NULL);
+	hisifd = (struct hisi_fb_data_type *)fbi->par;
+	BUG_ON(hisifd == NULL);
+
+	if (!sscanf(buf, "%d", &cmd)) {
+		HISI_FB_INFO("bad command(%d)\n", cmd);
+		return count;
+	}
+
+	if (!hisifd->panel_info.grayscale_support) {
+		HISI_FB_ERR("not support grayscale\n");
+		hisifd->grayscale_enabled = 0;
+		return count;
+	}
+
+	down(&hisifd->blank_sem);
+
+	if (!cmd)
+		hisifd->grayscale_enabled = 0;
+	else
+		hisifd->grayscale_enabled = 1;
+
+	hisifb_write_grayscale_to_nv(hisifd);
+	HISI_FB_INFO("grayscale is %d\n", hisifd->grayscale_enabled);
+
+	up(&hisifd->blank_sem);
+
+	return count;
+}
+
+static ssize_t hisifb_rs_panel_powerdown(struct device*dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	u8 cmd = 0;
+	struct fb_info *fbi = NULL;
+	struct hisi_fb_data_type *hisifd = NULL;
+	struct hisi_fb_panel_data *pdata = NULL;
+
+	BUG_ON(dev == NULL);
+	fbi = dev_get_drvdata(dev);
+	BUG_ON(fbi == NULL);
+	hisifd = (struct hisi_fb_data_type *)fbi->par;
+	BUG_ON(hisifd == NULL);
+
+	if (!hisifd->panel_power_on) {
+		HISI_FB_ERR("fb%d, panel power off!\n", hisifd->index);
+		return count;
+	}
+
+	if (!sscanf(buf, "%d", &cmd)) {
+		HISI_FB_ERR("bad command(%d)\n", cmd);
+		return count;
+	}
+
+	if (cmd)
+		hisifd->powerdown_enable = true;
+	else
+		hisifd->powerdown_enable = false;
+
+	return count;
 }
 
 /*lint -e665*/
@@ -1468,6 +1938,8 @@ static DEVICE_ATTR(lcd_color_temperature, S_IRUGO|S_IWUSR, hisifb_lcd_color_temp
 static DEVICE_ATTR(led_rg_lcd_color_temperature, S_IRUGO|S_IWUSR, hisifb_led_rg_lcd_color_temperature_show, hisifb_led_rg_lcd_color_temperature_store);
 static DEVICE_ATTR(lcd_comform_mode, S_IRUGO|S_IWUSR, hisifb_lcd_comform_mode_show, hisifb_lcd_comform_mode_store);
 static DEVICE_ATTR(lcd_starlight_mode, S_IRUGO|S_IWUSR, hisifb_lcd_starlight_mode_show, hisifb_lcd_starlight_mode_store);
+static DEVICE_ATTR(lcd_ic_color_enhancement_mode, S_IRUGO|S_IWUSR, hisifb_lcd_ic_color_enhancement_mode_show, hisifb_lcd_ic_color_enhancement_mode_store);
+static DEVICE_ATTR(lcd_acm_state, S_IRUGO|S_IWUSR, hisifb_lcd_acm_state_show, hisifb_lcd_acm_state_store);
 static DEVICE_ATTR(lcd_voltage_enable, S_IWUSR, NULL, hisifb_lcd_voltage_enable_store);
 static DEVICE_ATTR(sbl_ctrl, S_IRUGO|S_IWUSR, hisifb_sbl_ctrl_show, hisifb_sbl_ctrl_store);
 static DEVICE_ATTR(lcd_bist_check, S_IRUGO, hisifb_lcd_bist_check, NULL);
@@ -1476,7 +1948,11 @@ static DEVICE_ATTR(lcd_region_limit, S_IRUGO|S_IWUSR, hisifb_lcd_region_limit_sh
 static DEVICE_ATTR(amoled_pcd_errflag_check, 0644, hisifb_amoled_pcd_errflag_check, NULL);
 static DEVICE_ATTR(lcd_status, S_IRUGO, lcd_status_check_show, NULL);
 static DEVICE_ATTR(amoled_acl, S_IRUGO|S_IWUSR, hisifb_amoled_acl_show, hisifb_amoled_acl_store);
-
+static DEVICE_ATTR(amoled_hbm, S_IRUGO|S_IWUSR, hisifb_amoled_hbm_show, hisifb_amoled_hbm_store);
+static DEVICE_ATTR(lcd_test_config, S_IRUGO|S_IWUSR, hisifb_lcd_test_config_show, hisifb_lcd_test_config_store);
+static DEVICE_ATTR(grayscale_mode, S_IRUGO|S_IWUSR, hisifb_get_grayscale_mode, hisifb_set_grayscale_mode);
+static DEVICE_ATTR(rs_panel_powerdown, S_IWUSR, NULL, hisifb_rs_panel_powerdown);
+static DEVICE_ATTR(lcd_filter, S_IRUGO|S_IWUSR, hisifb_lcd_filter_show, NULL);
 /*lint +e665*/
 
 void hisifb_sysfs_attrs_add(struct hisi_fb_data_type *hisifd)
@@ -1498,6 +1974,8 @@ void hisifb_sysfs_attrs_add(struct hisi_fb_data_type *hisifd)
 		hisifd->sysfs_attrs_append_fnc(hisifd, &dev_attr_led_rg_lcd_color_temperature.attr);
 		hisifd->sysfs_attrs_append_fnc(hisifd, &dev_attr_lcd_comform_mode.attr);
 		hisifd->sysfs_attrs_append_fnc(hisifd, &dev_attr_lcd_starlight_mode.attr);
+		hisifd->sysfs_attrs_append_fnc(hisifd, &dev_attr_lcd_ic_color_enhancement_mode.attr);
+		hisifd->sysfs_attrs_append_fnc(hisifd, &dev_attr_lcd_acm_state.attr);
 		hisifd->sysfs_attrs_append_fnc(hisifd, &dev_attr_lcd_voltage_enable.attr);
 		hisifd->sysfs_attrs_append_fnc(hisifd, &dev_attr_sbl_ctrl.attr);
 		hisifd->sysfs_attrs_append_fnc(hisifd, &dev_attr_lcd_bist_check.attr);
@@ -1506,6 +1984,11 @@ void hisifb_sysfs_attrs_add(struct hisi_fb_data_type *hisifd)
 		hisifd->sysfs_attrs_append_fnc(hisifd, &dev_attr_amoled_pcd_errflag_check.attr);
 		hisifd->sysfs_attrs_append_fnc(hisifd, &dev_attr_lcd_status.attr);
 		hisifd->sysfs_attrs_append_fnc(hisifd, &dev_attr_amoled_acl.attr);
+		hisifd->sysfs_attrs_append_fnc(hisifd, &dev_attr_lcd_filter.attr);
+		hisifd->sysfs_attrs_append_fnc(hisifd, &dev_attr_amoled_hbm.attr);
+		hisifd->sysfs_attrs_append_fnc(hisifd, &dev_attr_lcd_test_config.attr);
+		hisifd->sysfs_attrs_append_fnc(hisifd, &dev_attr_grayscale_mode.attr);
+		hisifd->sysfs_attrs_append_fnc(hisifd, &dev_attr_rs_panel_powerdown.attr);
     }
 
 	HISI_FB_DEBUG("fb%d, -.\n", hisifd->index);

@@ -33,7 +33,7 @@
 			compatible = "hisilicon,hi1101-power";
 			wifi_sdio_rw = "SDIO_RW.bin";
 			hisi_cfg_ini_file = "/system/etc/hisi_cfg.ini";
-			rssi_fix = <0>;
+			rssi_fix = "0";
 	};
 
 	hi1101-ps {

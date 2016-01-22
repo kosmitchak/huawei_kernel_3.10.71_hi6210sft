@@ -211,6 +211,7 @@ struct cyttsp5_core_platform_data {
     int dtz_x1;
     int dtz_y1;
     struct cyttsp5_wakeup_keys *wakeup_keys;
+    unsigned int support_sec_upgrd_firmware;
 };
 
 struct touch_framework {

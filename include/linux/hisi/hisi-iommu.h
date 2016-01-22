@@ -10,7 +10,7 @@
  * hisi iommu domain interface
  */
 size_t hisi_iommu_iova_size(void);
-size_t hisi_iommu_iova_available(void);
+size_t hisi_iommu_iova_available(int flag);
 void hisi_iommu_free_iova(unsigned long iova, size_t size);
 unsigned long hisi_iommu_alloc_iova(size_t size, unsigned long align);
 int hisi_iommu_map_range(unsigned long iova_start, struct scatterlist *sgl,
@@ -48,12 +48,12 @@ static inline phys_addr_t hisi_iommu_domain_iova_to_phys(unsigned long iova)
 {
 	return 0;
 }
-unsigned int hisi_iommu_page_size (void)
+static inline unsigned int hisi_iommu_page_size (void)
 {
 	return SZ_4K;
 }
 
-bool hisi_iommu_off_on(void)
+static inline bool hisi_iommu_off_on(void)
 {
 	return false;
 }

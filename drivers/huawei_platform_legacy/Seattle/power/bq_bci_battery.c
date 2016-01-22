@@ -67,7 +67,13 @@ static struct dsm_dev dsm_battery = {
     .fops = NULL,
     .buff_size = 1024,
 };
+static struct dsm_dev dsm_charge_monitor = {
+    .name = "dsm_charge_monitor",
+    .fops = NULL,
+    .buff_size = 1024,
+};
 static struct dsm_client *battery_dclient = NULL;
+static struct dsm_client *charge_monitor_dclient = NULL;
 
 struct dsm_client *get_battery_dclient(void)
 {
@@ -875,7 +881,11 @@ static int bq_bci_battery_get_property(struct power_supply *psy,
         val->intval = di->bat_current;
         break;
     case POWER_SUPPLY_PROP_TEMP:
+#ifdef CONFIG_HLTHERM_RUNTEST
+        val->intval = 25 * 10;
+#else
         val->intval = di->bat_temperature * 10;
+#endif
         break;
     case POWER_SUPPLY_PROP_PRESENT:
     case POWER_SUPPLY_PROP_ONLINE:
@@ -1129,6 +1139,9 @@ static int bq_bci_battery_probe(struct platform_device *pdev)
 
     if (!battery_dclient) {
         battery_dclient = dsm_register_client(&dsm_battery);
+    }
+    if (!charge_monitor_dclient) {
+        charge_monitor_dclient = dsm_register_client(&dsm_charge_monitor);
     }
 
     return 0;

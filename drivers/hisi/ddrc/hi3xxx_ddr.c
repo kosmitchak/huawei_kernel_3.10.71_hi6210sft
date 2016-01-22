@@ -59,53 +59,6 @@ struct hi3635_ddr_dev {
 /*lint +e750*/
 /*line +emacro(750,*)*/
 
-#define REG_SCPWRSTAT     (0xFFF0A0D8)  //BIT0  audiopwrstat
-#define REG_PERRSTSTAT0   (0xFFF35068)  //BIT29 ip_rst_aspbus2bus
-#define REG_ASP_CFG       (0xE804E000)
-#define ASP_REG_LEN       0X120
-#define REG_ASP_HDMI      (0xE804E400)
-#define ASP_HDMI_REG_LEN  0X70
-
-void * scpwrstat_addr      = NULL;
-void * perrststat0_addr    = NULL;
-char * asp_reg_addr        = NULL;
-char * asp_hdmi_reg_addr   = NULL;
-
-void dump_AspPowerState(void)
-{
-	u32     audiopwrstat      = 0;
-	u32     ip_rst_aspbus2bus = 0;
-	u32     hifi_runstall     = 1;
-	u32     asp_hdmi_power    = 0;
-	int     i;
-
-	if (scpwrstat_addr) {
-		audiopwrstat       = readl((void __iomem *)scpwrstat_addr);
-	}
-	if (perrststat0_addr) {
-		ip_rst_aspbus2bus  = readl((void __iomem *)perrststat0_addr);
-	}
-
-	printk("SCPWRSTAT      is 0x%x, (0: power off 1: poweron)\n", audiopwrstat);
-	printk("PERRSTSTAT0    is 0x%x, ip_rst_aspbus2bus is %d\n", ip_rst_aspbus2bus, ((ip_rst_aspbus2bus >> 29) & 0x1));
-
-	if ((audiopwrstat & 0x1) && asp_reg_addr) {
-		hifi_runstall  = readl((void __iomem *)(asp_reg_addr + 0x44));
-		printk("ASP is poweron, hifi runstall is:%d, now dump asp reg:\n", hifi_runstall);
-		for (i = 0; i < (ASP_REG_LEN/4); i+=4) {
-			printk("%08x: %08x %08x %08x %08x\n", (REG_ASP_CFG + i*4), *((u32*)asp_reg_addr + i), *((u32*)asp_reg_addr + i + 1), *((u32*)asp_reg_addr + i + 2), *((u32*)asp_reg_addr + i + 3));
-		}
-
-		asp_hdmi_power = readl((void __iomem *)(asp_reg_addr + 0x18));
-		if ((asp_hdmi_power & (1 << 21)) && asp_hdmi_reg_addr) {
-			printk("ASP hdmi is poweron, then dump asp_hdmi reg:\n");
-			for (i = 0; i < (ASP_HDMI_REG_LEN/4); i+=4) {
-				printk("%08x: %08x %08x %08x %08x\n", (REG_ASP_HDMI + i*4), *((u32*)asp_hdmi_reg_addr + i), *((u32*)asp_hdmi_reg_addr + i + 1), *((u32*)asp_hdmi_reg_addr + i + 2), *((u32*)asp_hdmi_reg_addr + i + 3));
-			}
-		}
-	}
-}
-
 void parse_MasterID(u32 cmd, int port)
 {
 	u32 mid = 0;
@@ -221,7 +174,6 @@ void parse_MasterID(u32 cmd, int port)
 	case 0x1d:
 		printk("MasterID is 0x%x\n", mid);
 		printk("Master is AUDIO_SYBSYS\n");
-		dump_AspPowerState();
 		break;
 	default:
 		printk("MasterID is 0x%x\n", mid);
@@ -361,51 +313,8 @@ static int hs_ddr_test_probe(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
-	scpwrstat_addr = ioremap(REG_SCPWRSTAT, 4);
-	if (NULL == scpwrstat_addr) {
-		printk("ioremap 0x%x error\n", REG_SCPWRSTAT);
-		ret = -ENOMEM;
-		goto err;
-	}
-	perrststat0_addr = ioremap(REG_PERRSTSTAT0, 4);
-	if (NULL == perrststat0_addr) {
-		printk("ioremap 0x%x error\n", REG_PERRSTSTAT0);
-		ret = -ENOMEM;
-		goto err;
-	}
-	asp_reg_addr = (char *)ioremap(REG_ASP_CFG, ASP_REG_LEN);
-	if (NULL == asp_reg_addr) {
-		ret = -ENOMEM;
-		goto err;
-	}
-	asp_hdmi_reg_addr = (char *)ioremap(REG_ASP_HDMI, ASP_HDMI_REG_LEN);
-	if (NULL == asp_hdmi_reg_addr) {
-		printk("ioremap 0x%x error\n", REG_ASP_HDMI);
-		ret = -ENOMEM;
-		goto err;
-	}
 
 	dump_work(d);
-
-	return ret;
-
-err:
-	if(scpwrstat_addr) {
-		iounmap(scpwrstat_addr);
-		scpwrstat_addr = NULL;
-	}
-	if (perrststat0_addr) {
-		iounmap(perrststat0_addr);
-		perrststat0_addr = NULL;
-	}
-	if (asp_reg_addr) {
-		iounmap((void *)asp_reg_addr);
-		asp_reg_addr = NULL;
-	}
-	if (asp_hdmi_reg_addr) {
-		iounmap((void *)asp_hdmi_reg_addr);
-		asp_hdmi_reg_addr = NULL;
-	}
 
 	return ret;
 }
@@ -423,19 +332,6 @@ static int hs_ddr_test_remove(struct platform_device *pdev)
 	clk_disable_unprepare(d->clk);
 	devm_clk_put(&pdev->dev, d->clk);
 	d->clk = NULL;
-
-	if(scpwrstat_addr) {
-		iounmap(scpwrstat_addr);
-	}
-	if (perrststat0_addr) {
-		iounmap(perrststat0_addr);
-	}
-	if (asp_reg_addr) {
-		iounmap((void *)asp_reg_addr);
-	}
-	if (asp_hdmi_reg_addr) {
-		iounmap((void *)asp_hdmi_reg_addr);
-	}
 
 	return 0;
 }

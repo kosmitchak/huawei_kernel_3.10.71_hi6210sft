@@ -21,7 +21,7 @@ static struct snd_soc_dai_link hi3630_hi6402_dai_link[] = {
 		.stream_name	= "hi3630_hi6402_pb_normal",
 		/* codec(hi6402) device name ,see in hi6402.c */
 		.codec_name	= "hi6402-codec",
-		/* cpu(k3v3:asp) dai name(device name), see in hi3630-pcm.c */
+		/* cpu(k3v3:asp) dai name(device name), see in hi3630-sio.c */
 		.cpu_dai_name	= "sio-audio",
 		/* codec dai name, see in struct snd_soc_dai_driver in hi6402.c */
 		.codec_dai_name	= "hi6402-audio-dai",

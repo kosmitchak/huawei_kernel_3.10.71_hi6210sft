@@ -37,6 +37,7 @@
 #define MAX_IMAGE_NAME_LEN 256
 #define MAX_FIRMWARE_ID_LEN 10
 #define RMI_PRODUCT_ID_LENGTH    10
+#define RMI_PROJECT_ID_LENGTH    10
 
 #define IMAGE_HEADER_VERSION_05 0x05
 #define IMAGE_HEADER_VERSION_06 0x06
@@ -550,6 +551,7 @@ extern struct ts_data g_ts_data;
 #endif
 
 static struct synaptics_rmi4_fwu_handle *fwu;
+unsigned char s3718_config_id[4];
 
 DECLARE_COMPLETION(fwu_remove_complete);
 
@@ -646,7 +648,6 @@ static int synaptics_get_f34_addr(struct synaptics_rmi4_data *rmi4_data, unsigne
 	return -EINVAL;
 }
 
-unsigned char s3718_config_id[4];
 /* Use to record configid */
 int synaptics_fw_s3718_configid(struct synaptics_rmi4_data *rmi4_data)
 {
@@ -1965,16 +1966,17 @@ static enum flash_area fwu_go_nogo(void)
 	/* Get device config ID */
 	retval = fwu->fn_ptr->read(rmi4_data,fwu->f34_fd.ctrl_base_addr,config_id,sizeof(config_id));
 	if (retval < 0) {
-		TS_LOG_ERR("%s: Failed to read device config ID\n",__func__);
+		TS_LOG_ERR("%s: Failed to read device config ID, ctrl_base_addr: 0x%02x\n",__func__, fwu->f34_fd.ctrl_base_addr);
 		flash_area = NONE;
 		goto exit;
 	}
 	device_config_id = be_to_uint(config_id);
-	TS_LOG_INFO("Device config ID = 0x%02x 0x%02x 0x%02x 0x%02x\n",
+	TS_LOG_INFO("Device config ID = 0x%02x 0x%02x 0x%02x 0x%02x, ctrl_base_addr: 0x%02x\n",
 			config_id[0],
 			config_id[1],
 			config_id[2],
-			config_id[3]);
+			config_id[3],
+			fwu->f34_fd.ctrl_base_addr);
 
 	/* Get image config ID */
 	image_config_id = be_to_uint(fwu->img.ui_config.data);
@@ -3245,6 +3247,133 @@ static int file_open_firmware(u8 **buf)
 	return 0;
 }
 
+static int read_project_id(char *project_id)
+{
+	int retval = -EINVAL;
+	int i = 0;
+	unsigned short block_count;
+	struct synaptics_rmi4_data *rmi4_data = fwu->rmi4_data;
+
+	fwu->config_area = PM_CONFIG_AREA;
+
+	if (!fwu->flash_properties.has_pm_config) {
+		goto exit;
+	}
+
+	block_count = fwu->blkcount.pm_config;
+	if (block_count == 0) {
+		goto exit;
+	}
+
+	retval = fwu_enter_flash_prog();
+	if (retval < 0){
+		goto exit;
+	}
+
+	fwu->config_size = fwu->block_size * block_count;
+	kfree(fwu->read_config_buf);
+	fwu->read_config_buf = kzalloc(fwu->config_size, GFP_KERNEL);
+	if (!fwu->read_config_buf) {
+		fwu->read_config_buf_size = 0;
+		retval = -ENOMEM;
+		goto reset;
+	}
+	fwu->read_config_buf_size = fwu->config_size;
+
+	/* serial partition data is stored at fwu->read_config_buf pointer, data length = fwu->config_size, */
+	retval = fwu_read_f34_blocks(block_count, CMD_READ_CONFIG);
+
+	for(i = 0; i < RMI_PROJECT_ID_LENGTH && i < fwu->config_size; i++){
+		project_id[i] = fwu->read_config_buf[i];
+	}
+
+reset:
+	/*once rmi4_data -> reset_device()  is called, device will be back to UI mode */
+	rmi4_data->reset_device(rmi4_data);
+	fwu_scan_pdt();
+
+exit:
+	project_id[i] = 0;
+	TS_LOG_INFO("%s: %s\n",__func__, project_id);
+
+	return retval;
+}
+
+static bool begin_with(char *main_str, char *part_str)
+{
+	while(*part_str){
+		if(*main_str != *part_str){
+			return false;
+		}
+		main_str++;
+		part_str++;
+	}
+	return true;
+}
+
+static bool is_new_carrera_module(char *file_name)
+{
+	int retval = -EINVAL;
+	char carrrera[] = "carrera";
+
+	struct synaptics_rmi4_data *rmi4_data = fwu->rmi4_data;
+
+	if (!begin_with(file_name, carrrera)){
+		TS_LOG_ERR("%s: file_name: %s does not contin %s\n",__func__, file_name, carrrera);
+		goto exit;
+	}
+
+	/* Refresh configid */
+	retval = synaptics_fw_s3718_configid(rmi4_data);
+	if (retval) {
+		TS_LOG_ERR("%s: Failed to read device config ID\n",__func__);
+		goto exit;
+	}
+
+	TS_LOG_INFO("%s: config_id: 0x%02x, 0x%02x, 0x%02x, 0x%02x\n",__func__, s3718_config_id[0], s3718_config_id[1], s3718_config_id[2], s3718_config_id[3]);
+	if (s3718_config_id[0] != 0 ||s3718_config_id[1] !=0){
+		return true;
+	}
+
+exit:
+	return false;
+}
+
+static int get_carrera_project_id_num(void)
+{
+	int num = 0;
+	char carr[] = "CARR1709";
+	char project_id[RMI_PROJECT_ID_LENGTH+1] = "";
+
+	if (0 != read_project_id(project_id)){
+		num = 0;
+	}else if (begin_with(project_id, carr)){
+		num = project_id[strlen(carr)] - '0';
+	}
+
+	if (num < 0 || num > 9){
+		num = 0;
+	}
+	TS_LOG_INFO("%s: %d\n",__func__, num);
+	return num;
+}
+
+void synaptics_format_fw_file_name(char* firmware_name, int firmware_name_len, char *file_name, char *module_name)
+{
+	int num = get_carrera_project_id_num();
+
+	if (num == 0 && is_new_carrera_module(file_name)){
+		num = 1;
+	}
+
+	if (num == 0){
+		snprintf(firmware_name, firmware_name_len, "ts/%s_%s.img", file_name, module_name);
+	}else{
+		snprintf(firmware_name, firmware_name_len, "ts/%s_%s_%d.img", file_name, module_name, num);
+	}
+}
+
+
 /*    get the firmware data form boot.img
  */
 int synaptics_get_fw_data_s3718_boot(char *file_name, struct touch_settings *synaptics_sett_param_regs)
@@ -3254,7 +3383,7 @@ int synaptics_get_fw_data_s3718_boot(char *file_name, struct touch_settings *syn
 	char firmware_name[RMI_PRODUCT_ID_LENGTH + file_name_size +1];
 	struct device *dev = &fwu->rmi4_data->synaptics_dev->dev;
 
-	snprintf(firmware_name, sizeof(firmware_name), "ts/%s_%s.img", file_name,synaptics_sett_param_regs->module_name);
+	synaptics_format_fw_file_name(firmware_name, sizeof(firmware_name), file_name, synaptics_sett_param_regs->module_name);
 	firmware_name[RMI_PRODUCT_ID_LENGTH + file_name_size] = 0;
 
 	TS_LOG_INFO("file_name size = %ld, Requesting firmware image %s\n",

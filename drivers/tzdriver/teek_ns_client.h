@@ -84,6 +84,7 @@ typedef struct tag_TC_NS_DEV_File{
     uint8_t pkg_name[MAX_PACKAGE_NAME_LEN];
     uint32_t pub_key_len;
     uint8_t pub_key[MAX_PUBKEY_LEN];
+    int load_app_flag;
 } TC_NS_DEV_File;
 
 typedef union

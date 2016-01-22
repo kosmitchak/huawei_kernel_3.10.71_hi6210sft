@@ -54,9 +54,6 @@
 #if defined (CONFIG_HUAWEI_DSM)
 #include <huawei_platform/dsm/dsm_pub.h>
 #endif
-#include <huawei_platform/log/log_exception.h>
-#include <linux/timer.h>
-#include <linux/rtc.h>
 
 #ifdef _DRV_LLT_
 #define STATIC
@@ -2646,53 +2643,7 @@ STATIC void hi6521_start_ac_charger(struct hi6521_device_info *di)
 
     return;
 }
-/****************************************************************************
-  Function:     get_time_tick
-  Description:  get the current time.
-  Input:        timestamp_buf
-  Output:       NA
-  Return:       NA.
-***************************************************************************/
-static void get_time_tick(char* timestamp_buf,unsigned int len)
-{
-   struct timeval tv;
-   struct rtc_time tm;
 
-   if(NULL == timestamp_buf) {
-       return;
-   }
-   memset(&tv, 0, sizeof(struct timeval));
-   memset(&tm, 0, sizeof(struct rtc_time));
-   do_gettimeofday(&tv);
-   tv.tv_sec -= sys_tz.tz_minuteswest * 60;
-   rtc_time_to_tm(tv.tv_sec, &tm);
-   snprintf(timestamp_buf,len, "%04d%02d%02d%02d%02d%02d",
-            tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
-}
-/****************************************************************************
-  Function:     record_nff_for_otg_setup
-  Description:  record the charge type which is otg  in nff log
-                just record one times otg setup to nff log for this boot
-  Input:        NA
-  Output:       NA
-  Return:       NA.
-***************************************************************************/
-static void record_nff_for_otg_setup(void)
-{
-    int ret = 0;
-    static int nff_record_time = 0;
-    char cmd[40]={0};
-    char time_buf[16]={0};
-    if(nff_record_time == 0)
-    {
-     get_time_tick(time_buf,16);
-     snprintf(cmd, 40, "%s %s\n",time_buf,"chg type:otg-mode ");
-     ret=log_to_exception("messagestorage",cmd);
-     nff_record_time=1;
-    }
-
-
-  }
 STATIC void hi6521_start_usb_otg(struct hi6521_device_info *di)
 {
     hwlog_info("%s,---->USB_EVENT_OTG_ID<----\n", __func__);
@@ -2707,7 +2658,6 @@ STATIC void hi6521_start_usb_otg(struct hi6521_device_info *di)
     chg_en = CHG_POWER_DIS;
 	hi6521_config_charger_enable_val(di,chg_en);
     hi6521_config_otg_enable(di);
-    record_nff_for_otg_setup();
 
     schedule_delayed_work(&di->hi6521_usb_otg_work, msecs_to_jiffies(0));
     return;

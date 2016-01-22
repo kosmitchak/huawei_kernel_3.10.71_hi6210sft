@@ -153,7 +153,6 @@ KBASE_EXPORT_TEST_API(kbase_mem_allocator_term)
 mali_error kbase_mem_allocator_alloc(struct kbase_mem_allocator *allocator, size_t nr_pages, phys_addr_t *pages)
 {
 	struct page *p;
-	void *mp;
 	int i;
 	int num_from_free_list;
 	struct list_head from_free_list = LIST_HEAD_INIT(from_free_list);
@@ -187,9 +186,9 @@ mali_error kbase_mem_allocator_alloc(struct kbase_mem_allocator *allocator, size
 
 #if defined(CONFIG_ARM) && !defined(CONFIG_HAVE_DMA_ATTRS) && LINUX_VERSION_CODE < KERNEL_VERSION(3, 5, 0)
 	/* DMA cache sync fails for HIGHMEM before 3.5 on ARM */
-	gfp = GFP_USER;
+	gfp = GFP_USER | __GFP_ZERO;
 #else
-	gfp = GFP_HIGHUSER;
+	gfp = GFP_HIGHUSER | __GFP_ZERO;
 #endif
 
 	if (current->flags & PF_KTHREAD) {
@@ -204,13 +203,6 @@ mali_error kbase_mem_allocator_alloc(struct kbase_mem_allocator *allocator, size
 		p = alloc_page(gfp);
 		if (NULL == p)
 			goto err_out_roll_back;
-		mp = kmap(p);
-		if (NULL == mp) {
-			__free_page(p);
-			goto err_out_roll_back;
-		}
-		memset(mp, 0x00, PAGE_SIZE); /* instead of __GFP_ZERO, so we can do cache maintenance */
-		kunmap(p);
 
 		dma_addr = dma_map_page(allocator->kbdev->dev, p, 0, PAGE_SIZE,
 				        DMA_BIDIRECTIONAL);

@@ -101,3 +101,7 @@ endif
 ifeq ($(CONFIG_HUAWEI_CAMERA_USE_IMX230_PLK),y)
 	obj-y += imx230_plk.o
 endif
+
+ifeq ($(CONFIG_HUAWEI_CAMERA_USE_CAM_NUMBER),y)
+	obj-y += cam_number.o
+endif

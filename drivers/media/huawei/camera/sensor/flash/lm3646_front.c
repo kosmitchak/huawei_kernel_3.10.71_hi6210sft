@@ -32,7 +32,6 @@
 #define MODE_FLASH			0x03
 #define STROBE_DISABLE			0x00
 #define TORCH_DISABLE			0x00
-#define TX_ENABLE				0x08
 #define INDUCTOR_CURRENT_LIMMIT 0xf0
 #define FLASH_TIMEOUT_TIME        0x47    //400ms
 

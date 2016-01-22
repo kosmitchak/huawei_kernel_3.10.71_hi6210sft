@@ -37,14 +37,16 @@
 			no-map;
 		};
 		kerneldump_reserved: kerneldump@60000000 {
-			reg = <0x60000000 0x15000000>;
+			reg = <0x60000000 0x1F400000>;
 			status = "no";
 		};
+
         srecorder_reserved: srecorder@39200000 {
             reg = <0x39200000 0x00200000>;
             status = "ok";
             no-map;
         };
+
 	};
 
 	ramoops {

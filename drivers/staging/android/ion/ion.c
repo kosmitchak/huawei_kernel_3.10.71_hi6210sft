@@ -14,7 +14,7 @@
  * GNU General Public License for more details.
  *
  */
-#define pr_fmt(fmt) "ION ION.C   " fmt
+#define pr_fmt(fmt) "[ION] " fmt
 
 #include <linux/device.h>
 #include <linux/file.h>
@@ -46,8 +46,11 @@
 #include <linux/hisi/hisi-iommu.h>
 #include <linux/cpu_pm.h>
 
-#define ION_FLUSH_ALL_CPUS_CACHES_HI6XXX   (256<<10)  /*256k*/
-#define ION_FLUSH_ALL_CPUS_CACHES_HI3XXX (0x380000)
+#ifdef CONFIG_ARCH_HI6XXX
+#define HISI_ION_FLUSH_ALL_CPUS_CACHES 	(256<<10)  /*256k*/
+#else
+#define HISI_ION_FLUSH_ALL_CPUS_CACHES 	(0x800000) /*8MB*/
+#endif
 /**
  * struct ion_device - the metadata of the ion device node
  * @dev:		the actual misc device
@@ -193,8 +196,8 @@ static struct ion_buffer *ion_buffer_create(struct ion_heap *heap,
 	int i, ret;
 
 	buffer = kzalloc(sizeof(struct ion_buffer), GFP_KERNEL);
-	if (!buffer){
-	    pr_err("in ion_buffer_create kzalloc is null\n");
+	if (!buffer) {
+		pr_err("%s: kzalloc ion_buffer failed!\n", __func__);
 		return ERR_PTR(-ENOMEM);
 	}
 	buffer->heap = heap;
@@ -273,18 +276,32 @@ static struct ion_buffer *ion_buffer_create(struct ion_heap *heap,
 	for_each_sg(buffer->sg_table->sgl, sg, buffer->sg_table->nents, i){
 		sg_dma_address(sg) = sg_phys(sg);
                 sg_dma_len(sg) = sg->length;
-        }
+	}
 
-	/*if has ION_FLAG_NOT_ZERO_BUFFER means do not want to zero buffer*/
 #ifdef CONFIG_ARCH_HI3XXX
-	if ((!(flags & ION_FLAG_NOT_ZERO_BUFFER)) && heap->ops->buffer_zero)
+	/*if has ION_FLAG_NOT_ZERO_BUFFER means do not want to zero buffer*/
+	if ((!(flags & ION_FLAG_NOT_ZERO_BUFFER)) && heap->ops->buffer_zero) {
 		heap->ops->buffer_zero(buffer);
 
-	/* sync here for all kinds of buffers */
-	dma_sync_sg_for_device(NULL, table->sgl, table->nents,
+		if(buffer->size >= HISI_ION_FLUSH_ALL_CPUS_CACHES) {
+			ion_flush_all_cpus_caches();
+		}
+		else {
+			dma_sync_sg_for_device(NULL, table->sgl, table->nents,
 					DMA_BIDIRECTIONAL);
-	dma_sync_sg_for_cpu(NULL, table->sgl, table->nents,
-						DMA_FROM_DEVICE);
+			dma_sync_sg_for_cpu(NULL, table->sgl, table->nents,
+					DMA_FROM_DEVICE);
+		}
+	}
+	else {
+		if(buffer->size >= HISI_ION_FLUSH_ALL_CPUS_CACHES) {
+			ion_flush_all_cpus_caches();
+		}
+		else {
+			dma_sync_sg_for_cpu(NULL, table->sgl, table->nents,
+					DMA_FROM_DEVICE);
+		}
+	}
 #endif
 	mutex_lock(&dev->buffer_lock);
 	ion_buffer_add(dev, buffer);
@@ -453,6 +470,7 @@ static struct ion_handle *ion_handle_lookup(struct ion_client *client,
 
 	while (n) {
 		struct ion_handle *entry = rb_entry(n, struct ion_handle, node);
+
 		if (buffer < entry->buffer)
 			n = n->rb_left;
 		else if (buffer > entry->buffer)
@@ -1295,6 +1313,7 @@ static void ion_dma_buf_release(struct dma_buf *dmabuf)
 static void *ion_dma_buf_kmap(struct dma_buf *dmabuf, unsigned long offset)
 {
 	struct ion_buffer *buffer = dmabuf->priv;
+
 	return buffer->vaddr + offset * PAGE_SIZE;
 }
 
@@ -1461,19 +1480,18 @@ end:
 }
 EXPORT_SYMBOL(ion_import_dma_buf);
 
-#ifdef CONFIG_ARCH_HI6XXX
-extern hi6xxx_ion_flush_cache_all();
+extern ion_flush_cache_all();
 
-static void ion_flush_all_cpus_caches(void)
+void ion_flush_all_cpus_caches(void)
 {
-	hi6xxx_ion_flush_cache_all();
+	ion_flush_cache_all();
 
 	return;
 }
-#endif
 
 int ion_sync_for_device(struct ion_client *client, int fd)
 {
+#define FLUSH_ALL_CPU_CACHE_BUF_SIZE (0x100000)
 	struct dma_buf *dmabuf;
 	struct ion_buffer *buffer;
 	size_t size;
@@ -1492,13 +1510,14 @@ int ion_sync_for_device(struct ion_client *client, int fd)
 		return -EINVAL;
 	}
 	buffer = dmabuf->priv;
+#if defined(CONFIG_ARCH_HI3630)
 
-#ifdef CONFIG_ARCH_HI6XXX
-	if(buffer->size > ION_FLUSH_ALL_CPUS_CACHES_HI6XXX){
+	size = buffer->cpudraw_sg_table ? buffer->cpu_buffer_size : buffer->size;
 
-		ion_flush_all_cpus_caches();	    
-	}
-	else{
+	/* if buffer size is larger than 3.5 M, flush cache all */
+	if (size >= FLUSH_ALL_CPU_CACHE_BUF_SIZE) {
+		hi3630_fc_allcpu_allcache();
+	} else {
 		/*if cpu draw buffer, only sync valid part*/
 		if (buffer->cpudraw_sg_table)
 			dma_sync_sg_for_device(NULL, buffer->cpudraw_sg_table->sgl,
@@ -1513,15 +1532,21 @@ int ion_sync_for_device(struct ion_client *client, int fd)
 		}
 
 	}
-#else
-	if (buffer->cpudraw_sg_table)
-		dma_sync_sg_for_device(NULL, buffer->cpudraw_sg_table->sgl,
-			       buffer->cpudraw_sg_table->nents, DMA_BIDIRECTIONAL);
-	else
-		dma_sync_sg_for_device(NULL, buffer->sg_table->sgl,
-				       buffer->sg_table->nents, DMA_BIDIRECTIONAL);
 
 #endif
+
+	if(buffer->size >= HISI_ION_FLUSH_ALL_CPUS_CACHES) {
+
+		ion_flush_all_cpus_caches();	    
+	}
+	else {
+		if (buffer->cpudraw_sg_table)
+			dma_sync_sg_for_device(NULL, buffer->cpudraw_sg_table->sgl,
+					buffer->cpudraw_sg_table->nents, DMA_BIDIRECTIONAL);
+		else
+			dma_sync_sg_for_device(NULL, buffer->sg_table->sgl,
+					buffer->sg_table->nents, DMA_BIDIRECTIONAL);
+	}
 
 	dma_buf_put(dmabuf);
 	return 0;
@@ -1560,12 +1585,17 @@ int ion_sync_for_cpu(struct ion_client *client, int fd)
 	}
 	buffer = dmabuf->priv;
 
-	if (buffer->cpudraw_sg_table) {
-		dma_sync_sg_for_cpu(NULL, buffer->cpudraw_sg_table->sgl,
-			       buffer->cpudraw_sg_table->nents, DMA_FROM_DEVICE);
-	} else {
-		dma_sync_sg_for_cpu(NULL, buffer->sg_table->sgl,
-				       buffer->sg_table->nents, DMA_FROM_DEVICE);
+	if(buffer->size >= HISI_ION_FLUSH_ALL_CPUS_CACHES) {
+		ion_flush_all_cpus_caches();
+	}
+	else {
+		if (buffer->cpudraw_sg_table) {
+			dma_sync_sg_for_cpu(NULL, buffer->cpudraw_sg_table->sgl,
+					buffer->cpudraw_sg_table->nents, DMA_FROM_DEVICE);
+		} else {
+			dma_sync_sg_for_cpu(NULL, buffer->sg_table->sgl,
+					buffer->sg_table->nents, DMA_FROM_DEVICE);
+		}
 	}
 
 	dma_buf_put(dmabuf);
@@ -1656,6 +1686,7 @@ static long ion_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	case ION_IOC_IMPORT:
 	{
 		struct ion_handle *handle;
+
 		handle = ion_import_dma_buf(client, data.fd.fd);
 		if (IS_ERR(handle)){
 			pr_err("handle is error %d\n",__LINE__);
@@ -1809,6 +1840,7 @@ static int ion_debug_heap_show(struct seq_file *s, void *unused)
 		struct ion_client *client = rb_entry(n, struct ion_client,
 						     node);
 		size_t size = ion_debug_heap_total(client, heap->id);
+
 		if (!size)
 			continue;
 		if (client->task) {
@@ -1915,6 +1947,10 @@ void ion_device_add_heap(struct ion_device *dev, struct ion_heap *heap)
 	    !heap->ops->unmap_dma)
 		pr_err("%s: can not add heap with invalid ops struct.\n",
 		       __func__);
+
+	heap->free_list_size = 0;
+	spin_lock_init(&heap->free_lock);
+
 
 	if (heap->flags & ION_HEAP_FLAG_DEFER_FREE)
 		ion_heap_init_deferred_free(heap);
@@ -2105,6 +2141,7 @@ void __init ion_reserve(struct ion_platform_data *data)
 
 		if (data->heaps[i].base == 0) {
 			phys_addr_t paddr;
+
 			paddr = memblock_alloc_base(data->heaps[i].size,
 						    data->heaps[i].align,
 						    MEMBLOCK_ALLOC_ANYWHERE);

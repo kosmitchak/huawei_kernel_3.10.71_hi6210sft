@@ -25,7 +25,9 @@
 
 					SMPL@a1 {
 					compatible = "hisilicon,hi6552-pmic-mntn-smpl";
+
 					hisilicon,smpl-ctrl-en = <0x1>;
+
 					hisilicon,smpl-ctrl-time = <0x2>;   /*0->0.5s  1->1.0s  2->1.5s  3->2.0s*/
 					hisilicon,smpl-ctrl-en-reg = <0xF8 0x0 0x1>;
 					hisilicon,smpl-ctrl-time-reg = <0xF8 0x1 0x2>;

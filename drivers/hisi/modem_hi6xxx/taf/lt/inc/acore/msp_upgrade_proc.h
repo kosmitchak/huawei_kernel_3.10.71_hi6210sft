@@ -12,7 +12,6 @@
 //    作    者 : 岑雪青/c00172979
 //    修改内容 : 创建文件
 //
-
 #ifndef __AT_LTE_UPGRADE_PROC_H__
 #define __AT_LTE_UPGRADE_PROC_H__
 

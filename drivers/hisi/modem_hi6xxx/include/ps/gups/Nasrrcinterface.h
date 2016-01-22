@@ -3773,20 +3773,11 @@ enum PPP_DIAL_RATE_DISPLAY_ENUM
 
 typedef VOS_UINT32 PPP_DIAL_RATE_DISPLAY_ENUM_UINT32;
 
-/* Added by f62575 for V9R1 STK升级, 2013-6-26, begin */
-/*****************************************************************************
- 结构名    : RRMM_NACK_DATA_IND_STRU
- 结构说明  : 消息在底层发送失败指示消息的结构
-
-  1.日    期   : 2013年6月26日
-    作    者   : f62575
-*****************************************************************************/
 typedef struct
 {
     MSG_HEADER_STRU                     MsgHeader;
     NAS_MSG_STRU                        stNackMsg;
 }RRMM_NACK_DATA_IND_STRU;
-/* Added by f62575 for V9R1 STK升级, 2013-6-26, end */
 
 enum RRC_NAS_SESSION_TYPE_ENUM
 {

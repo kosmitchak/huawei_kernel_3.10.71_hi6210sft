@@ -1350,6 +1350,45 @@ static void synaptics_f54_free(void)
 	}
 }
 
+static void rotate_rawdata_abcd2adcb(void)
+{
+	int *rawdatabuf_temp = NULL;
+	int row_index, column_index;
+	int row_size = 0;
+	int column_size = 0;
+	int i = 0;
+
+	TS_LOG_INFO("\n");
+	rawdatabuf_temp = (int *)kzalloc(rawdata_size*sizeof(int), GFP_KERNEL);
+	if (!rawdatabuf_temp) {
+		TS_LOG_ERR("Failed to alloc buffer for rawdatabuf_temp\n");
+		return;
+	}
+
+	memcpy(rawdatabuf_temp, f54->rawdatabuf, rawdata_size*sizeof(int));
+	row_size = rawdatabuf_temp[0];
+	column_size = rawdatabuf_temp[1];
+	for (column_index = 0; column_index < row_size; column_index++) {
+		for (row_index = 0; row_index < column_size; row_index ++) {
+			f54->rawdatabuf[i+2] = rawdatabuf_temp[row_index*row_size+column_index+2];
+			i ++;
+		}
+	}
+
+	for (column_index = 0; column_index < row_size; column_index++) {
+		for (row_index = 0; row_index < column_size; row_index ++) {
+			f54->rawdatabuf[i+2] = rawdatabuf_temp[row_size*column_size+row_index*row_size+column_index+2];
+			i ++;
+		}
+	}
+
+	if (rawdatabuf_temp) {
+		kfree(rawdatabuf_temp);
+		rawdatabuf_temp = NULL;
+	}
+	return;
+}
+
 static void put_capacitance_data (int index)
 {
 	int i , j;
@@ -1426,7 +1465,6 @@ static void synaptics_change_report_rate(void)
 	return;
 }
 
-
 int synaptics_get_cap_data(struct ts_rawdata_info *info)
 {
 	int rc = NO_ERR;
@@ -1464,6 +1502,9 @@ int synaptics_get_cap_data(struct ts_rawdata_info *info)
 	if (rc < 0) {
 		TS_LOG_ERR("failed to resume glove/holster/palm or other status!\n");
 	}
+
+	if (f54->rmi4_data->synaptics_chip_data->rawdata_disp_format == 1)
+		rotate_rawdata_abcd2adcb();
 
 	memcpy(info->buff, f54->rawdatabuf, rawdata_size*sizeof(int));
 	memcpy(info->result, buf_f54test_result, strlen(buf_f54test_result));

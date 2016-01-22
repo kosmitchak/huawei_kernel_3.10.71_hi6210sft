@@ -75,6 +75,7 @@ static ulong lowmem_kill_count = 0;
 static ulong lowmem_free_mem = 0;
 
 static unsigned long lowmem_deathpending_timeout;
+
 #define lowmem_print(level, x...)			\
 	do {						\
 		if (lowmem_debug_level >= (level))	\

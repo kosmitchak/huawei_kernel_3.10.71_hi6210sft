@@ -97,6 +97,7 @@ struct cyttsp5_loader_data {
     int config_size;
     bool config_loading;
 #endif
+    bool is_firmware_broke;
 };
 
 struct cyttsp5_dev_id {
@@ -857,6 +858,9 @@ static char *generate_firmware_filename(struct device *dev)
         #if defined (CONFIG_HUAWEI_DSM)
         g_tp_dsm_info.constraints_UPDATE_status = FWU_GET_SYSINFO_FAIL;
         #endif
+        if(core_pdata->support_sec_upgrd_firmware) {
+            ld->is_firmware_broke = true;
+        }
         snprintf(filename, FILENAME_LEN_MAX, "ts/%s_%s_default.bin", product_name, chip_name);
         TS_LOG_INFO("%s: sysinfo is null, use default firmware: %s\n", __func__, filename);
     } else {
@@ -866,6 +870,9 @@ static char *generate_firmware_filename(struct device *dev)
             if(retval == 0 && hw_fw_info[index].panel_id == panel_id){
                 snprintf(filename, FILENAME_LEN_MAX, "%s", hw_fw_info[index].fw_name);
                 findfirmware = true;
+                if(core_pdata->support_sec_upgrd_firmware) {
+                    ld->is_firmware_broke = false;
+                }
                 break;
             }
         }
@@ -1519,6 +1526,12 @@ exit:
     mutex_lock(&cd->system_lock);
     cd->fw_upgrade_flag = FW_UPGRADE_NOT_RUNNING;
     mutex_unlock(&cd->system_lock);
+    if (core_pdata->support_sec_upgrd_firmware) {
+        TS_LOG_INFO("is_firmware_broke:[%d]\n",ld->is_firmware_broke);
+        if (ld->is_firmware_broke){
+            schedule_work(&ld->fw_and_config_upgrade);
+        }
+    }
 }
 
 #if CYTTSP5_FW_UPGRADE

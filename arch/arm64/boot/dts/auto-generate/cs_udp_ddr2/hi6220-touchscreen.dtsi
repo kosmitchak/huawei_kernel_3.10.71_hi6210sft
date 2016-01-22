@@ -31,7 +31,7 @@
 			vci_ctrl_gpio = <&gpio2 4 0>;
 			vddio_ctrl_gpio = <&gpio2 4 0>;
 			slave_address = <0x70>;
-			pinctrl-names = "default", "idle";	
+			pinctrl-names = "default", "idle";
 			pinctrl-0 = <&gpio084_pmx_func
 			&gpio084_cfg_func
 			&gpio008_cfg_func>;

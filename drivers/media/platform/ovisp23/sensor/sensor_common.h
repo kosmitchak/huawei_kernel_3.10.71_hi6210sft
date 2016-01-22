@@ -89,5 +89,7 @@ int hisi_sensor_i2c_read(struct hisi_sensor_ctrl_t *s_ctrl, void *data);
 int hisi_sensor_i2c_write(struct hisi_sensor_ctrl_t *s_ctrl, void *data);
 int hisi_sensor_i2c_read_seq(struct hisi_sensor_ctrl_t *s_ctrl, void *data);
 int hisi_sensor_i2c_write_seq(struct hisi_sensor_ctrl_t *s_ctrl, void *data);
+int hisi_sensor_apply_expo_gain(struct hisi_sensor_ctrl_t *s_ctrl, void *data);
+int hisi_sensor_suspend_eg_task(struct hisi_sensor_ctrl_t *s_ctrl, void *data);
 
 #endif /*_SENSOR_DRIVER_H_*/

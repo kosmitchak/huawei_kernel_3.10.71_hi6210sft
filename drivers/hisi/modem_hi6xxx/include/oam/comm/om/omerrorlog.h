@@ -385,7 +385,13 @@ typedef struct
     pFuncOMGetData                      pSendUlAtFunc;     /* 各组件注册 接收数据函数 */
 }OM_REGISTER_PROJECT_CTX_STRU;
 
-
+/*****************************************************************************
+ 结构名    : OM_ERRLOG_TRANS_MSG_STRU
+ 结构说明  : Error Log 消息勾包结构体
+ 1.日    期   : 2014年09月19日
+   作    者   : d00212987
+   修改内容   : 新建
+*****************************************************************************/
 typedef struct
 {
     VOS_UINT8           ucFuncType;

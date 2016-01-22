@@ -20,6 +20,10 @@
 #include <asm/types.h>
 #include <asm/io.h>
 
+#include <linux/time.h>
+#include <linux/timex.h>
+#include <linux/rtc.h>
+
 #ifdef PLATFORM_HI6XXX
 #include <linux/hisi/util.h>
 #endif
@@ -59,6 +63,27 @@ static struct hifi_dsp_dump_info s_dsp_dump_info[] = {
 	{DSP_PANIC,  DUMP_DSP_BIN, FILE_NAME_DUMP_DSP_OCRAM_BIN, UNCONFIRM_ADDR, HIFI_IMAGE_OCRAMBAK_SIZE},
 	{DSP_PANIC,  DUMP_DSP_BIN, FILE_NAME_DUMP_DSP_TCM_BIN,	 UNCONFIRM_ADDR, HIFI_IMAGE_TCMBAK_SIZE},
 };
+
+static void hifi_get_time_stamp(char *timestamp_buf, unsigned int len)
+{
+	struct timeval tv = {0};
+	struct rtc_time tm = {0};
+
+	BUG_ON(NULL == timestamp_buf);
+
+	memset(&tv, 0, sizeof(struct timeval));
+	memset(&tm, 0, sizeof(struct rtc_time));
+
+	do_gettimeofday(&tv);
+	tv.tv_sec -= sys_tz.tz_minuteswest * 60;
+	rtc_time_to_tm(tv.tv_sec, &tm);
+
+	snprintf(timestamp_buf, len, "%04d%02d%02d%02d%02d%02d",
+		tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
+		tm.tm_hour, tm.tm_min, tm.tm_sec);
+
+	return;
+}
 
 static int hifi_create_dir(char *path)
 {
@@ -143,6 +168,7 @@ static void hifi_dump_dsp(DUMP_DSP_INDEX index)
 	struct rtc_time cur_tm;
 	struct timespec now;
 
+	char  path_name[HIFI_DUMP_FILE_NAME_MAX_LEN] = {0};
 	char* file_name		= s_dsp_dump_info[index].file_name;
 	char* data_addr		= NULL;
 	unsigned int data_len = s_dsp_dump_info[index].data_len;
@@ -150,6 +176,13 @@ static void hifi_dump_dsp(DUMP_DSP_INDEX index)
 	char* is_panic		= "i'm panic.\n";
 	char* is_exception	= "i'm exception.\n";
 	char* not_panic		= "i'm ok.\n";
+
+	if ((index != NORMAL_LOG) && (index != PANIC_LOG) && g_om_data.is_watchdog_coming) {
+		logi("watchdog is coming,so don't dump %s\n", file_name);
+		return;
+	}
+
+	memset(path_name, 0, HIFI_DUMP_FILE_NAME_MAX_LEN);
 
 	if (rdr_nv_get_value(RDR_NV_HIFI) != 1) {
 		loge("do not save hifi log in nv config \n");
@@ -174,11 +207,11 @@ static void hifi_dump_dsp(DUMP_DSP_INDEX index)
 	s_dsp_dump_info[NORMAL_LOG].data_addr = g_om_data.dsp_log_addr + DRV_DSP_UART_TO_MEM_RESERVE_SIZE;
 	s_dsp_dump_info[PANIC_LOG].data_addr  = g_om_data.dsp_log_addr + DRV_DSP_UART_TO_MEM_RESERVE_SIZE;
 
-	if(index == OCRAM_BIN)
+	if (index == OCRAM_BIN)
 	{
 		s_dsp_dump_info[index].data_addr = (unsigned char*)ioremap_wc(HIFI_OCRAM_BASE_ADDR, HIFI_IMAGE_OCRAMBAK_SIZE);
 	}
-	if(index == TCM_BIN)
+	if (index == TCM_BIN)
 	{
 		s_dsp_dump_info[index].data_addr = (unsigned char*)ioremap_wc(HIFI_TCM_BASE_ADDR, HIFI_IMAGE_TCMBAK_SIZE);
 	}
@@ -203,15 +236,24 @@ static void hifi_dump_dsp(DUMP_DSP_INDEX index)
 		goto END;
 	}
 
-	ret = vfs_stat(file_name, &file_stat);
+	snprintf(path_name, HIFI_DUMP_FILE_NAME_MAX_LEN, "%s%s%s", HIFI_LOG_PATH, g_om_data.cur_dump_time, "/");
+
+	ret = hifi_create_dir(path_name);
+	if (0 != ret) {
+		goto END;
+	}
+
+	snprintf(path_name, HIFI_DUMP_FILE_NAME_MAX_LEN, "%s%s", path_name, file_name);
+
+	ret = vfs_stat(path_name, &file_stat);
 	if (ret < 0) {
-		logi("there isn't a dsp log file:%s, and need to create.\n", file_name);
+		logi("there isn't a dsp log file:%s, and need to create.\n", path_name);
 		file_flag |= O_CREAT;
 	}
 
-	fp = filp_open(file_name, file_flag, 0664);
+	fp = filp_open(path_name, file_flag, 0664);
 	if (IS_ERR(fp)) {
-		loge("open file fail: %s.\n", file_name);
+		loge("open file fail: %s.\n", path_name);
 		fp = NULL;
 		goto END;
 	}
@@ -519,11 +561,11 @@ static int hifi_dump_dsp_thread(void *p)
 			loge("hifi_dump_dsp_thread wake up err.\n");
 		}
 		time_now = (unsigned int)readl(g_om_data.dsp_time_stamp);
-		time_diff = time_now - g_om_data.pre_dump_timestamp;
-		g_om_data.pre_dump_timestamp = time_now;
+		time_diff = time_now - g_om_data.pre_dsp_dump_timestamp;
+		g_om_data.pre_dsp_dump_timestamp = time_now;
 
 
-		hifi_info_addr = (unsigned char*)ioremap_wc(DRV_DSP_STACK_TO_MEM, DRV_DSP_STACK_TO_MEM_SIZE);
+		hifi_info_addr = (unsigned int*)ioremap_wc(DRV_DSP_STACK_TO_MEM, DRV_DSP_STACK_TO_MEM_SIZE);
 		if (NULL == hifi_info_addr) {
 			loge("dsp log ioremap_wc hifi_info_addr fail.\n");
 			continue;
@@ -532,6 +574,8 @@ static int hifi_dump_dsp_thread(void *p)
 		exception_no = *(unsigned int*)(hifi_info_addr + 3);
 		hifi_stack_addr = *(unsigned int*)(hifi_info_addr + 4);
 		logi("errno:%x pre_errno:%x is_first:%d is_force:%d time_diff:%d ms.\n", exception_no, g_om_data.pre_exception_no, g_om_data.first_dump_log, g_om_data.force_dump_log, (time_diff * 1000) / HIFI_TIME_STAMP_1S);
+
+		hifi_get_time_stamp(g_om_data.cur_dump_time, HIFI_DUMP_FILE_NAME_MAX_LEN);
 
 		if (exception_no < 40 && (exception_no != g_om_data.pre_exception_no)) {
 			logi("panic addr:0x%x, cur_pc:0x%x, pre_pc:0x%x, cause:0x%x\n", *(unsigned int*)(hifi_info_addr), *(unsigned int*)(hifi_info_addr+1), *(unsigned int*)(hifi_info_addr+2), *(unsigned int*)(hifi_info_addr+3));
@@ -545,7 +589,9 @@ static int hifi_dump_dsp_thread(void *p)
 			g_om_data.pre_exception_no = exception_no;
 		} else if (g_om_data.first_dump_log || g_om_data.force_dump_log || time_diff > HIFI_DUMPLOG_TIMESPAN){
 			hifi_dump_dsp(NORMAL_LOG);
-			hifi_dump_dsp(NORMAL_BIN);
+			if (DSP_LOG_BUF_FULL != g_om_data.dsp_error_type) {/*needn't dump bin when hifi log buffer full*/
+				hifi_dump_dsp(NORMAL_BIN);
+			}
 			g_om_data.first_dump_log = false;
 		}
 
@@ -560,8 +606,10 @@ static int hifi_dump_dsp_thread(void *p)
 
 		if(DRV_DSP_POWER_ON == readl(hifi_power_status_addr)) {
 			logi("hifi is power on, now dump ocram and tcm \n");
-			hifi_dump_dsp(OCRAM_BIN);
-			hifi_dump_dsp(TCM_BIN);
+			if (DSP_LOG_BUF_FULL != g_om_data.dsp_error_type) {/*needn't dump bin when hifi log buffer full*/
+				hifi_dump_dsp(OCRAM_BIN);
+				hifi_dump_dsp(TCM_BIN);
+			}
 		}
 
 		iounmap(hifi_power_status_addr);
@@ -623,6 +671,7 @@ bool hifi_is_loaded(void)
 
 int hifi_dsp_dump_hifi(unsigned long arg)
 {
+	g_om_data.dsp_error_type = (unsigned int)arg;
 	return (int)hifi_dsp_dump_log_show(NULL, NULL, 0, NULL);
 }
 
@@ -653,6 +702,7 @@ void hifi_om_init(struct platform_device *dev, unsigned char* hifi_priv_base_vir
 #ifdef PLATFORM_HI3XXX
 	g_om_data.dsp_debug_level = 2; /*info level*/
 	g_om_data.first_dump_log = true;
+	g_om_data.is_watchdog_coming = false;
 
 
 	g_om_data.dsp_panic_mark = (unsigned int*)(hifi_priv_base_virt + (DRV_DSP_PANIC_MARK - HIFI_BASE_ADDR));
@@ -660,6 +710,7 @@ void hifi_om_init(struct platform_device *dev, unsigned char* hifi_priv_base_vir
 	g_om_data.dsp_exception_no = (unsigned int*)(hifi_priv_base_virt + (DRV_DSP_EXCEPTION_NO - HIFI_BASE_ADDR));
 	g_om_data.dsp_log_cur_addr = (unsigned int*)(hifi_priv_base_virt + (DRV_DSP_UART_TO_MEM_CUR_ADDR - HIFI_BASE_ADDR));
 	g_om_data.dsp_log_addr = NULL;
+	*g_om_data.dsp_log_cur_addr = DRV_DSP_UART_TO_MEM + DRV_DSP_UART_TO_MEM_RESERVE_SIZE;
 
 	g_om_data.dsp_debug_level_addr = (unsigned int*)(hifi_priv_base_virt + (DRV_DSP_UART_LOG_LEVEL - HIFI_BASE_ADDR));
 	g_om_data.dsp_debug_kill_addr = (unsigned int*)(hifi_priv_base_virt + (DRV_DSP_KILLME_ADDR - HIFI_BASE_ADDR));

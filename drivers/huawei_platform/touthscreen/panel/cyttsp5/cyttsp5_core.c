@@ -5386,7 +5386,11 @@ static ssize_t cyttsp5_touch_glove_store(struct device *dev,
     if (glove_mode) {
         rc = cyttsp5_set_touch_mode(dev,FINGER_GLOVE_MODE);
     } else {
-        rc = cyttsp5_set_touch_mode(dev,FINGER_ONLY_MODE);
+        if (!strncmp(cd->cpdata->chip_name, "CS448", strlen("CS448"))) {
+            rc = cyttsp5_set_touch_mode(dev,FINGER_ONLY_MODE_CS448);
+        } else {
+            rc = cyttsp5_set_touch_mode(dev,FINGER_ONLY_MODE);
+        }
     }
 
     if (rc < 0) {

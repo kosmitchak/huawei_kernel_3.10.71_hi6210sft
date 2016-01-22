@@ -32,7 +32,7 @@ extern "C"{
 
 #define    RF_9361_HW_TYPE              10
 #define    RF_6360_HW_TYPE              11
-/* BEGIN: Added by luliwu,  2012/1/13  PN: DTS_V210_12345678 */
+
 #define    UL_APT_VBIAS_NUM             16
 
 /*ET功能涉及的宏定义*/
@@ -57,10 +57,9 @@ extern "C"{
 #define    AGC_MAX_INTERF_TYPE   2
 #define    AGC_MAX_GAIN_TYPE     3
 
-/* BEGIN: Added by w00133787,  2011/5/26  PN: 2011052804846 */
 #define    NV_RFIC_BALONGV7_MULTIBAN_BAND7
 /* #define NV_RFIC_BALONGV7_MULTIBAN_BAND38 */
-/* END:   Added by w00133787,  2011/5/26   */
+
 #define    MAX_HI6360_INITIAL_REG_NUM       40
 #define    MAX_DSP_CFG_REG_RESV_NUM         4
 #define    MAX_RF_BAND_NUM                  12
@@ -68,6 +67,7 @@ extern "C"{
 #define    RF_TX_FREQ_NUM (32)
 #define    RF_RX_FREQ_NUM (32)
 #define    RF_TX_GAIN_NUM 16
+
 /*PBCH  噪声白化*/
 
 #define    PD_PWR_CUR_MAX_NUM         16   /*PD功率曲线点个数*/
@@ -516,6 +516,7 @@ typedef struct
 }NV_UL_PARA_STRU;
 
 
+
 typedef struct
 {
     UINT32 ulRegAddr;
@@ -534,6 +535,7 @@ typedef struct
     UINT8 enSingleReceiverChnSel;
     INT8  cRsv[7];
 }NV_PHY_FUNC_VERIFY_STUB_STRU;
+
 /*****************************************************************************
  结构名    : DRX_CTRL_FLAG_BIT_STRU
  协议表格  :
@@ -1452,7 +1454,7 @@ typedef struct
     NV_FE_CA_TUNER_INFO_STRU            stCaTunerCfg;
 
     NV_PHY_FUNC_VERIFY_STUB_STRU       stPhyFuncDebugPara;
-    /* END:   Added by luliwu,  2012/2/3  PN: DTS_TISTISTIS */
+
     NV_RX_BT_LEVEL_MAP_TABLE_STRU stRxBtMapTable;
 
     VOS_UINT32                    ulSleepAddr;

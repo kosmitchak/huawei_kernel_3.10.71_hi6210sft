@@ -591,7 +591,7 @@ static void stack_queue(u32 field, u32 *buf, u32 byte, struct task_struct *task)
 	rdr_spin_unlock(&g_rdr_dump_stack_lock);
 	return;
 }
-
+#ifdef CONFIG_ARM64
 void dump_save_all_task(void)
 {
 	char tmp_mem[512];
@@ -649,6 +649,63 @@ void dump_save_all_task(void)
 	rcu_read_unlock();
 	return;
 }
+#else
+void dump_save_all_task(void)
+{
+	char tmp_mem[256];
+	u32 buf[4];
+	u32 tmp_size, total_size = 0;
+	struct cpu_context_save *cpu_con;
+	struct task_struct *p_tid;
+	char *task_data = field_addr(char, fr.task_info);
+	u32 task_data_size = rdr_field_size(fr.task_info);
+
+	snprintf(tmp_mem, 256, "pid\tppid\tstate\tpolicy\tprio\t"
+	"stackbase\tstackend\tcomm\tr4\tr5\tr6\tr7\tr8\tr9\tsl\tfp\tsp\tpc\n");
+	tmp_size = strlen(tmp_mem);
+	strncpy(task_data, tmp_mem, tmp_size);
+	task_data += tmp_size;
+	total_size += tmp_size;
+
+	rcu_read_lock();
+	for_each_process(p_tid) {
+		task_lock(p_tid);
+		/*pr_info("============pid:%d====\n", p_tid->pid);*/
+		cpu_con = &((struct thread_info *)p_tid->stack)->cpu_context;
+		snprintf(tmp_mem, 256, "%d\t%d\t%d\t%d\t%d\t0x%x\t0x%x\t%s\t"
+		"0x%x\t0x%x\t0x%x\t0x%x\t0x%x\t0x%x\t0x%x\t0x%x\t0x%x\t0x%x\n",
+			p_tid->pid, p_tid->real_parent->pid, (int)p_tid->state,
+			p_tid->policy, p_tid->prio,
+			(u32)((char *)p_tid->stack + THREAD_SIZE),
+			(u32)end_of_stack(p_tid),
+			p_tid->comm,
+			cpu_con->r4, cpu_con->r5, cpu_con->r6,
+			cpu_con->r7, cpu_con->r8, cpu_con->r9,
+			cpu_con->sl, cpu_con->fp, cpu_con->sp,
+			cpu_con->pc);
+		tmp_size = strlen(tmp_mem);
+		if (total_size + tmp_size >= task_data_size) {
+			*task_data = '\0';
+			task_unlock(p_tid);
+			rcu_read_unlock();
+			return;
+		}
+
+		strncpy(task_data, tmp_mem, tmp_size);
+		task_data += tmp_size;
+		total_size += tmp_size;
+
+		queue_time_in(buf);
+		buf[2] = 0x6b736174;/* task tag */
+		buf[3] = (u32)p_tid->pid;
+		stack_queue(fr.task_stack, buf, sizeof(buf), p_tid);
+		task_unlock(p_tid);
+	}
+	*task_data = '\0';
+	rcu_read_unlock();
+	return;
+}
+#endif
 
 void suspend_resume_hook(u32 old_state, u32 new_state)
 {
@@ -692,7 +749,7 @@ void dump_task_switch_hook(const void *old_tcb, void *new_tcb)
 #endif
 	hisi_ringbuffer_write(q, qbuf);
 
-	g_rdr_base->current_task = (u64)(((struct task_struct *)new_tcb)->pid);
+	g_rdr_base->current_task = (unsigned long )(((struct task_struct *)new_tcb)->pid);
 
 	/*check whether we have recorded the task name:*/
 	if (magic == (int)new_tcb)
@@ -743,7 +800,7 @@ void dump_int_switch_hook(u32 exit, u32 oldvec, u32 newvec)
 	return;
 }
 #if 0  //delete by xiehongliang for seattle.
-void interrupts_list_hook(u32 is_add, u32 irq, u64 irq_name)
+void interrupts_list_hook(u32 is_add, u32 irq, unsigned long  irq_name)
 {
 	u32 buffer[3];
 	u32 qbuf[5];
@@ -821,7 +878,7 @@ static void rdr_save_base(u32 mod_id, u32 arg1, u32 arg2, char *data, u32 len)
 			else {
 				struct task_struct *t;
 				t = (struct task_struct *)g_rdr_base->current_task;
-				g_rdr_base->reboot_task = (u64)t;
+				g_rdr_base->reboot_task = (unsigned long )t;
 				if (NULL != (void *)t) {
 					memcpy(g_rdr_base->task_name, t->comm, 16);
 					stack_queue(fr.exc_task_stack, NULL, 0, t);
@@ -893,7 +950,7 @@ static void rdr_system_error_enter(void)
 }
 
 /* transfer value from hisi_system_error to here.the value is current task */
-static u64 rdr_current_task;
+static unsigned long  rdr_current_task;
 
 static void dump_save_exc_task(void)
 {
@@ -1053,6 +1110,7 @@ void rdr_save_cpinfo(struct rdr_struct_s *bb, char *timedir)
     u8 *cpinfo;
 	char reset_info[RDR_DUMP_CP_INFO_MAX_LEN] = {0};
     char xname[RDR_FNAME_LEN] = {0};
+	int ret;
 
     r = ((struct rdr_a1_reserve_s *)(rdr_core_addr(bb, RDR_AREA_RESERVE)));
     cpinfo = r->cp_reserve.content.rdr_cpinfo;
@@ -1074,14 +1132,20 @@ void rdr_save_cpinfo(struct rdr_struct_s *bb, char *timedir)
         g_rdr_base->reboot_context,g_rdr_base->reboot_task,g_rdr_base->task_name,
         g_rdr_base->reboot_int,g_rdr_base->modid,g_rdr_base->arg1,
         g_rdr_base->arg2,g_rdr_base->arg3,g_rdr_base->arg3_length,g_rdr_base->vec);
-        rdr_append_file(xname, (void *)reset_info,strlen(reset_info), RDR_RESET_LOG_MAX); /*RDR_RESET_LOG*/
+        ret = rdr_append_file(xname, (void *)reset_info,strlen(reset_info), RDR_RESET_LOG_MAX); /*RDR_RESET_LOG*/
+		if (ret != 0) {
+			pr_err("rdr:ap save to reset log failed\n");
+		}
         return;
     }
 
     /*cp info*/
     if(*cpinfo != '\0') {
         pr_info("rdr:save cpinfo to reset log\n");
-        rdr_append_file(xname, (void *)cpinfo,RDR_DUMP_CP_INFO_MAX_LEN, RDR_RESET_LOG_MAX); /*RDR_RESET_LOG*/
+        ret = rdr_append_file(xname, (void *)cpinfo,RDR_DUMP_CP_INFO_MAX_LEN, RDR_RESET_LOG_MAX); /*RDR_RESET_LOG*/
+		if (ret != 0) {
+			pr_err("rdr:save cpinfo failed\n");
+		}
     }
     return;
 }
@@ -1091,6 +1155,7 @@ void rdr_save_resetlog(struct rdr_struct_s *bb, char *timedir)
 	struct rdr_a1_reserve_s *r;
 	u8 *resetlog;
 	char xname[RDR_FNAME_LEN] = {0};
+	int ret;
 
     /*save reset log all the time*/
     /*
@@ -1104,8 +1169,11 @@ void rdr_save_resetlog(struct rdr_struct_s *bb, char *timedir)
 		pr_info("save reset log:%s\n", resetlog);
 		snprintf(xname, RDR_FNAME_LEN-1,
 			"%s%s/reset.log", OM_ROOT_PATH, timedir);  /* [false alarm]: RDR_FNAME_LEN-1 As expected  */
-		rdr_append_file(xname, (void *)resetlog,
+		ret = rdr_append_file(xname, (void *)resetlog,
 			strlen(resetlog), RDR_RESET_LOG_MAX); /*RDR_RESET_LOG*/
+		if (ret != 0) {
+			pr_err("rdr:save reset log failed\n");
+		}
 	}
 
     rdr_save_cpinfo(bb, timedir);
@@ -1479,7 +1547,7 @@ void hisi_system_error(enum rdr_modid_e mod_id,
 {
 	if (1 != atomic_read(&rdr_inited))
 		return;
-	rdr_current_task = (u64)get_current();
+	rdr_current_task = (unsigned long )get_current();
 	/* save userdata to 8m. */
 	dump_save_usr_data(data, length);
 	hisi_register_system_error(mod_id, arg1, arg2, data, length);
@@ -1490,7 +1558,7 @@ void hisi_system_error(enum rdr_modid_e mod_id,
 
 void dump_exc_hook(void *curr_task_id, int vec, const u32 *p_reg)
 {
-	u64 curr_task_pid = (u64)(((struct task_struct *)curr_task_id)->pid);
+	unsigned long  curr_task_pid = (unsigned long )(((struct task_struct *)curr_task_id)->pid);
 	static int v_exc_hook_enter;
 	size_t reg_set_size = (size_t)(ARM_REGS_NUM * 4);
 
@@ -1507,7 +1575,7 @@ void dump_exc_hook(void *curr_task_id, int vec, const u32 *p_reg)
 	memcpy(g_rdr_base->regset, (const void *)p_reg, reg_set_size);
 
 	pr_info("rdr:onlyDumpMem,dontSave,id:0x%08x\n", HISI_RDR_MOD_AP_PANIC);
-	rdr_current_task = (u64)curr_task_id;
+	rdr_current_task = (unsigned long )curr_task_id;
 	rdr_system_dump(HISI_RDR_MOD_AP_PANIC, HISI_RDR_MOD_EXCE_PANIC, 0, 0, 0);
 
 	return;
@@ -2684,6 +2752,7 @@ int rdr_modem_reset_cb(DRV_RESET_CALLCBFUN_MOMENT stage, int userdata)
 extern void top_tmc_disable(char *pdir);
 #ifdef HIFI_WD_DEBUG
 extern void sochifi_watchdog_send_event(void);
+extern void notify_hifi_misc_watchdog_coming(void);
 extern struct dsm_client *dsm_audio_client;
 static int rdr_do_hifi_reset(int mod_id)
 {
@@ -2698,6 +2767,8 @@ static int rdr_do_hifi_reset(int mod_id)
 		dsm_client_record(dsm_audio_client, "DSM_SOC_HIFI_RESET\n");
 		dsm_client_notify(dsm_audio_client, DSM_SOC_HIFI_RESET);
 	}
+
+	notify_hifi_misc_watchdog_coming();
 
 	start = ioremap(HIFI_WTD_FLAG_NMI, 4);
 	if (NULL == start ) {
@@ -2921,8 +2992,8 @@ void rdr_reset2apr(char *path, u32 mod_id)
         get_time_stamp(local_time, RDR_TIME_LEN);
 
         if (rdr_nv_get_value(RDR_NV_MODEM_MEM) == 0) {/*for commercial*/
-            snprintf(update_path,ARCH_NAME_MAX,"archive -i %setb.bin -i %sreset.log -o %s_modemcrash -z zip",
-                      path,path,local_time);
+            snprintf(update_path,ARCH_NAME_MAX,"archive -i %setb.bin -i %sreset.log -i %srdr_modem.bin -o %s_modemcrash -z zip",
+                      path,path,path,local_time);
         }
         else { /*for beta*/
             rdr_getfilepath2apr(BALONGLTE_LOG_DIR_PATH, APR_CP_BALONGLTE_PATH_1, APR_CP_BALONGLTE_PATH_2);
@@ -2938,7 +3009,43 @@ void rdr_reset2apr(char *path, u32 mod_id)
 
     return;
 }
+#ifdef CONFIG_HISI_BALONG_MODEM
+void rdr_save_rdr_modem(char *time_dir)
+{
+    int ret;
+    u8 *pcpdumpmem;
+    char xname[RDR_FNAME_LEN] = {0};
+    struct rdr_area_s area_info[RDR_AREA_MAX];
+    u32 max_size = sizeof(struct rdr_top_head_s) + sizeof(struct rdr_area_s) + RDR_AREA_2;
 
+    memset(xname, 0, sizeof(xname));
+	snprintf(xname, sizeof(xname), "%s%s/rdr_modem.bin", OM_ROOT_PATH, time_dir);
+
+    //save head
+    ret = rdr_save_8m(OM_ROOT_PATH, time_dir, "rdr_modem",
+				(void *)(pbb), sizeof(struct rdr_top_head_s));
+
+    //save offset
+    if (!ret)
+    {
+        memset(area_info, 0, sizeof(area_info));
+        area_info[0].offset = sizeof(struct rdr_top_head_s) + sizeof(struct rdr_area_s);
+        area_info[0].length = RDR_AREA_2;
+        ret = rdr_append_file(xname, (void *)(area_info), sizeof(struct rdr_area_s),
+							max_size);
+    }
+
+    //save ccore
+    if(!ret)
+    {
+        pcpdumpmem = (u8 *)rdr_core_addr(pbb, RDR_CCORE);
+        ret = rdr_append_file(xname, (void *)(pcpdumpmem), RDR_AREA_2,
+							max_size);
+    }
+	if (ret != 0)
+		pr_err("rdr:save modem rdr failed\n");
+}
+#endif
 /*
  * save 8m/128m and other mem to fs before reboot. FS is ready now.
  * Dont upload file to server before reboot.
@@ -2961,6 +3068,9 @@ int rdr_save_mem2fs(u32 mod_id)
 				(void *)(pbb), sizeof(struct rdr_struct_s));
 		if (ret != 0)
 			pr_err("rdr:save 8m failed\n");
+        #ifdef CONFIG_HISI_BALONG_MODEM
+        rdr_save_rdr_modem(time_dir);
+        #endif
 	}
 
 	if (mod_id == HISI_RDR_MOD_AP_PRESS8S) {
@@ -3015,8 +3125,16 @@ void rdr_system_error_process(struct rdr_system_error_param_s *p)
 					NULL);
 		}
 
-		if (mod_id != HISI_RDR_MOD_AP_PANIC)
-			rdr_system_dump(mod_id, arg1, arg2, data, length);
+	pr_info("rdr_system_error_process start mod_id [%08x] !!\n", mod_id);
+    rdr_nv_update();
+	if ((mod_id & HISI_RDR_MOD_EXCE_MASK) !=
+			HISI_RDR_MOD_EXCE_PANIC) {
+		show_mem(0);
+		show_stack((struct task_struct *)rdr_current_task, NULL);
+	}
+
+	if (mod_id != HISI_RDR_MOD_AP_PANIC)
+		rdr_system_dump(mod_id, arg1, arg2, data, length);
 #ifdef HIFI_WD_DEBUG
 		if (mod_id == HISI_RDR_MOD_HIFI_WD) {
 			ret = rdr_do_hifi_reset(HISI_RDR_MOD_HIFI_WD);
@@ -3028,14 +3146,14 @@ void rdr_system_error_process(struct rdr_system_error_param_s *p)
 		rdr_get_xtime(pbb, timedir, 32);
 		memset(file_dir, 0, RDR_FNAME_LEN);
 		snprintf(file_dir, sizeof(file_dir), "%s%s/", OM_ROOT_PATH, timedir);
-
+#ifdef CONFIG_HI6402_HIFI_MISC
 		if (mod_id == HISI_RDR_MOD_HIFI_6402_ERR) {
 			pr_info("hi6402 watchdog coming......\n");
 			ret = hi6402_hifi_save_log(file_dir);
 			if (ret != 0)
 				pr_info("%s:hifi 6402 reset error!\n", __func__);
 		}
-
+#endif
 		if (rdr_need_save_before_reboot(mod_id)) {
 			/*
 		TODO:

@@ -15,7 +15,7 @@ hisi_camera_all-objs := hisi_cam_module.o \
 			csi/hisi_csi.o	\
 			flash/hisi_flash.o
 
-obj-$(CONFIG_VIDEO_HISI_CAMERA) += hisi_camera_all.o
+obj-$(CONFIG_VIDEO_HI3630_CAMERA) += hisi_camera_all.o
 
 obj-$(CONFIG_HISI_CAMERA_SENSOR)	+= sensor/
 obj-$(CONFIG_HISI_CAMERA_ISP)	+= isp/

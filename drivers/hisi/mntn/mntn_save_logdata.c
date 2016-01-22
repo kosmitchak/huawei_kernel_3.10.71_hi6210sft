@@ -339,6 +339,12 @@ int mntn_mdm_reset_save_log(const char *preason)
 	 return -1;
     }
 
+    if (mntn_need_save_log(BSP_RESET_MODULE_CCORE) == 0) 
+    {
+        MNTN_FILESYS_PRINT(KERN_ERR"mntn_err: Needn't save log data!\n");
+        return 0;
+    }
+	
     /*to remove old log data if there has been MAX_NUMBER logs.*/
     mntn_rm_old_log(MNTN_CP_LOGDIR, MNTN_MDM_LOG_MAX);
 
@@ -360,12 +366,6 @@ int mntn_mdm_reset_save_log(const char *preason)
         MNTN_FILESYS_PRINT(KERN_ERR"mntn_err: Fail to chown cp log dir!\n");
     }
 
-    if (mntn_need_save_log(BSP_RESET_MODULE_CCORE) == 0)
-    {
-        MNTN_FILESYS_PRINT(KERN_ERR"mntn_err: Needn't save all log data, just modem_log.bin\n");
-        iret = mntn_do_save_phy_addr_log(MODEM_DUMP_LOG_ADDR, MODEM_DUMP_LOG_SIZE, (const char*)fullpath_arr, MNTN_MODEM_LOG_FILE);
-        return iret;
-    }
     /*save acpu sram data*/
     iret += mntn_do_save_phy_addr_log(SOC_SRAM_OFF_BASE_ADDR, SRAM_SIZE, (const char*)fullpath_arr, MNTN_SRAME_ACPU_FILE);
 

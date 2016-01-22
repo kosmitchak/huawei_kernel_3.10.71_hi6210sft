@@ -1754,7 +1754,7 @@ static int hissc_pll_supply_power_mode_event(struct snd_soc_dapm_widget *w,
 	case SND_SOC_DAPM_PRE_PMU:
 		ret = clk_prepare_enable(priv->codec_soc);
 		if (ret) {
-			loge("codec 49.15M clken fail \n");
+			loge("codec 49.15M clken fail\n");
 		}
 		logi("[AUDIO] inform lpm3 to remote sleep. \n");
 		BSP_IPC_IntSend(IPC_CORE_MCU, (IPC_INT_LEV_E)IPC_MCU_INT_SRC_ACPU_I2S_REMOTE_SLEEP);
@@ -1765,7 +1765,7 @@ static int hissc_pll_supply_power_mode_event(struct snd_soc_dapm_widget *w,
 		clk_disable_unprepare(priv->codec_soc);
 		break;
 	default :
-		loge("power mode event err : %d \n", event);
+		loge("power mode event err : %d\n", event);
 		break;
 	}
 

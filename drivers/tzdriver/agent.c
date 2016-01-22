@@ -108,25 +108,11 @@ unsigned int TC_NS_incomplete_proceed(TC_NS_SMC_CMD *smc_cmd,
 
 	event_data->ret_flag = 1;
 	/* Wake up the agent that will process the command */
-	wake_up(&event_data->wait_event_wq);
+        wake_up(&event_data->wait_event_wq);
 
-	/* We must block until the agent is done. In Sync mode we ignore signals 
-	 * because the call really has to finish until we let the process continue */
-	if (flags & TC_CALL_SYNC) {
-		wait_event(event_data->send_response_wq,
-					event_data->send_flag);
-	}
-	else {
-		ret2 = wait_event_interruptible(event_data->send_response_wq,
-					event_data->send_flag);
-		/* Wait event returns 0 for success(condition true) or -ERESTARTSYS for
-		 * client interrupted */
-		if (ret2){
-			TCDEBUG("TC_NS_incomplete_proceed: client interrupted");
-			ret = TEEC_CLIENT_INTR;
-			goto tee_error;
-		}
-	}
+        wait_event(event_data->send_response_wq,
+                event_data->send_flag);
+
 	/* send the incomplete id */
 	smc_cmd_phys = virt_to_phys((void*)smc_cmd);
 	ret = TC_NS_SMC(smc_cmd_phys);

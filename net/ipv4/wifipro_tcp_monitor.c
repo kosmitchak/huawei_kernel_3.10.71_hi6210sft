@@ -49,12 +49,12 @@ MODULE_LICENSE("GPL");
 DEFINE_MUTEX(wifipro_nl_receive_sem);
 DEFINE_MUTEX(wifipro_nl_send_sem);
 DEFINE_MUTEX(wifipro_google_sock_sem);
-DEFINE_MUTEX(wifipro_rtt_sem);
 DEFINE_MUTEX(wifipro_congestion_sem);
 DEFINE_MUTEX(wifipro_trigger_sock_sem);
 DEFINE_MUTEX(wifipro_tcp_trigger_inf_sem);
 
 static DEFINE_SPINLOCK(wifipro_google_sock_spin);
+static DEFINE_SPINLOCK(wifipro_rtt_spin);
 
 #define LINK_UNKNOWN                0
 #define LINK_POOR                   1
@@ -193,7 +193,7 @@ wifipro_g_sock_bl_t *wifipro_google_sock_add(wifipro_g_sock_bl_t *head, unsigned
     curr = head;
     prev = head;
     if(NULL == head){
-        backlist = kmalloc(sizeof(wifipro_g_sock_bl_t), GFP_KERNEL);
+        backlist = kmalloc(sizeof(wifipro_g_sock_bl_t), GFP_ATOMIC);
         if(NULL != backlist) {
             backlist->owner_count = 1;
             backlist->dst_addr = dst_addr;
@@ -218,7 +218,7 @@ wifipro_g_sock_bl_t *wifipro_google_sock_add(wifipro_g_sock_bl_t *head, unsigned
         }
 
         /*it dosen't exist, prev point to the tail*/
-        backlist = kmalloc(sizeof(wifipro_g_sock_bl_t), GFP_KERNEL);
+        backlist = kmalloc(sizeof(wifipro_g_sock_bl_t), GFP_ATOMIC);
         if(NULL != backlist){
             backlist->owner_count = 1;
             backlist->dst_addr = dst_addr;
@@ -242,13 +242,14 @@ static bool wifipro_is_in_google_sock_list(wifipro_g_sock_bl_t *head, unsigned i
 {
 	wifipro_g_sock_bl_t *curr_bl;
 	bool ret = false;
+	unsigned long flags;
 
     if(!is_mcc_china){
         return false;
     }
 
 
-	spin_lock(&wifipro_google_sock_spin);
+	spin_lock_irqsave(&wifipro_google_sock_spin, flags);
 	curr_bl = head;
 	if(head == NULL){
 		ret = false;
@@ -267,7 +268,7 @@ static bool wifipro_is_in_google_sock_list(wifipro_g_sock_bl_t *head, unsigned i
 	}
 
 end:
-    spin_unlock(&wifipro_google_sock_spin);
+    spin_unlock_irqrestore(&wifipro_google_sock_spin, flags);
 	return ret;
 }
 
@@ -279,15 +280,14 @@ static wifipro_g_sock_bl_t *wifipro_hendle_google_sock_del(wifipro_g_sock_bl_t *
 	wifipro_g_sock_bl_t *prev_bl;
 	wifipro_g_sock_bl_t *curr_bl;
 
-    //spin_lock(&wifipro_google_sock_spin);
 	if(head->dst_addr == dest_addr){    //it's head;
-		curr_bl = head->next;
 		head->owner_count--;
 		if(!head->owner_count){
+			curr_bl = head->next;
 		    kfree(head);
+		    WIFIPRO_DEBUG("del a google sock:%s", wifipro_ntoa(dest_addr));
+		    head = curr_bl;
 		}
-        WIFIPRO_DEBUG("del a google sock:%s", wifipro_ntoa(dest_addr));
-        head = curr_bl;
 		goto end;
 	}
 
@@ -308,26 +308,28 @@ static wifipro_g_sock_bl_t *wifipro_hendle_google_sock_del(wifipro_g_sock_bl_t *
 	}
 
 end:
-	//spin_unlock(&wifipro_google_sock_spin);
 	return head;
 }
 
 void wifipro_google_sock_del(unsigned int dest_addr)
 {
-    spin_lock(&wifipro_google_sock_spin);
+	unsigned long flags;
+
+	spin_lock_irqsave(&wifipro_google_sock_spin, flags);
     wifipro_g_sock_head = wifipro_hendle_google_sock_del(wifipro_g_sock_head, dest_addr);
-    spin_unlock(&wifipro_google_sock_spin);
+    spin_unlock_irqrestore(&wifipro_google_sock_spin, flags);
 }
 
 static void wifipro_google_sock_free(wifipro_g_sock_bl_t *head)
 {
     wifipro_g_sock_bl_t *curr_bl;
     wifipro_g_sock_bl_t *prev_bl;
+	unsigned long flags;
 
-    spin_lock(&wifipro_google_sock_spin);
 	if(NULL == head)
 		return;
 
+	spin_lock_irqsave(&wifipro_google_sock_spin, flags);
     curr_bl = head;
 	while(curr_bl){
 		prev_bl = curr_bl;
@@ -335,7 +337,7 @@ static void wifipro_google_sock_free(wifipro_g_sock_bl_t *head)
 
 		kfree(prev_bl);
 	}
-    spin_unlock(&wifipro_google_sock_spin);
+    spin_unlock_irqrestore(&wifipro_google_sock_spin, flags);
 	return;
 }
 
@@ -380,20 +382,21 @@ bool wifipro_is_google_sock(struct task_struct *task, unsigned int dest_addr)
 {
     static char proc_name[PAGE_SIZE];
     int ret = 0;
+	unsigned long flags;
 
     if(task){
         ret = wifipro_get_proc_name(task, proc_name);
         if(ret > 0){
             if(strstr(proc_name, "oogle")){ //google or Google
-                spin_lock(&wifipro_google_sock_spin);
+                spin_lock_irqsave(&wifipro_google_sock_spin, flags);
                 wifipro_g_sock_head = wifipro_google_sock_add(wifipro_g_sock_head, dest_addr, proc_name, task->pid);
-                spin_unlock(&wifipro_google_sock_spin);
+                spin_unlock_irqrestore(&wifipro_google_sock_spin, flags);
                 WIFIPRO_DEBUG("find a process name %s match google. The pid = %d", proc_name, task->pid);
                 return true;
             }else if(strstr(proc_name, "system_server")){ //system_server will setup google socket
-                spin_lock(&wifipro_google_sock_spin);
+                spin_lock_irqsave(&wifipro_google_sock_spin, flags);
                 wifipro_g_sock_head = wifipro_google_sock_add(wifipro_g_sock_head, dest_addr, proc_name, task->pid);
-                spin_unlock(&wifipro_google_sock_spin);
+                spin_unlock_irqrestore(&wifipro_google_sock_spin, flags);
                 WIFIPRO_DEBUG("find a process name %s match system_server. ip is %s", proc_name, wifipro_ntoa(dest_addr));
                 return true;
             }else{
@@ -414,10 +417,11 @@ static void wifipro_rtt_free(wifipro_rtt_second_stat_t *head)
 		return;
 
     int i = 0;
+    unsigned long flags;
     wifipro_rtt_second_stat_t *curr_bl;
     wifipro_rtt_second_stat_t *prev_bl;
 
-    mutex_lock(&wifipro_rtt_sem);
+    spin_lock_irqsave(&wifipro_rtt_spin, flags);
     curr_bl = head;
 	while(curr_bl && i < WIFIPRO_RTT_RECORD_SECONDS){
 		prev_bl = curr_bl;
@@ -426,7 +430,7 @@ static void wifipro_rtt_free(wifipro_rtt_second_stat_t *head)
 		kfree(prev_bl);
 		i++;
 	}
-	mutex_unlock(&wifipro_rtt_sem);
+	spin_unlock_irqrestore(&wifipro_rtt_spin, flags);
 }
 
 bool wifipro_is_trigger_sock(unsigned int dest_addr, unsigned int dest_port)
@@ -750,6 +754,7 @@ static void wifipro_tcp_monitor_nl_receive(struct sk_buff *__skb)
             }
         }
     }
+    kfree_skb(skb);
     mutex_unlock(&wifipro_nl_receive_sem);
 }
 
@@ -871,10 +876,6 @@ void wifipro_handle_congestion(struct sock *sk, u8 ca_state)
         return;
 	}
 
-    if(wifipro_is_in_google_sock_list(wifipro_g_sock_head, dest_addr)){ //google server socket
-        return;
-    }
-
     wifipro_cong_sock_t *dst = NULL;
 
     switch(ca_state){
@@ -941,6 +942,7 @@ void wifipro_update_rtt(unsigned int rtt, struct sock *sk)
     unsigned int rtt_total = 0;
     unsigned int trans_total = 0;
     unsigned int time_to_now = 0;
+    unsigned long flags;
     bool is_found = false;
     bool is_head_set = false;
     wifipro_rtt_second_stat_t *curr = wifipro_rtt_second_stat_head;
@@ -959,7 +961,7 @@ void wifipro_update_rtt(unsigned int rtt, struct sock *sk)
     struct inet_connection_sock *icsk = inet_csk(sk);
     struct tcp_sock *tp = tcp_sk(sk);
 
-    mutex_lock(&wifipro_rtt_sem);
+    spin_lock_irqsave(&wifipro_rtt_spin, flags);
     for(i = 0; i < WIFIPRO_RTT_RECORD_SECONDS; i++){
         if(time_after(curr->expire + (WIFIPRO_RTT_RECORD_SECONDS - 1)*HZ, jiffies)){ //it's valid now
             if(time_after(curr->expire, jiffies)){
@@ -986,7 +988,7 @@ void wifipro_update_rtt(unsigned int rtt, struct sock *sk)
         }
         curr = curr->next;
     }
-    mutex_unlock(&wifipro_rtt_sem);
+    spin_unlock_irqrestore(&wifipro_rtt_spin, flags);
 
     if(0 != trans_total){
         wifipro_rtt_average = (rtt_total / trans_total) * WIFIPRO_TICK_TO_MS;
@@ -1011,11 +1013,12 @@ static int wifipro_tcp_monitor_init()
     /* The wifipro_rtt_second_stat_head always point to the newest node
      * The expire time of eath node of the list is
     */
-    mutex_lock(&wifipro_rtt_sem);
-    wifipro_rtt_second_stat_head = kzalloc(sizeof(wifipro_rtt_second_stat_t), GFP_KERNEL);
+    unsigned long flags;
+    spin_lock_irqsave(&wifipro_rtt_spin, flags);
+    wifipro_rtt_second_stat_head = kzalloc(sizeof(wifipro_rtt_second_stat_t), GFP_ATOMIC);
     if(NULL == wifipro_rtt_second_stat_head){
+        spin_unlock_irqrestore(&wifipro_rtt_spin, flags);
         WIFIPRO_ERROR("kzalloc failed");
-        mutex_unlock(&wifipro_rtt_sem);
         return -1;
     }
     wifipro_rtt_second_stat_head->expire = jiffies + HZ;
@@ -1025,10 +1028,10 @@ static int wifipro_tcp_monitor_init()
     wifipro_rtt_second_stat_t *curr = NULL;
     wifipro_rtt_second_stat_t *prev = wifipro_rtt_second_stat_head;
     for(i = 1; i < WIFIPRO_RTT_RECORD_SECONDS; i++){
-        curr = kzalloc(sizeof(wifipro_rtt_second_stat_t), GFP_KERNEL);
+        curr = kzalloc(sizeof(wifipro_rtt_second_stat_t), GFP_ATOMIC);
         if(NULL == curr){
+            spin_unlock_irqrestore(&wifipro_rtt_spin, flags);
             WIFIPRO_ERROR("kzalloc failed");
-            mutex_unlock(&wifipro_rtt_sem);
             return -1;
         }
         //memset(curr, 0, sizeof(wifipro_rtt_second_stat_t));
@@ -1038,7 +1041,7 @@ static int wifipro_tcp_monitor_init()
         prev = curr;
     }
     curr->next = wifipro_rtt_second_stat_head;
-    mutex_unlock(&wifipro_rtt_sem);
+    spin_unlock_irqrestore(&wifipro_rtt_spin, flags);
 
     return 0;
 }

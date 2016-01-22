@@ -74,8 +74,6 @@
 #include "video_config.h"
 #include "video_reg_ops.h"
 
-#include "k3_isp.h"
-
 #if defined (CONFIG_HUAWEI_DSM)
 #include <huawei_platform/dsm/dsm_pub.h>
 #endif
@@ -91,7 +89,6 @@
 static v4l2_ctl_struct v4l2_ctl;
 camera_frame_buf *isp_rsv_frame[STATE_MAX];
 
-extern k3_isp_data isp_data;
 
 static int video_nr = -1;
 #ifdef READ_BACK_RAW
@@ -775,12 +772,6 @@ static int k3_v4l2_ioctl_g_ctrl(struct file *file, void *fh,
 			break;
 		}
 
-	case V4L2_CID_GET_AEC_STATE:
-		{
-			a->value = k3_isp_get_aec_state();
-			break;
-		}
-
 	default:
 		{
 			ret = -EINVAL;
@@ -1130,12 +1121,6 @@ static int k3_v4l2_ioctl_s_ctrl(struct file *file, void *fh,
 			break;
 		}
     /* end */
-	case  V4L2_CID_SET_B_SHUTTER_MODE:
-		{
-			k3_isp_set_b_shutter_mode(v4l2_param->value);
-			break;
-		}
-
 	default:
 	    print_info("warning:unknown CID,v4l2_param->id=%d", v4l2_param->id);
 		break;
@@ -1628,68 +1613,6 @@ static int k3_v4l2_ioctl_s_ext_ctrls(struct file *file, void *fh,
 			}
 			break;
 		}
-
-		case V4L2_CID_SET_B_SHUTTER_LONG_AE:
-		{
-			data_buf = kmalloc(sizeof(b_shutter_ae_iso_s), GFP_KERNEL);
-			if (!data_buf) {
-				ret = -ENOMEM;
-				print_error("%s %s V4L2_CID_SET_B_SHUTTER_LONG_AE fail to allocate buffer", BSHUTTER_LOG_TAG, __func__);
-				goto end;
-			}
-
-            if(copy_from_user(data_buf, (void __user *)controls[cid_idx].string, sizeof(b_shutter_ae_iso_s))){
-                print_error("%s %s V4L2_CID_SET_B_SHUTTER_LONG_AE", BSHUTTER_LOG_TAG, __FUNCTION__);
-				goto end;
-            }
-
-			func_ret = k3_isp_set_b_shutter_long_ae((b_shutter_ae_iso_s*)data_buf);
-			if (func_ret != 0) {
-				ret = -EINVAL;
-			}
-			break;
-		}
-
-		case V4L2_CID_SET_B_SHUTTER_HDR_AE:
-		{
-			data_buf = kmalloc(sizeof(b_shutter_hdr_aeciso_s), GFP_KERNEL);
-			if (!data_buf) {
-				ret = -ENOMEM;
-				print_error("%s %s V4L2_CID_SET_B_SHUTTER_HDR_AE fail to allocate buffer", BSHUTTER_LOG_TAG, __func__);
-				goto end;
-			}
-            if(copy_from_user(data_buf, (void __user *)controls[cid_idx].string, sizeof(b_shutter_hdr_aeciso_s))){
-                print_error("%s %s V4L2_CID_SET_B_SHUTTER_HDR_AE", BSHUTTER_LOG_TAG, __FUNCTION__);
-				goto end;
-            }
-
-			func_ret = k3_isp_set_b_shutter_hdr_ae((b_shutter_hdr_aeciso_s*)data_buf);
-			if (func_ret != 0) {
-				ret = -EINVAL;
-			}
-			break;
-		}
-
-		case V4L2_CID_SET_B_SHUTTER_ECGC:
-		{
-			data_buf = kmalloc(sizeof(b_shutter_ae_iso_s), GFP_KERNEL);
-			if (!data_buf){
-				ret = -ENOMEM;
-				print_error("%s %s V4L2_CID_SET_B_SHUTTER_ECGC fail to allocate buffer", BSHUTTER_LOG_TAG, __func__);
-				goto end;
-			}
-            if(copy_from_user(data_buf, (void __user *)controls[cid_idx].string, sizeof(b_shutter_ae_iso_s))){
-                print_error("%s %s V4L2_CID_SET_B_SHUTTER_ECGC", BSHUTTER_LOG_TAG, __FUNCTION__);
-				goto end;
-            }
-
-			func_ret = k3_isp_set_b_shutter_ecgc((b_shutter_ae_iso_s*)data_buf);
-			if (func_ret != 0) {
-				ret = -EINVAL;
-			}
-			break;
-		}
-
 		default:
 			print_error("%s, id=%#x, value=%#x", __func__,
 					controls[cid_idx].id, controls[cid_idx].value);
@@ -1860,14 +1783,6 @@ static int k3_v4l2_ioctl_dqbuf(struct file *file, void *fh,
             wait_time = 5 * ((long)(cam->dqbuf_irq_timeout) * HZ);
             /*for common image, z62576, 20140429, end*/
         }
-	}
-
-	if(CAMERA_B_SHUTTER_MODE_ON == isp_data.b_shutter_state)//this is just used to b_shutter_algo capture, nees to >=max(3s b_shutter_algo, 5s timeout),now 6s
-	{
-		wait_time = 3 * ((long)(cam->dqbuf_irq_timeout) * HZ);
-		if(STATE_CAPTURE == state){
-			print_info("%s %s wait_event_interruptible_timeout=%d",BSHUTTER_LOG_TAG,__func__,wait_time);
-		}
 	}
 
     print_debug("wait_event_interruptible_timeout: %d",wait_time);

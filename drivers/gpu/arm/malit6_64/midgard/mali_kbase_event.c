@@ -87,14 +87,23 @@ int kbase_event_dequeue(struct kbase_context *ctx, struct base_jd_event_v2 *ueve
 	mutex_unlock(&ctx->event_mutex);
 
 	dev_dbg(ctx->kbdev->dev, "event dequeuing %p\n", (void *)atom);
-	uevent->event_code = atom->event_code;
+
+	if(BASE_JD_EVENT_DATA_INVALID_FAULT == atom->event_code) {
+		/* suppress DATA_INVALID_FAULT error and returning BASE_JD_EVENT_DONE instead of */
+		dev_warn(ctx->kbdev->dev,
+			"suppress DATA_INVALID_FAULT, returning BASE_JD_EVENT_DONE(0x%x)\n",
+			BASE_JD_EVENT_DONE);
+		uevent->event_code = BASE_JD_EVENT_DONE;
+	} else {
+		uevent->event_code = atom->event_code;
+	}
 	uevent->atom_number = (atom - ctx->jctx.atoms);
 	uevent->udata = kbase_event_process(ctx, atom);
 
 	return 0;
 }
 
-KBASE_EXPORT_TEST_API(kbase_event_dequeue)
+KBASE_EXPORT_TEST_API(kbase_event_dequeue);
 
 static void kbase_event_post_worker(struct work_struct *data)
 {

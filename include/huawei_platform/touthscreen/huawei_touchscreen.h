@@ -31,6 +31,8 @@
 #define ROI_HEAD_DATA_LENGTH		4
 #define ROI_DATA_READ_LENGTH 		102
 #define ROI_DATA_SEND_LENGTH 		(ROI_DATA_READ_LENGTH-ROI_HEAD_DATA_LENGTH)
+#define ROI_CTRL_DEFAULT_OFFSET		0x2D
+#define ROI_DATA_DEFAULT_OFFSET		0x18
 #endif
 #define TS_DEV_NAME "huawei,touchscreen"
 #define RAW_DATA_SIZE 8192
@@ -157,6 +159,7 @@ enum ts_cmd{
 	TS_CHECK_STATUS,
 	TS_TEST_CMD,
 	TS_HOLSTER_SWITCH,
+	TS_WAKEUP_GESTURE_ENABLE,
 	TS_ROI_SWITCH,
 	TS_TOUCH_WINDOW,
 	TS_PALM_SWITCH,
@@ -343,8 +346,31 @@ struct ts_roi_info{
 	u8 roi_switch;
 	int op_action;
 	int status;
+	u16 roi_control_addr_offset;
+	u16 roi_data_addr_offset;
 };
 
+enum ts_sleep_mode {
+	TS_POWER_OFF_MODE = 0,
+	TS_GESTURE_MODE,
+};
+
+struct ts_easy_wakeup_info{
+	enum ts_sleep_mode sleep_mode;
+	int off_motion_on;
+	int easy_wakeup_gesture;
+	int easy_wakeup_flag;
+	int palm_cover_flag;
+	int palm_cover_control;
+	unsigned char easy_wakeup_fastrate;
+	unsigned int easywake_position[MAX_POSITON_NUMS];
+};
+
+struct ts_wakeup_gesture_enable_info{
+	u8 switch_value;
+	int op_action;
+	int status;
+};
 
 struct ts_regs_info{
 	unsigned int fhandler;
@@ -384,6 +410,7 @@ struct ts_hand_info{
 struct ts_feature_info {
 	struct ts_holster_info holster_info;
 	struct ts_window_info window_info;
+	struct ts_wakeup_gesture_enable_info wakeup_gesture_enable_info ;
 	struct ts_roi_info roi_info;
 };
 
@@ -449,6 +476,7 @@ struct ts_device_ops{
 	int (*chip_get_rawdata)(struct ts_rawdata_info *info, struct ts_cmd_node *out_cmd);
 	int (*chip_glove_switch)(struct ts_glove_info *info);
 	int (*chip_palm_switch)(struct ts_palm_info *info);
+	int (*chip_wakeup_gesture_enable_switch)(struct ts_wakeup_gesture_enable_info *info);
 	int (*chip_holster_switch)(struct ts_holster_info *info);
 	int (*chip_roi_switch)(struct ts_roi_info *info);
 	unsigned char* (*chip_roi_rawdata)(void);
@@ -463,24 +491,10 @@ struct ts_device_ops{
 	int (*chip_regs_operate)(struct ts_regs_info *info);
 };
 
-enum ts_sleep_mode {
-	TS_POWER_OFF_MODE = 0,
-	TS_GESTURE_MODE,
-};
-
-struct ts_easy_wakeup_info{
-	enum ts_sleep_mode sleep_mode;
-	int off_motion_on;
-	int easy_wakeup_gesture;
-	int easy_wakeup_flag;
-	int palm_cover_flag;
-	int palm_cover_control;
-	unsigned char easy_wakeup_fastrate;
-	unsigned int easywake_position[MAX_POSITON_NUMS];
-};
-
 struct ts_device_data{
 	bool is_in_cell;
+	int rawdata_arrange_swap;
+	int rawdata_disp_format;
 	int has_virtualkey;
 	char chip_name[MAX_STR_LEN];
 	char module_name[MAX_STR_LEN];

@@ -39,14 +39,10 @@
 /*****************************************************************************
  ∫Í∂®“Â
 *****************************************************************************/
-#define RESET_LOG_PATH         	("/data/hisi_logs/cp_log/coredump/")
+#define RESET_LOG_PATH         	("/data/hisi_logs/cp_log/coredump")
 #define RESET_LOG_FILE               ("reset.log")
 #define RESET_LOG_FILE_PATH_SIZE     (64)
 #define RESET_LOG_MAX_SIZE (1024)
-
-#define RESET_LOG_CPDIR_PROVALUE    0774
-#define RESET_LOG_OWNER_UID    0		/*root*/
-#define RESET_LOG_OWNER_GID    1000		/*system*/
 
 
 /*------------------Portland----------------------*/

@@ -208,7 +208,6 @@ static ssize_t release_wakelock_show(struct device *dev,
 {
 	return sprintf(buf, "%d\n", release_wakelock);
 }
-static void do_disconnect(void);
 static ssize_t release_wakelock_store(struct device *pdev,
 		struct device_attribute *attr, const char *buf, size_t size)
 {
@@ -220,7 +219,7 @@ static ssize_t release_wakelock_store(struct device *pdev,
 	release_wakelock = val;
 	usb_dbg("set release_wakelock = %d!\n", release_wakelock);
 	if (release_wakelock)
-		do_disconnect();
+		hisi_usb_otg_event(CHARGER_DISCONNECT_EVENT);
 	else
 		dwc_otg_hi3635_wake_lock();
 
@@ -282,7 +281,7 @@ int get_resource(struct otg_dev *dev)
 	/*
 	 * get registers base address
 	 */
-	np = of_find_compatible_node(NULL, NULL, "hisilicon,hi3635-usb-otg-ahbif");
+	np = of_find_compatible_node(NULL, NULL, "hisilicon,usb-otg-ahbif");
 	if (np) {
 		dev->usb_ahbif_base = of_iomap(np, 0);
 	}
@@ -748,39 +747,6 @@ void dwc_otg_hi3635_set_prtpower(unsigned int val)
 	}
 }
 
-static void do_disconnect(void)
-{
-	struct otg_dev *p = otg_dev_p;
-	struct dwc_otg_device *dwc_otg_dev = lm_get_drvdata(p->lm_dev);
-	if (OTG_DEV_OFF == p->status) {
-		usb_dbg("Charger disconnect interrupt, but Already in OFF mode.\n");
-	} else if (OTG_DEV_DEVICE == p->status) {
-		/* For send uevent of disconnect. */
-		dwc_otg_dev->pcd->fops->disconnect(dwc_otg_dev->pcd);
-
-		dwc_otg_disable_global_interrupts(dwc_otg_dev->core_if);
-		dwc_otg_mask_all_interrupts(dwc_otg_dev->core_if);
-		dwc_otg_clear_all_interrupts(dwc_otg_dev->core_if);
-
-		msleep(100);
-
-		hw_shutdown(p);
-
-		p->charger_type = CHARGER_TYPE_NONE;
-		notify_charger_type(p);
-
-		p->status = OTG_DEV_OFF;
-
-		/* allow system go to sleep */
-		dwc_otg_hi3635_wake_unlock();
-
-		usb_dbg("hisi usb status: DEVICE -> OFF\n");
-	} else if (OTG_DEV_HOST == p->status) {
-		usb_dbg("Charger disconnect intrrupt in HOST mode\n");
-	} else if (OTG_DEV_SUSPEND == p->status) {
-		usb_dbg("Charger disconnect intrrupt in SUSPEND mode\n");
-	}
-}
 static void event_work(struct work_struct *work)
 {
 	unsigned long flags;
@@ -1308,10 +1274,8 @@ static int dwc_otg_hi3635_resume(struct device *dev)
 	mutex_unlock(&dev_p->lock);
 	if (1 == release_wakelock)
 	{
-		p->status = OTG_DEV_OFF;
-		p->event = CHARGER_CONNECT_EVENT;
+		hisi_usb_otg_event(CHARGER_CONNECT_EVENT);
 		release_wakelock = 0;
-		schedule_delayed_work(&dev_p->event_work, 0);
 	}
 	return 0;
 }
@@ -1334,7 +1298,7 @@ struct dev_pm_ops dwc_otg_dev_pm_ops = {
 
 #ifdef CONFIG_OF
 static const struct of_device_id dwc_otg_hi3635_mach[] = {
-	{ .compatible = "hisilicon,hi3635-usb-otg" },
+	{ .compatible = "hisilicon,usb-otg" },
 	{},
 };
 MODULE_DEVICE_TABLE(of, dwc_otg_hi3635_mach);

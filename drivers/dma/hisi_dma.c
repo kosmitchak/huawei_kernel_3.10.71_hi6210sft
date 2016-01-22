@@ -245,6 +245,7 @@ static irqreturn_t hisi_dma_int_handler(int irq, void *dev_id)
 	u32 err1 = readl(d->base + INT_ERR1);
 	u32 err2 = readl(d->base + INT_ERR2);
 	u32 i, tc1_irq = 0, err1_irq = 0, err2_irq = 0;
+	u32 stats = stat;
 
 	while (stat) {
 		i = __ffs(stat);
@@ -260,6 +261,9 @@ static irqreturn_t hisi_dma_int_handler(int irq, void *dev_id)
 					vchan_cookie_complete(&p->ds_run->vd);
 				p->ds_done = p->ds_run;
 				spin_unlock_irqrestore(&c->vc.lock, flags);
+			} else {
+				dev_err(d->slave.dev, "%s: phy[%d] stats[0x%x]\n",
+						__func__, p->idx, stats);
 			}
 			tc1_irq |= BIT(i);
 		}
@@ -273,7 +277,8 @@ static irqreturn_t hisi_dma_int_handler(int irq, void *dev_id)
 				err1_irq |= BIT(i);
 			if(err2 & BIT(i))
 				err2_irq |= BIT(i);
-			dev_warn(d->slave.dev, "DMA ERR\n");
+			dev_warn(d->slave.dev, "DMA ERR phy[%d] stats[0x%x] err1[0x%x] err2[0x%x]\n",
+				p->idx, stats, err1, err2);
 		}
 
 	}
@@ -306,10 +311,13 @@ static int hisi_dma_start_txd(struct hisi_dma_chan *c)
 
 
 	if (!c->phy)
-		return -EAGAIN;
+		return -ENODEV;
 
-	if (BIT(c->phy->idx) & hisi_dma_get_chan_stat(d))
-		return -EAGAIN;
+	if (BIT(c->phy->idx) & hisi_dma_get_chan_stat(d)) {
+        dev_err(d->slave.dev,  "%s: chan[%d] phy[%d] stat[0x%x]\n",
+            c->vc.chan.chan_id, c->phy->idx, hisi_dma_get_chan_stat(d));
+		return -EBUSY;
+    }
 
 	if (vd) {
 		struct hisi_dma_desc_sw *ds =
@@ -339,13 +347,16 @@ static void hisi_dma_tasklet(unsigned long arg)
 	struct hisi_dma_chan *c, *cn;
 	unsigned pch, pch_alloc = 0;
 	unsigned long flags;
+    int ret = 0;
 
 	/* check new dma request of running channel in vc->desc_issued */
 	list_for_each_entry_safe(c, cn, &d->slave.channels, vc.chan.device_node) {
 		spin_lock_irqsave(&c->vc.lock,flags);
 		p = c->phy;
+
 		if (p && p->ds_done) {
-			if (hisi_dma_start_txd(c)) {
+            ret = hisi_dma_start_txd(c);
+			if (-EAGAIN == ret) {
 #ifdef CONFIG_HISI_DMA_PM_RUNTIME
 				pm_runtime_mark_last_busy(d->slave.dev);
 				pm_runtime_put_autosuspend(d->slave.dev);
@@ -355,7 +366,9 @@ static void hisi_dma_tasklet(unsigned long arg)
 				/* Mark this channel free */
 				c->phy = NULL;
 				p->vchan = NULL;
-			}
+			} else if (0 != ret) {
+                continue;
+            }
 		} else if(p && c->status == DMA_ERROR) {
 			hisi_dma_terminate_chan(p, d);
 #ifdef CONFIG_HISI_DMA_PM_RUNTIME
@@ -366,6 +379,7 @@ static void hisi_dma_tasklet(unsigned long arg)
 			p->vchan = NULL;
 			p->ds_run = p->ds_done = NULL;
 		}
+
 		spin_unlock_irqrestore(&c->vc.lock,flags);
 	}
 
@@ -654,7 +668,6 @@ static int hisi_dma_control(struct dma_chan *chan, enum dma_ctrl_cmd cmd,
 		dev_warn(d->slave.dev, "vchan is NULL\n");
 		return -EINVAL;
 	}
-	p = c->phy;
 
 	switch (cmd) {
 	case DMA_SLAVE_CONFIG:
@@ -713,7 +726,7 @@ static int hisi_dma_control(struct dma_chan *chan, enum dma_ctrl_cmd cmd,
 
 		/* Clear the tx descriptor lists */
 		spin_lock_irqsave(&c->vc.lock, flags);
-
+		p = c->phy;
 		vchan_get_all_descriptors(&c->vc, &head);
 		if(p && p->ds_run != NULL && p->ds_done == NULL) {
 			list_add_tail(&p->ds_run->vd.node, &head);
@@ -738,10 +751,12 @@ static int hisi_dma_control(struct dma_chan *chan, enum dma_ctrl_cmd cmd,
 		dev_dbg(d->slave.dev, "vchan %p: pause\n", &c->vc);
 		if (c->status == DMA_IN_PROGRESS) {
 			c->status = DMA_PAUSED;
+			spin_lock_irqsave(&d->lock,flags);
+			p = c->phy;
 			if (p) {
+				spin_unlock_irqrestore(&d->lock,flags);
 				hisi_dma_pause_dma(p, d, false);
 			} else {
-				spin_lock_irqsave(&d->lock,flags);
 				list_del_init(&c->node);
 				spin_unlock_irqrestore(&d->lock,flags);
 			}
@@ -751,6 +766,7 @@ static int hisi_dma_control(struct dma_chan *chan, enum dma_ctrl_cmd cmd,
 	case DMA_RESUME:
 		dev_dbg(d->slave.dev, "vchan %p: resume\n", &c->vc);
 		spin_lock_irqsave(&c->vc.lock, flags);
+		p = c->phy;
 		if (c->status == DMA_PAUSED) {
 			c->status = DMA_IN_PROGRESS;
 			if (p) {
@@ -773,16 +789,22 @@ void show_dma_reg(struct dma_chan *chan)
 {
 	struct hisi_dma_chan *c = NULL;
 	struct hisi_dma_dev *d = NULL;
+    struct hisi_dma_phy *p = NULL;
+    int i = 0;
 
 	if (!chan) {
 	    printk("show_dma_reg: dma_chan *chan is NULL!\n");
 	    return;
 	}
+
+    printk(KERN_ERR "%s: chan[0x%x] id[%d] cookie[%d-%d]!\n", __func__,
+            chan, chan->chan_id, chan->cookie, chan->completed_cookie);
+
 	if (!chan->device) {
 	    printk("show_dma_reg: chan->device * is NULL!\n");
 	    return;
 	}
-	c = to_hisi_chan(chan);
+
 	d = to_hisi_dma(chan->device);
     if (!d) {
 	    printk("hisi_dma_dev *d is NULL!\n");
@@ -796,6 +818,8 @@ void show_dma_reg(struct dma_chan *chan)
 	    printk( "d->slave.dev is NULL!\n");
 	    return;
 	}
+
+	c = to_hisi_chan(chan);
 	if (!c) {
 	    dev_err(d->slave.dev, "hisi_dma_chan *c is NULL!");
 	    return;
@@ -809,30 +833,50 @@ void show_dma_reg(struct dma_chan *chan)
 	    return;
 	}
 
-        dev_info(d->slave.dev, "CX_CONFIG =%x\n", readl(c->phy->base + CX_CONFIG));
-        dev_info(d->slave.dev, "CX_AXI_CONF =%x\n", readl(c->phy->base + AXI_CONFIG));
-        dev_info(d->slave.dev, "SRC =%x\n", readl(c->phy->base + CX_SRC));
-        dev_info(d->slave.dev, "DST =%x\n", readl(c->phy->base + CX_DST));
-        dev_info(d->slave.dev, "CNT0 =%x\n", readl(c->phy->base + CX_CNT));
-        dev_info(d->slave.dev, "CX_CURR_CNT0 =%x\n", readl(c->phy->base + CX_CUR_CNT));
+    p = c->phy;
+    printk(KERN_ERR "%s: chan[%p] ccfg[0x%x] dir[%d] dev_addr[0x%x] status[%d]\n",
+            __func__, c, c->ccfg, c->dir, c->dev_addr, c->status);
+    printk(KERN_ERR "%s: phy idx[0x%x] ds_run[%p] ds_done[p%p]\n",
+            __func__, p->idx, p->ds_run, p->ds_done);
+#if 0
+    dev_info(d->slave.dev, "CX_CONFIG =%x\n",   readl(c->phy->base + CX_CONFIG));
+    dev_info(d->slave.dev, "CX_AXI_CONF =%x\n", readl(c->phy->base + AXI_CONFIG));
+    dev_info(d->slave.dev, "SRC =%x\n",         readl(c->phy->base + CX_SRC));
+    dev_info(d->slave.dev, "DST =%x\n",         readl(c->phy->base + CX_DST));
+    dev_info(d->slave.dev, "CNT0 =%x\n",        readl(c->phy->base + CX_CNT));
+    dev_info(d->slave.dev, "CX_CURR_CNT0 =%x\n",readl(c->phy->base + CX_CUR_CNT));
+#endif
 
-        dev_info(d->slave.dev, "INT_STAT = 0x%x\n", readl(d->base + INT_STAT));
-        dev_info(d->slave.dev, "INT_TC1 = 0x%x\n", readl(d->base + INT_TC1));
-        dev_info(d->slave.dev, "INT_ERR1 = 0x%x\n", readl(d->base + INT_ERR1));
-        dev_info(d->slave.dev, "INT_ERR2 = 0x%x\n", readl(d->base + INT_ERR2));
+	for (i = d->dma_min_chan; i < d->dma_channels; i++) {
+		p = &d->phy[i];
+        printk(KERN_ERR "idx[%2d]:CX_CONFIG:[0x%8x], CX_AXI_CONF:[0x%8x], "
+            "SRC:[0x%8x], DST:[0x%8x], CNT0:[0x%8x], CX_CURR_CNT0:[0x%8x]\n",
+            i,
+            readl(p->base + CX_CONFIG),
+            readl(p->base + AXI_CONFIG),
+            readl(p->base + CX_SRC),
+            readl(p->base + CX_DST),
+            readl(p->base + CX_CNT),
+            readl(p->base + CX_CUR_CNT));
+	}
 
-        dev_info(d->slave.dev, "INT_TC1_MASK = 0x%x\n", readl(d->base + INT_TC1_MASK));
-        dev_info(d->slave.dev, "INT_ERR1_MASK = 0x%x\n", readl(d->base + INT_ERR1_MASK));
-        dev_info(d->slave.dev, "INT_ERR2_MASK = 0x%x\n", readl(d->base + INT_ERR2_MASK));
+    dev_info(d->slave.dev, "INT_STAT = 0x%x\n", readl(d->base + INT_STAT));
+    dev_info(d->slave.dev, "INT_TC1  = 0x%x\n", readl(d->base + INT_TC1));
+    dev_info(d->slave.dev, "INT_ERR1 = 0x%x\n", readl(d->base + INT_ERR1));
+    dev_info(d->slave.dev, "INT_ERR2 = 0x%x\n", readl(d->base + INT_ERR2));
 
-        dev_info(d->slave.dev, "INT_TC1_RAW = 0x%x\n", readl(d->base + INT_TC1_RAW));
-        dev_info(d->slave.dev, "INT_TC2_RAW = 0x%x\n", readl(d->base + INT_TC2_RAW));
-        dev_info(d->slave.dev, "INT_ERR1_RAW = 0x%x\n", readl(d->base + INT_ERR1_RAW));
-        dev_info(d->slave.dev, "INT_ERR2_RAW = 0x%x\n", readl(d->base + INT_ERR2_RAW));
+    dev_info(d->slave.dev, "INT_TC1_MASK  = 0x%x\n", readl(d->base + INT_TC1_MASK));
+    dev_info(d->slave.dev, "INT_ERR1_MASK = 0x%x\n", readl(d->base + INT_ERR1_MASK));
+    dev_info(d->slave.dev, "INT_ERR2_MASK = 0x%x\n", readl(d->base + INT_ERR2_MASK));
 
-        dev_info(d->slave.dev, "CH_STAT = 0x%x\n", readl(d->base + CH_STAT));
-        dev_info(d->slave.dev, "SEC_CTRL = 0x%x\n", readl(d->base + CX_CUR_CNT));
-        dev_info(d->slave.dev, "DMA_CTRL = 0x%x\n", readl(d->base + DMA_CTRL));
+    dev_info(d->slave.dev, "INT_TC1_RAW  = 0x%x\n",  readl(d->base + INT_TC1_RAW));
+    dev_info(d->slave.dev, "INT_TC2_RAW  = 0x%x\n",  readl(d->base + INT_TC2_RAW));
+    dev_info(d->slave.dev, "INT_ERR1_RAW = 0x%x\n",  readl(d->base + INT_ERR1_RAW));
+    dev_info(d->slave.dev, "INT_ERR2_RAW = 0x%x\n",  readl(d->base + INT_ERR2_RAW));
+
+    dev_info(d->slave.dev, "CH_STAT  = 0x%x\n", readl(d->base + CH_STAT));
+    dev_info(d->slave.dev, "SEC_CTRL = 0x%x\n", readl(d->base + CX_CUR_CNT));
+    dev_info(d->slave.dev, "DMA_CTRL = 0x%x\n", readl(d->base + DMA_CTRL));
 
 }
 EXPORT_SYMBOL(show_dma_reg);

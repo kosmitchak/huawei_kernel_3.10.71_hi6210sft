@@ -118,6 +118,8 @@
 #define FSA9685_REG_ACCP_DATA         0x48
 #define FSA9685_REG_ACCP_INTERRUPT1   0x59
 #define FSA9685_REG_ACCP_INTERRUPT2   0x5a
+#define FSA9685_REG_ACCP_INTERRUPT_MASK1   0x5b
+#define FSA9685_REG_ACCP_INTERRUPT_MASK2   0x5c
 
 /* Register FSA9685_REG_DEVICE_ID (0x1) */
 #define FSA9688_VERSION_ID             0x2
@@ -127,6 +129,7 @@
 /* Register FSA9685_REG_CONTROL2 (0x0e) */
 #define FSA9685_ACCP_AUTO_ENABLE      (1<<6)
 #define FSA9685_ACCP_ENABLE           (1<<7)
+#define FSA9685_ACCP_OSC_ENABLE           (1<<5)
 
 /* Register FSA9685_REG_DEVICE_TYPE_4 (0xf)*/
 #define FSA9685_ACCP_CHARGER_DET      (1<<7)
@@ -141,6 +144,7 @@
 #define FSA9685_ACCP_IS_ENABLE       (1<<3)
 #define FSA9685_ACCP_MSTR_RST        (1<<2)
 #define FAS9685_ACCP_SENDCMD         (1<<0)
+#define FAS9685_ACCP_CNTL_MASK      (BIT(0) | BIT(2) | BIT(3))
 
 /* Register FSA9685_REG_ACCP_INTERRUPT1 (0x59)*/
 #define FAS9685_CMDCPL               (1<<7)
@@ -168,7 +172,7 @@
 /* Register FCP_SLAVE_OUTPUT_CONTROL (0x2b)*/
 #define FCP_SLAVE_SET_VOUT   (1<<0)
 
-#define FCP_VOL_SETP         10
+#define FCP_VOL_STEP         10
 #define FCP_OUTPUT_VOL_5V     5
 #define FCP_OUTPUT_VOL_9V     9
 #define FCP_OUTPUT_VOL_12V   12

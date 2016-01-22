@@ -26,6 +26,7 @@
 
 u32 three_lane_flag = 0;
 u32 colortemp_adjust_flag = 0;
+u32 not_use_scharger = 0;
 
 void set_value(u32* addr, u32 val, u8 bw, u8 bs)
 {
@@ -608,6 +609,12 @@ int get_resource_from_dts(struct platform_device *pdev, struct balong_panel_info
     if (ret) {
         balongfb_loge("Failed to get the flag of color temperature! \n");
         colortemp_adjust_flag = 0;
+    }
+
+    ret = of_property_read_u32(np, "not_use_scharger", &not_use_scharger);
+    if (ret) {
+        balongfb_loge("get not_use_scharger failed!\n");
+        not_use_scharger = 0;
     }
 
     balongfb_logi("pinfo->dsi_bit_clk_rate = %d \n", pinfo->mipi.dphy_freq);

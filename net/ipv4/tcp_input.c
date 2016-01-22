@@ -5517,8 +5517,10 @@ static int tcp_rcv_synsent_state_process(struct sock *sk, struct sk_buff *skb,
 
 		if(icsk->icsk_retransmits > 2)
 		{
+#ifndef CONFIG_ARCH_HI3630 /*just for compile*/
 			SOCK_DEBUG(sk, "tcp_rcv_synsent_state_process:icsk_retransmits=%d,notify_chr_thread_to_send_msg()!\n", icsk->icsk_retransmits);
 			notify_chr_thread_to_send_msg(inet->inet_daddr,inet->inet_saddr);
+#endif 
 		}
 		else
 		{

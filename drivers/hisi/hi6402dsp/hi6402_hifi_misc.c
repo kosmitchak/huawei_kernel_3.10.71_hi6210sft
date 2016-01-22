@@ -634,20 +634,29 @@ static int hi6402_put_output_param(unsigned int usr_para_size,
 static int hi6402_sync_write(const unsigned char *arg, const unsigned int len)
 {
 	int ret = OK;
-
+	int count = 0;
 	IN_FUNCTION;
 
 	priv.sync_msg_ret = 0;
 
-	ret = hi6402_write_msg(arg, len);
-	if (ret != OK) {
-		HI6402_DSP_ERROR("send msg failed\n");
-		goto end;
-	}
+	while(1) {
+		ret = hi6402_write_msg(arg, len);
+		if (ret != OK) {
+			HI6402_DSP_ERROR("send msg failed\n");
+			goto end;
+		}
+		if (wait_event_interruptible_timeout(priv.sync_msg_wq,
+			(priv.sync_msg_ret == 1), HZ) != 0) {
+			break;
+		}
+		count++;
+		HI6402_DSP_ERROR("cmd timeout retry %d\n",count);
 
-	if (wait_event_interruptible_timeout(priv.sync_msg_wq,
-                       (priv.sync_msg_ret == 1), HZ*2) == 0) {
-		HI6402_DSP_ERROR("wait for sync cmd done timeout, ret=%d, %s watchdog comed \n", ret, (priv.is_watchdog_coming ? " " : "no"));
+		if(count > 3)
+			break;
+	}
+	if(count > 3){
+		HI6402_DSP_ERROR("cmd timeout\n");
 #ifdef HI6402_RDR
 		if (!(priv.is_watchdog_coming) && !(priv.is_sync_write_timeout)) {
 			HI6402_DSP_ERROR("save log and reset media \n");
@@ -1552,6 +1561,7 @@ static cmd_process_func hi6402_select_func(const unsigned char *arg,
 	IN_FUNCTION;
 	for (i = 0; i < func_map_size; i++) {
 		if (func_map[i].cmd_id == msg_id) {
+			HI6402_DSP_INFO("cmd:%s\n",func_map[i].cmd_name);
 			return func_map[i].func;
 		}
 	}
@@ -1617,15 +1627,15 @@ end:
 }
 
 static struct cmd_func_pair sync_cmd_func_map[] = {
-	{ ID_AP_DSP_IF_OPEN,         hi6402_func_if_open       },
-	{ ID_AP_DSP_IF_CLOSE,        hi6402_func_if_close      },
-	{ ID_AP_DSP_PARAMETER_SET,   hi6402_func_para_set      },
-	{ ID_AP_DSP_PARAMETER_GET,   hi6402_func_para_get      },
-	{ ID_AP_DSP_OM,              hi6402_func_om            },
-	{ ID_AP_DSP_MADTEST_START,   hi6402_func_mad_test_start},
-	{ ID_AP_DSP_MADTEST_STOP,    hi6402_func_mad_test_stop },
-	{ ID_AP_DSP_UARTMODE,        hi6402_func_uartmode      },
-	{ ID_AP_IMGAE_DOWNLOAD,      hi6402_func_fw_download   },
+	{ ID_AP_DSP_IF_OPEN,         hi6402_func_if_open,        "ID_AP_DSP_IF_OPEN"       },
+	{ ID_AP_DSP_IF_CLOSE,        hi6402_func_if_close,       "ID_AP_DSP_IF_CLOSE"      },
+	{ ID_AP_DSP_PARAMETER_SET,   hi6402_func_para_set,       "ID_AP_DSP_PARAMETER_SET" },
+	{ ID_AP_DSP_PARAMETER_GET,   hi6402_func_para_get,       "ID_AP_DSP_PARAMETER_GET" },
+	{ ID_AP_DSP_OM,              hi6402_func_om,             "ID_AP_DSP_OM"            },
+	{ ID_AP_DSP_MADTEST_START,   hi6402_func_mad_test_start, "ID_AP_DSP_MADTEST_START" },
+	{ ID_AP_DSP_MADTEST_STOP,    hi6402_func_mad_test_stop,  "ID_AP_DSP_MADTEST_STOP"  },
+	{ ID_AP_DSP_UARTMODE,        hi6402_func_uartmode,       "ID_AP_DSP_UARTMODE"      },
+	{ ID_AP_IMGAE_DOWNLOAD,      hi6402_func_fw_download,    "ID_AP_IMGAE_DOWNLOAD"    },
 };
 
 static int hi6402_hifi_sync_cmd(unsigned long arg)

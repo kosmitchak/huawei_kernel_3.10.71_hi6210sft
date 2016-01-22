@@ -2714,7 +2714,7 @@ static int __init proc_vmalloc_init(void)
 }
 module_init(proc_vmalloc_init);
 
-void get_vmalloc_info(struct vmalloc_info *vmi)
+void get_vmalloc_info_filtered(struct vmalloc_info *vmi, unsigned long flags)
 {
 	struct vmap_area *va;
 	unsigned long free_area_size;
@@ -2746,6 +2746,9 @@ void get_vmalloc_info(struct vmalloc_info *vmi)
 		if (va->flags & (VM_LAZY_FREE | VM_LAZY_FREEING))
 			continue;
 
+		if (flags != 0xFFFFFFFFUL && (!(va->flags & VM_VM_AREA) || va->vm->flags != flags))
+			continue; // largest_chunk will be useless when filtering with flags
+
 		vmi->used += (va->va_end - va->va_start);
 
 		free_area_size = addr - prev_end;
@@ -2760,6 +2763,11 @@ void get_vmalloc_info(struct vmalloc_info *vmi)
 
 out:
 	spin_unlock(&vmap_area_lock);
+}
+
+void get_vmalloc_info(struct vmalloc_info *vmi)
+{
+	get_vmalloc_info_filtered(vmi, 0xFFFFFFFFUL);
 }
 #endif
 

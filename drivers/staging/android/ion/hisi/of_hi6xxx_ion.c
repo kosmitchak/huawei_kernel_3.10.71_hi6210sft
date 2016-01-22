@@ -534,14 +534,13 @@ void ion_pm_init(void)
 	return;
 }
 
-static void ion_flush_cache_all(void *dummy)
+static void hisi_ion_flush_cache_all(void *dummy)
 {
 	flush_cache_all();
-
 	return;
 }
 
-void hi6xxx_ion_flush_cache_all(void)
+void ion_flush_cache_all(void)
 {
 	int cpu;
 	unsigned int stat = 0;
@@ -561,7 +560,7 @@ void hi6xxx_ion_flush_cache_all(void)
 			cpumask_set_cpu(cpu, &mask);
 	}
 
-	on_each_cpu_mask(&mask, ion_flush_cache_all, NULL, 1);
+	on_each_cpu_mask(&mask, hisi_ion_flush_cache_all, NULL, 1);
 	preempt_enable();
 
 	return;

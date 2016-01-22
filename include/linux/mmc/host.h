@@ -56,7 +56,7 @@ struct mmc_ios {
 
 	unsigned char	timing;			/* timing specification used */
 
-#ifdef CONFIG_ARCH_HI6XXX
+#if defined (CONFIG_ARCH_HI6XXX)
 #define MMC_TIMING_LEGACY	0
 #define MMC_TIMING_MMC_HS	1
 #define MMC_TIMING_SD_HS	2

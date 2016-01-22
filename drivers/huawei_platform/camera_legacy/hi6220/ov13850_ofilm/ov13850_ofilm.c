@@ -298,7 +298,6 @@ static const sensor_config_s* ov13850_ofilm_config = ov13850_ofilm_config_settin
 static camera_sensor ov13850_ofilm_sensor;
 static void ov13850_ofilm_set_default(void);
 static void ov13850_ofilm_config_dphy_clk(camera_state state);
-static void ov13850_ofilm_reset_dphy(void);
 
 /*
  **************************************************************************
@@ -505,7 +504,7 @@ static int ov13850_ofilm_try_framesizes(struct v4l2_frmsizeenum *framesizes)
  **************************************************************************
 */
 static int ov13850_ofilm_set_framesizes(camera_state state,
-				 struct v4l2_frmsize_discrete *fs, int flag, camera_setting_view_type view_type,bool zsl_preview, camera_b_shutter_mode b_shutter_mode,ecgc_support_type_s ecgc_type)
+				 struct v4l2_frmsize_discrete *fs, int flag, camera_setting_view_type view_type,bool zsl_preview)
 {
 	int i = 0;
 	bool match = false;
@@ -516,9 +515,8 @@ static int ov13850_ofilm_set_framesizes(camera_state state,
 	if(NULL == fs) {
 		return -EINVAL;
 	}
-
-	print_info("Enter Function:%s State(%d), flag=%d, width=%d, height=%d, b_shutter_mode=0x%x, ecgc_type=0x%x",
-		   __func__, state, flag, fs->width, fs->height,b_shutter_mode,ecgc_type);
+	print_info("Enter Function:%s State(%d), flag=%d, width=%d, height=%d",
+		   __func__, state, flag, fs->width, fs->height);
 
 	size =  ov13850_ofilm_config->framesizes.size;
 	ov13850_ofilm_framesizes =  ov13850_ofilm_config->framesizes.framesize_setting;
@@ -528,42 +526,15 @@ static int ov13850_ofilm_set_framesizes(camera_state state,
 		    {
 		        continue;
 		    }
-
-			if(b_shutter_mode == CAMERA_B_SHUTTER_MODE_ON && ecgc_type==ECGC_TYPE_NORMAL_BSHUTTER_SHORT){//B_SHUTTER ALGO SHORT  EXPO USE THIS
-				if ((ov13850_ofilm_framesizes[i].width >= fs->width)
-				    && (ov13850_ofilm_framesizes[i].height >= fs->height)
-				    && (VIEW_FULL == ov13850_ofilm_framesizes[i].view_type)
-				    && (camera_get_resolution_type(fs->width, fs->height)
-				    <= ov13850_ofilm_framesizes[i].resolution_type)
-				    && (ov13850_ofilm_framesizes[i].ecgc_support_type== ECGC_TYPE_NORMAL_BSHUTTER_SHORT)) {
-					fs->width = ov13850_ofilm_framesizes[i].width;
-					fs->height = ov13850_ofilm_framesizes[i].height;
-					match = true;
-					break;
-				}
-			}else if(b_shutter_mode == CAMERA_B_SHUTTER_MODE_ON && ecgc_type==ECGC_TYPE_BSHUTTER_LONG){//B_SHUTTER ALGO LONG  EXPO USE THIS
-				if ((ov13850_ofilm_framesizes[i].width >= fs->width)
-				    && (ov13850_ofilm_framesizes[i].height >= fs->height)
-				    && (VIEW_FULL == ov13850_ofilm_framesizes[i].view_type)
-				    && (camera_get_resolution_type(fs->width, fs->height)
-				    <= ov13850_ofilm_framesizes[i].resolution_type)
-				    && (ov13850_ofilm_framesizes[i].ecgc_support_type == ECGC_TYPE_BSHUTTER_LONG)) {
-					fs->width = ov13850_ofilm_framesizes[i].width;
-					fs->height = ov13850_ofilm_framesizes[i].height;
-					match = true;
-					break;
-				}
-			}else{
-				if ((ov13850_ofilm_framesizes[i].width >= fs->width)
-				    && (ov13850_ofilm_framesizes[i].height >= fs->height)
-				    && (VIEW_FULL == ov13850_ofilm_framesizes[i].view_type)
-				    && (camera_get_resolution_type(fs->width, fs->height)
-				    <= ov13850_ofilm_framesizes[i].resolution_type)) {
-					fs->width = ov13850_ofilm_framesizes[i].width;
-					fs->height = ov13850_ofilm_framesizes[i].height;
-					match = true;
-					break;
-				}
+			if ((ov13850_ofilm_framesizes[i].width >= fs->width)
+			    && (ov13850_ofilm_framesizes[i].height >= fs->height)
+			    && (VIEW_FULL == ov13850_ofilm_framesizes[i].view_type)
+			    && (camera_get_resolution_type(fs->width, fs->height)
+			    <= ov13850_ofilm_framesizes[i].resolution_type)) {
+				fs->width = ov13850_ofilm_framesizes[i].width;
+				fs->height = ov13850_ofilm_framesizes[i].height;
+				match = true;
+				break;
 			}
 		}
 	}
@@ -598,7 +569,7 @@ static int ov13850_ofilm_set_framesizes(camera_state state,
 	} else {
 		ov13850_ofilm_sensor.capture_frmsize_index = i;
 	}
-	print_info("Enter Function:%s  preview index =%d, capture=%d b_shutter_mode=0x%x ecgc_type=0x%x", __func__, ov13850_ofilm_sensor.preview_frmsize_index, ov13850_ofilm_sensor.capture_frmsize_index,b_shutter_mode,ecgc_type);
+	print_info("Enter Function:%s  preview index =%d, capture=%d ", __func__, ov13850_ofilm_sensor.preview_frmsize_index, ov13850_ofilm_sensor.capture_frmsize_index);
 	return 0;
 }
 
@@ -988,21 +959,6 @@ static void ov13850_ofilm_set_vts(u16 vts)
 	ov13850_ofilm_write_reg(OV13850_OFILM_VTS_REG_L, vts & 0xff, 0x00);
 }
 
-u32 ov13850_ofilm_get_vts(void){
-	u8 vts_l = 0;
-	u8 vts_h = 0;
-	u32 vts = 0;
-	ov13850_ofilm_read_reg(OV13850_OFILM_VTS_REG_H, &vts_h);
-	ov13850_ofilm_read_reg(OV13850_OFILM_VTS_REG_L, &vts_l);
-
-	vts = vts_h;
-	vts <<=8;
-	vts += vts_l;
-
-	return vts;
-}
-
-
 /* **************************************************************************
   * FunctionName: ov13850_ofilm_dump_reg_debug;
   * Description : dump standby, frame count, cap relate reg for debug
@@ -1326,21 +1282,6 @@ static void ov13850_ofilm_config_dphy_clk(camera_state state)
 
 	print_info("%s lane_clk = 0x%x state = %d",__func__, lane_clk, state);
 	k3_ispio_config_lane_clk(ov13850_ofilm_sensor.mipi_index, ov13850_ofilm_sensor.mipi_lane_count, lane_clk);
-}
-
-/*
- **************************************************************************
- * FunctionName: ov13850_ofilm_reset_dphy;
- * Description : reset dphy;
- * Input       : index:sensor index; mipi_lane_count: mipi land count;
- * Output      : NA;
- * ReturnValue : NA;
- * Other       : NA;
- **************************************************************************
-*/
-static void ov13850_ofilm_reset_dphy(void)
-{
-	k3_ispio_reset_phy(ov13850_ofilm_sensor.mipi_index, ov13850_ofilm_sensor.mipi_lane_count);
 }
 
 /*
@@ -1855,7 +1796,6 @@ static void ov13850_ofilm_set_default(void)
 	ov13850_ofilm_sensor.set_exposure = NULL;//ov13850_ofilm_set_exposure;
 	ov13850_ofilm_sensor.set_exposure_gain = ov13850_ofilm_set_exposure_gain;
 	ov13850_ofilm_sensor.set_vts = ov13850_ofilm_set_vts;
-	ov13850_ofilm_sensor.get_vts = ov13850_ofilm_get_vts;
 
 	ov13850_ofilm_sensor.sensor_dump_reg = ov13850_ofilm_dump_reg_debug;
 
@@ -1911,13 +1851,11 @@ static void ov13850_ofilm_set_default(void)
 	/*if there have different data rate of sensor resolution we need this config_dphy_clk 
 	   otherwise if all resolution is same rate config_dphy_clk must to be null*/
 	ov13850_ofilm_sensor.config_dphy_clk = ov13850_ofilm_config_dphy_clk;
-	ov13850_ofilm_sensor.reset_dphy = ov13850_ofilm_reset_dphy;
 
 	ov13850_ofilm_sensor.get_sensor_reg = ov13850_ofilm_get_sensor_reg;
 	ov13850_ofilm_sensor.set_sensor_reg = ov13850_ofilm_set_sensor_reg;
 	ov13850_ofilm_sensor.check_otp_status = ov13850_ofilm_check_otp;
-	ov13850_ofilm_sensor.support_max_vts = 0x7FFF;
-	ov13850_ofilm_sensor.support_expoline_offset = 8;
+
 }
 
 /*

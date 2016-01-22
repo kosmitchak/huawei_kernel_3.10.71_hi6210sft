@@ -8,12 +8,12 @@
 	#undef  BSP_VERSION
 	#endif
 
-	#define BSP_SET_VERSION                 "V800R100C52B126SP12"
-	#define BSP_VERSION                     "V800R100C52B126SP12"
+	#define BSP_SET_VERSION                 "V800R100C52B216SPC001"
+	#define BSP_VERSION                     "V800R100C52B216SPC001"
 	#define DLOAD_ID                        "V8R2C52"
 	#define PRODUCT_ID                      "V8R2C52"
 	#define HARD_VERSION                    "V8R2C52"
-	#define PRODUCT_VERSION                 "22.126.12.00.00"
+	#define PRODUCT_VERSION                 "22.216.01.00.00"
 
 #elif defined (BOARD_FPGA)
 	#define BSP_SET_VERSION                 "V800R100C00B170"

@@ -65,22 +65,6 @@ struct sensor_power_setting hw_imx278_carrera_power_setting[] = {
         .sensor_index = SENSOR_INDEX_INVALID,
         .delay = 1,
     },
-    //SCAM AVDD 2.85V
-    {
-        .seq_type = SENSOR_AVDD2,
-        .data = (void*)"slave-sensor-avdd",
-        .config_val = LDO_VOLTAGE_V2P85V,
-        .sensor_index = SENSOR_INDEX_INVALID,
-        .delay = 0,
-    },
-
-    //SCAM DVDD1.2V
-    {
-        .seq_type = SENSOR_DVDD2,
-        .config_val = LDO_VOLTAGE_1P2V,
-        .sensor_index = SENSOR_INDEX_INVALID,
-        .delay = 0,
-    },
 
     //MCAM1 AFVDD 2.85V
     {

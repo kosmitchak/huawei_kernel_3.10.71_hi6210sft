@@ -758,6 +758,7 @@ CFG_FEATURE_CL_INTERWORK            = FEATURE_ON
 
 CFG_FEATURE_MULTI_CHANNEL		= FEATURE_ON
 
+
 #DFS同步/异步配置接口特性宏,FEATURE_ON为使用同步配置接口
 CFG_FEATURE_DFS_SYNC                            =FEATURE_OFF
 

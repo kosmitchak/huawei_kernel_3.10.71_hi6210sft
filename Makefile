@@ -1,6 +1,6 @@
 VERSION = 3
 PATCHLEVEL = 10
-SUBLEVEL = 61
+SUBLEVEL = 74
 EXTRAVERSION =
 NAME = TOSSUG Baby Fish
 
@@ -402,6 +402,11 @@ ifeq ($(strip $(OBB_UE_MODE_CDMA)),true)
 KBUILD_CFLAGS += -DFEATURE_UE_MODE_CDMA=FEATURE_ON
 else
 KBUILD_CFLAGS += -DFEATURE_UE_MODE_CDMA=FEATURE_OFF
+endif
+
+#add SLT FEATURE to ap
+ifeq ($(strip $(FACTORY_SLT)),true)
+KBUILD_CFLAGS += -D__SLT_FEATURE__
 endif
 
 # add hisilicon balong configs

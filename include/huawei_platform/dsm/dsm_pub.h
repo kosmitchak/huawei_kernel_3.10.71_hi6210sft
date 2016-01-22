@@ -159,6 +159,7 @@
 #define DSM_WIFI_SET_KEY_MGMT_ERROR         (20716)
 #define DSM_WIFI_SET_SHAREDKEY_ERROR        (20717)
 #define DSM_WIFI_OPEN_ERROR                 (20718)
+#define DSM_WIFI_KSO_ERROR                  (20719)
 /*************** 20700 ~ 20799 *******************/
 /************DMD NUMBER FOR WIFI END**************/
 

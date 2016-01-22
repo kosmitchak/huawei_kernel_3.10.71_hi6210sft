@@ -38,12 +38,13 @@ extern "C" {
 /* |~~~~~~~~no sec~~~~|~~~~~~~no sec~~|~~~~~~~no sec~~|~~~~~~~nosec~~~~|~~~~~~nosec~~|~~~~~~~~nosec~~|~~~~~~~~nosec~~|~~~~~~~no sec~~|~~~~~~~~~sec~~~~~~~| */
 /* |0x37bfffff~~~~~~~~|0x37c01fff~~~~~|0x37c1ffff~~~~~|0x37c5ffff~~~~~~|0x37c74fff~~~|0x37c753ff~~~~~|0x37c7540f~~~~~|0x37c7ffff~~~~~|0x37ffffff~~~~~~~~~| */
 
-/* |~~0x2D600000 ~ 0x2DBFFFFF~~| */
-/* |~~~Music data 6M~~~~~~~~~~~| */
-/* |~~~~~no sec~~~~~~~~~~~~~~~~| */
+/* |~~0x2D600000 ~ 0x2DAFFFFF~~|~~0x2DB00000 ~ 0x2DBFFFFF~~| */
+/* |~~~Music data 5M~~~~~~~~~~~|~~~~~~~~Pcm data 1M~~~~~~~~| */
+/* |~~~~~no sec~~~~~~~~~~~~~~~~|~~~~~~~~~no sec~~~~~~~~~~~~| */
 
 #define HIFI_RUN_SIZE					(0x500000)
-#define HIFI_MUSIC_DATA_SIZE			(0x600000)
+#define HIFI_MUSIC_DATA_SIZE			(0x500000)
+#define HIFI_PCM_DATA_SIZE              (0x100000)
 #define HIFI_SOCP_SIZE					(0x2000)
 #define HIFI_RESERVE1_SIZE				(0x1E000)
 #define HIFI_IMAGE_OCRAMBAK_SIZE		(0x40000)
@@ -56,18 +57,19 @@ extern "C" {
 
 #define HIFI_BASE_ADDR					(0x37700000)
 #define HIFI_RUN_LOCATION				(HIFI_BASE_ADDR)											/*Code run*/
-#define HIFI_SYS_MEM_ADDR               (HIFI_BASE_ADDR)
+#define HIFI_SYS_MEM_ADDR				(HIFI_BASE_ADDR)
 #define HIFI_MUSIC_DATA_LOCATION		(0x2D600000)												/*Music Data*/
+#define HIFI_PCM_PLAY_BUFF_LOCATION     (HIFI_MUSIC_DATA_LOCATION + HIFI_MUSIC_DATA_SIZE)           /*Pcm Data*/
 #define HIFI_SOCP_LOCATION				(HIFI_RUN_LOCATION + HIFI_RUN_SIZE) 						/*SOCP*/
 #define HIFI_RESERVE1_LOCATION			(HIFI_SOCP_LOCATION + HIFI_SOCP_SIZE)						/*reserv1*/
 #define HIFI_IMAGE_OCRAMBAK_LOCATION	(HIFI_RESERVE1_LOCATION + HIFI_RESERVE1_SIZE)				/*OCRAM*/
 #define HIFI_IMAGE_TCMBAK_LOCATION		(HIFI_IMAGE_OCRAMBAK_LOCATION + HIFI_IMAGE_OCRAMBAK_SIZE)	/*TCM*/
-#define HIFI_SEC_HEAD_BACKUP            (HIFI_IMAGE_TCMBAK_LOCATION + HIFI_IMAGE_TCMBAK_SIZE)		/*SEC HEAD backup*/
+#define HIFI_SEC_HEAD_BACKUP			(HIFI_IMAGE_TCMBAK_LOCATION + HIFI_IMAGE_TCMBAK_SIZE)		/*SEC HEAD backup*/
 #define HIFI_WTD_FLAG_BASE				(HIFI_SEC_HEAD_BACKUP + HIFI_SEC_HEAD_SIZE)					/*Watchdog flag*/
-#define HIFI_RESERVE2_LOCATION			(HIFI_WTD_FLAG_BASE + HIFI_WTD_FLAG_SIZE)                   /*reserv2*/
-#define HIFI_IMAGE_LOCATION 			(HIFI_RESERVE2_LOCATION + HIFI_RESERVE2_SIZE)               /*Code backup*/
+#define HIFI_RESERVE2_LOCATION			(HIFI_WTD_FLAG_BASE + HIFI_WTD_FLAG_SIZE)					/*reserv2*/
+#define HIFI_IMAGE_LOCATION 			(HIFI_RESERVE2_LOCATION + HIFI_RESERVE2_SIZE)				/*Code backup*/
 
-#define HIFI_WTD_FLAG_NMI              (HIFI_WTD_FLAG_BASE + 0x8)
+#define HIFI_WTD_FLAG_NMI			   (HIFI_WTD_FLAG_BASE + 0x8)
 
 #define HIFI_OFFSET_MUSIC_DATA			(HIFI_RUN_SIZE)
 #define HIFI_OFFSET_IMG 				(HIFI_SIZE - HIFI_IMAGE_SIZE)
@@ -82,9 +84,11 @@ extern "C" {
 #define DRV_DSP_EXCEPTION_NO			(DRV_DSP_UART_TO_MEM_CUR_ADDR + 4)
 #define DRV_DSP_IDLE_COUNT_ADDR			(DRV_DSP_EXCEPTION_NO + 4)
 #define DRV_DSP_LOADED_INDICATE			(DRV_DSP_IDLE_COUNT_ADDR + 4)
-#define DRV_DSP_KILLME_ADDR 			(DRV_DSP_LOADED_INDICATE + 4) /*only for debug, 0x37d82018*/
+#define DRV_DSP_KILLME_ADDR 			(DRV_DSP_LOADED_INDICATE + 4)
 #define DRV_DSP_WRITE_MEM_PRINT_ADDR	(DRV_DSP_KILLME_ADDR + 4)
-#define DRV_DSP_POWER_STATUS_ADDR		(DRV_DSP_WRITE_MEM_PRINT_ADDR + 4)			/*0x37c02020*/
+#define DRV_DSP_POWER_STATUS_ADDR		(DRV_DSP_WRITE_MEM_PRINT_ADDR + 4)
+#define DRV_DSP_DTS_HPX_PARM_ADDR		(DRV_DSP_POWER_STATUS_ADDR + 4)/*for dts hpx param*/
+#define DRV_DSP_DTS_HPX_PARM_SIZE		(70*1024)
 #define DRV_DSP_POWER_ON				(0x55AA55AA)
 #define DRV_DSP_POWER_OFF				(0x55FF55FF)
 #define DRV_DSP_KILLME_VALUE			(0xA5A55A5A)
@@ -93,8 +97,8 @@ extern "C" {
 #define HIFI_OCRAM_BASE_ADDR			(0xE8000000)
 #define HIFI_TCM_BASE_ADDR				(0xE8058000)
 
-#define DRV_DSP_STACK_TO_MEM_SIZE       (0x1000)
-#define DRV_DSP_STACK_TO_MEM            (HIFI_BASE_ADDR+HIFI_RUN_SIZE-DRV_DSP_STACK_TO_MEM_SIZE)
+#define DRV_DSP_STACK_TO_MEM_SIZE		(0x1000)
+#define DRV_DSP_STACK_TO_MEM			(HIFI_BASE_ADDR+HIFI_RUN_SIZE-DRV_DSP_STACK_TO_MEM_SIZE)
 
 #define DRV_DSP_UART_TO_MEM 			(0x3FE80000)
 #define DRV_DSP_UART_TO_MEM_SIZE		(512*1024)
@@ -134,6 +138,12 @@ typedef enum HIFI_MSG_ID_ {
 	ID_AP_AUDIO_SET_DTS_DEV_CMD			= 0xDD38,
 	ID_AP_AUDIO_SET_DTS_GEQ_CMD			= 0xDD39,
 	ID_AP_AUDIO_SET_DTS_GEQ_ENABLE_CMD	= 0xDD3B,
+
+	/*HPX command id from ap*/
+	ID_AP_AUDIO_CMD_PARAM_SYNC_CMD      = 0xDD3C,           /* AP通知Hifi 开始更新HPX参数*/
+	ID_AP_AUDIO_CMD_PARAM_SYNC_CNF      = 0xDD3D,           /* HIFI通知AP 同步完成*/
+	ID_AP_AUDIO_CMD_PARAM_FINISH_CMD    = 0xDD3E,           /* AP通知Hifi 已经更新完成HPX参数*/
+	ID_AP_AUDIO_CMD_PARAM_FINISH_CNF    = 0xDD3F,           /* HIFI通知AP 参数更新完成*/
 
 	/* Voice Record */
 	ID_AP_HIFI_VOICE_RECORD_START_CMD	= 0xDD40,
@@ -180,7 +190,22 @@ typedef enum HIFI_MSG_ID_ {
 	ID_AP_AUDIO_CMD_SET_SOURCE_CMD		= 0xDD95,
 	ID_AP_AUDIO_CMD_SET_DEVICE_CMD		= 0xDD96,
 	ID_AP_AUDIO_CMD_SET_MODE_CMD		= 0xDD97,
+
+	/* for 3mic */
+	ID_AUDIO_AP_FADE_OUT_REQ			= 0xDDC0,
+	ID_AP_AUDIO_FADE_OUT_IND			= 0xDDC1,
+
+	ID_AP_AUDIO_ROUTING_COMPLETE_REQ	= 0xDDE5,/*AP 通知HIFI 3Mic/4Mic 通路已建立，同时关闭Codec DP 时钟*/
+	ID_AUDIO_AP_DP_CLK_EN_IND			= 0xDDE7,/*HIFI 通知A核打开或关闭Codec DP时钟 */
+	ID_AP_AUDIO_DP_CLK_STATE_IND		= 0xDDE8,/*A核通知HIFI ，Codec DP时钟状态( 打开或关闭) */
+	ID_AUDIO_AP_OM_DUMP_CMD 			= 0xDDE9,/* HIFI 通知A核dump日志*/
 } HIFI_MSG_ID;
+
+typedef enum HI6402_DP_CLK_STATE_ {
+	HI6402_DP_CLK_OFF = 0x0,
+	HI6402_DP_CLK_ON = 0x1,
+} HI6402_DP_CLK_STATE;
+
 
 /*处理hifi回复消息，记录cmd_id和数据*/
 typedef struct {
@@ -201,9 +226,15 @@ struct misc_recmsg_param {
 	unsigned short	playStatus;
 };
 
-struct temp_hifi_cmd{
-	unsigned short	msgID;
-	unsigned short	value;
+struct common_hifi_cmd{
+	unsigned short msg_id;
+	unsigned short reserve;
+	unsigned int   value;
+};
+
+struct dp_clk_request {
+	struct list_head dp_clk_node;
+	struct common_hifi_cmd dp_clk_msg;
 };
 
 #ifdef PLATFORM_HI3XXX
@@ -211,6 +242,8 @@ int hifi_send_msg(unsigned int mailcode, void *data, unsigned int length);
 void hifi_get_log_signal(void);
 void hifi_release_log_signal(void);
 void sochifi_watchdog_send_event(void);
+void notify_hifi_misc_watchdog_coming(void);
+int hifi_misc_sync_msg(void * cmd_in, unsigned int cmd_in_size, void * cmd_out, unsigned int cmd_out_size);
 #endif
 
 #ifdef __cplusplus

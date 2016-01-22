@@ -56,12 +56,16 @@
 HWLOG_REGIST();
 #define DRIVER_VERSION        "1.0.0"
 #define BIT_PER_WORD 8
+#define SUBPACKAGE_NUM 20
 
 /*This struct record the spi infomation.*/
 static fpga_spi_data *spi_drv_data;
 int firmware_is_downloading = FALSE;
 int reset_gpio = -1;
 int cs_gpio = -1;
+int subpackage_num = 0;
+
+extern int fpga_ice40_get_subpackages_config(void);
 
 void set_firmware_is_downloading(int ifdownloading)
 {
@@ -231,6 +235,26 @@ int ice40_data_spi_write(unsigned char *data, int data_size)
 }
 EXPORT_SYMBOL(ice40_data_spi_write);
 
+static int  find_subpackage_head(unsigned char *firmware, int size, unsigned char* head_start[])
+{
+    int i;
+    int subpackage = 0;
+
+    for(i = 0; i < (size -3); i++) {
+        if((0X7E == (*(firmware + i))) && (0XAA == (*(firmware + i + 1))) \
+            && (0X99 == (*(firmware + i + 2))) &&(0X7E == (*(firmware + i + 3)))) {
+            head_start[subpackage] = firmware + i;
+            hwlog_info("%s, subpackage_head[%d] : 0x%x \n", __func__, subpackage, head_start[subpackage]);
+            subpackage ++;
+        }
+    }
+    head_start[subpackage] = firmware + size;
+    hwlog_info("%s, subpackage_head[%d] : 0x%x \n", __func__, subpackage, head_start[subpackage]);
+    hwlog_info("%s, subpackage num = %d, size = %d\n", __func__, subpackage, size);
+
+    return subpackage;
+}
+
 int ice40_data_spi_write_whole_image(unsigned char *data, int data_size)
 {
     int ret = -1;
@@ -239,6 +263,7 @@ int ice40_data_spi_write_whole_image(unsigned char *data, int data_size)
     fpga_spi_data *spidev = NULL;
     struct spi_message m;
     struct spi_transfer *xfers = NULL;
+    unsigned char* subpackage_head_start[SUBPACKAGE_NUM] = {NULL};
 
     if (!data) {
         hwlog_err("%s - invalid arg buf=%p\n",__func__, data);
@@ -251,27 +276,62 @@ int ice40_data_spi_write_whole_image(unsigned char *data, int data_size)
         return FAIL;
     }
 
-    transfer_num = (data_size + FPGA_SPI_TRAN_SIZE - 1)/FPGA_SPI_TRAN_SIZE;
-    xfers = kzalloc(sizeof(struct spi_transfer)*transfer_num, GFP_KERNEL);
-    if(!xfers) {
-        hwlog_err("%s xfers is NULL.\n", __func__);
-        return FAIL;
-    }
-    hwlog_info("%s - data_size = %d, transfer_num = %d.\n",__func__, data_size, transfer_num);
-    spi_message_init(&m);
-    for (left = data_size; left > 0; left -= FPGA_SPI_TRAN_SIZE) {
-        one_size = (left > FPGA_SPI_TRAN_SIZE)? FPGA_SPI_TRAN_SIZE : left;
-        xfers[i].tx_buf = data + i * FPGA_SPI_TRAN_SIZE;
-        xfers[i].len = one_size;
-        spi_message_add_tail(&xfers[i], &m);
-        i++;
-    }
+    if(0 == fpga_ice40_get_subpackages_config()) { //all firmware file one time download
+        hwlog_info("%s, =====> in download all firmware one time, NO  subpackage, 0408 !!!\n",__func__);
+        transfer_num = (data_size + FPGA_SPI_TRAN_SIZE - 1)/FPGA_SPI_TRAN_SIZE;
+        xfers = kzalloc(sizeof(struct spi_transfer)*transfer_num, GFP_KERNEL);
+        if(!xfers) {
+            hwlog_err("%s xfers is NULL.\n", __func__);
+            return FAIL;
+        }
+        hwlog_info("%s - data_size = %d, transfer_num = %d.\n",__func__, data_size, transfer_num);
+        spi_message_init(&m);
+        for (left = data_size; left > 0; left -= FPGA_SPI_TRAN_SIZE) {
+            one_size = (left > FPGA_SPI_TRAN_SIZE)? FPGA_SPI_TRAN_SIZE : left;
+            xfers[i].tx_buf = data + i * FPGA_SPI_TRAN_SIZE;
+            xfers[i].len = one_size;
+            spi_message_add_tail(&xfers[i], &m);
+            i++;
+        }
 
-    ret = spi_sync(spidev->spi, &m);
-    if (ret < 0) {
-        hwlog_err("%s spi send error %d\n", __func__, ret);
-        ret = FAIL;
-    }
+        ret = spi_sync(spidev->spi, &m);
+        if (ret < 0) {
+            hwlog_err("%s spi send error %d\n", __func__, ret);
+            kfree(xfers);
+            return FAIL;
+        }
+     } else { // for subpackage download
+        hwlog_info("%s, =====> in  subpackage  download,0408 !!!\n",__func__);
+        subpackage_num = find_subpackage_head(data, data_size, subpackage_head_start);
+        if(subpackage_num <= 0 || subpackage_num >= SUBPACKAGE_NUM) {
+            hwlog_info("%s subpackage num is (%d) error, default = %d  !!!\n", __func__, subpackage_num, SUBPACKAGE_NUM);
+            return FAIL;
+        }
+
+        xfers = kzalloc(sizeof(struct spi_transfer)*subpackage_num, GFP_KERNEL);
+        if(!xfers) {
+            hwlog_err("%s xfers is NULL.\n", __func__);
+            return FAIL;
+        }
+
+        for(i = 0; i < subpackage_num; i++) {
+            spi_message_init(&m);
+            one_size = subpackage_head_start[i + 1] - subpackage_head_start[i];
+            xfers[i].tx_buf = subpackage_head_start[i];
+            xfers[i].len = one_size;
+            spi_message_add_tail(&xfers[i], &m);
+
+            hwlog_info("%s package_NO(%d): end (0x%x) - start(0x%x) = %d\n", __func__, \
+                        i , subpackage_head_start[i + 1], subpackage_head_start[i], one_size);
+
+            ret = spi_sync(spidev->spi, &m);
+            if (ret < 0) {
+                hwlog_err("%s spi send error, file at package NO. = %d\n", __func__, i);
+                kfree(xfers);
+                return FAIL;
+            }
+        }
+     }
     ret = SUCCESS;
     if(xfers)
         kfree(xfers);
@@ -368,7 +428,7 @@ static int fpga_ice40_spi_probe(struct spi_device *spi)
         goto err_irda_spidev;
     }
     /*Finally, return success.*/
-    hwlog_info("fpga_ice40_spi_probe success");
+    hwlog_info("fpga_ice40_spi_probe success !\n");
     return SUCCESS;
 err_irda_spidev:
 err_get_dt_data:

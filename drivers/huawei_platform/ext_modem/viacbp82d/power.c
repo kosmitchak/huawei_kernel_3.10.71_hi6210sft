@@ -122,6 +122,10 @@ enum ASC_USERSPACE_NOTIFIER_CODE{
 #define CBP_BACKUP_GPIO_DELECT_DELAY  (150) //ms
 #define QUEUE_NUM   8
 
+#define VIA_RESETINFO_WR_APPEND  (1)
+#define VIA_RESETINFO_WR_COVER   (0)
+#define VIA_RESETINFO_WR_CLEAR   "0"
+
 struct viatel_modem_data {
     struct platform_device *via_pdev;
     struct fasync_struct *fasync;
@@ -146,12 +150,83 @@ static void cbp_backup_check_ramdump_timer(unsigned long data);
 
 static int cbp_need_apr = 0;
 static char time_buf[16] ={0};
+static char g_cbp_resetinfo[MDM_RESETINFO_SIZE] = {0};
+static struct mutex g_cbp_resetinfo_lock;
 
 static struct platform_device viacbp82d_3rd_modem_info = {
     .name = MODEM_DEVICE_BOOT(MODEM_VIACBP82D),
     .id = -1,
 };
 
+static int via_resetinfo_read(void *buf, int size)
+{
+    int real_size = -1;
+    if(!buf) {
+        hwlog_err("%s %d: the pointer of buf is null\n", __func__, __LINE__);
+        return -1;
+    }
+
+    mutex_lock(&g_cbp_resetinfo_lock);
+    real_size = snprintf(buf, size, "%s", g_cbp_resetinfo);
+    mutex_unlock(&g_cbp_resetinfo_lock);
+    return real_size;
+}
+
+/*
+if append_flag == 1, write data into g_cbp_resetinfo by append,
+else if append_flag == 0 by cover
+*/
+static int via_resetinfo_write(void *buf, int append_flag)
+{
+    int real_size = -1;
+    if(!buf) {
+        hwlog_err("%s %d: the pointer of buf is null\n", __func__, __LINE__);
+        return -1;
+    }
+
+    hwlog_info("%s %d: start write resetinfo to g_cbp_resetinfo\n",__func__, __LINE__);
+    mutex_lock(&g_cbp_resetinfo_lock);
+    if(VIA_RESETINFO_WR_COVER == append_flag) {
+        memset(g_cbp_resetinfo, 0, sizeof(g_cbp_resetinfo));
+        if(strcmp(buf, VIA_RESETINFO_WR_CLEAR)) {
+            real_size = snprintf(g_cbp_resetinfo, MDM_RESETINFO_SIZE, "%s", buf);
+        }
+    }else if(VIA_RESETINFO_WR_APPEND == append_flag) {
+        real_size = snprintf(g_cbp_resetinfo+strlen(g_cbp_resetinfo), MDM_RESETINFO_SIZE-strlen(g_cbp_resetinfo), "%s", buf);
+    }else {
+        hwlog_err("%s %d: unknow append_flag!\n", __func__, __LINE__);
+        real_size = -1;
+    }
+    mutex_unlock(&g_cbp_resetinfo_lock);
+    return real_size;
+}
+
+
+static void oem_cbp_reset_by_ap(struct cbp_reset_info_s resetinfo)
+{
+    char rst_buf[MDM_RESETINFO_SIZE] = {0};
+    if(via_modem_state != MODEM_STATE_READY) {
+        hwlog_err("%s %d: VIA is in reset!\n", __func__, __LINE__);
+        return;
+    }
+
+    snprintf(rst_buf, MDM_RESETINFO_SIZE, "system reboot reason: %s\n"
+        "reboot_task:0x0\ntask_name:%s\nreboot_int:0xffffffff\nmodid:0x%x\n"
+        "<system_error> ccore enter system error!\nstack:\n%s\nsemGive\n",
+        resetinfo.task_name, resetinfo.task_name, resetinfo.modid, resetinfo.stack);
+    hwlog_info("%s %d: resetinfo:%s", __func__, __LINE__, rst_buf);
+
+    if(via_resetinfo_write(rst_buf, VIA_RESETINFO_WR_COVER)) {
+        hwlog_err("%s %d:via_resetinfo_write write failed!\n", __func__,__LINE__);
+    }
+
+    if (0 == atomic_read(&cbp_backup_timer_started)) {
+            mod_timer(&cbp_backup_timer, jiffies + msecs_to_jiffies(WAIT_CBP_BACKUP_RAMDUMP_RST_TIME));
+            atomic_set(&cbp_backup_timer_started, 1);
+    }
+
+    oem_reset_modem_by_backup();
+}
 
 static int oem_gpio_get_cbp_rst_ind_value()
 {
@@ -166,8 +241,15 @@ static int oem_gpio_get_cbp_rst_ind_value()
 
 static void cbp_backup_check_ramdump_timer(unsigned long data)
 {
+    char rst_buf[CBP_EXCEPT_STACK_LEN]={0};
+
     atomic_set(&cbp_backup_timer_started, 0);
-    hwlog_err("%s %d: VIA CBP can not produce ramdump by AP pull backup GPIO!\n", __func__, __LINE__);
+    snprintf(rst_buf, CBP_EXCEPT_STACK_LEN, "%s %d: VIA CBP can not produce ramdump by AP pull backup GPIO!\n", __func__,__LINE__);
+    if(via_resetinfo_write(rst_buf, VIA_RESETINFO_WR_APPEND)) {
+        hwlog_err("%s %d:via_resetinfo_write write failed!\n", __func__,__LINE__);
+    }
+    hwlog_info("%s", rst_buf);
+
     oem_reset_modem();
     hwlog_err("%s %d: finish hardware reset VIA CBP.\n", __func__, __LINE__);
 }
@@ -333,7 +415,7 @@ void oem_power_off_modem(void)
 }
 EXPORT_SYMBOL(oem_power_off_modem);
 
-int modem_err_indication_usr(int revocery)
+int modem_err_indication_usr(int revocery, struct cbp_reset_info_s resetinfo)
 {
    hwlog_info("%s %d revocery=%d\n",__func__,__LINE__,revocery);
    if(revocery){
@@ -341,12 +423,7 @@ int modem_err_indication_usr(int revocery)
         /*1, check the rst_ind*/
         /*2, set GPIO_7_3 low*/
         hwlog_info("%s %d rst_ind %d\n", __func__, __LINE__, oem_gpio_get_cbp_rst_ind_value());
-
-        if (0 == atomic_read(&cbp_backup_timer_started)) {
-            mod_timer(&cbp_backup_timer, jiffies + msecs_to_jiffies(WAIT_CBP_BACKUP_RAMDUMP_RST_TIME));
-            atomic_set(&cbp_backup_timer_started, 1);
-        }
-        oem_reset_modem_by_backup();
+        oem_cbp_reset_by_ap(resetinfo);
 
         //cbp_need_apr = 1;
         set_time_stamp();
@@ -582,6 +659,7 @@ static int modem_data_init(struct viatel_modem_data *d)
     INIT_WORK(&d->via_uevent_work, via_uevent_work_func);
     d->rst_ntf.notifier_call = modem_reset_notify_misc;
     atomic_set(&d->count, 0);
+    mutex_init(&g_cbp_resetinfo_lock);
 
     return ret;
 }
@@ -731,6 +809,14 @@ ssize_t modem_via_backup_store(struct device *dev, struct device_attribute *attr
         oem_reset_modem_by_backup();
     }else if( !strncmp(buf, "0", strlen("0"))){
         oem_gpio_direction_output(cbp_backup_gpio, 0);
+    }else if( !strncmp(buf, CBP_EXCEPT_RILD_AT_TIMEOUT, strlen(CBP_EXCEPT_RILD_AT_TIMEOUT))) {
+        struct cbp_reset_info_s resetinfo;
+
+        memset(&resetinfo, 0, sizeof(resetinfo));
+        memcpy(resetinfo.task_name, CBP_EXCEPT_REASON_RILD, (strlen(CBP_EXCEPT_REASON_RILD)+1));
+        resetinfo.modid = CBP_EXCE_MID_RILD_AT_TIMEOUT;
+        memcpy(resetinfo.stack, "at timeout", strlen("at timeout")+1);
+        oem_cbp_reset_by_ap(resetinfo);
     }else{
         hwlog_info("Unknow command.\n");
     }
@@ -763,18 +849,46 @@ ssize_t modem_via_rst_mdm_store(struct device *dev, struct device_attribute *att
     }
         return count;
 }
+
+ssize_t modem_via_resetinfo_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+    int count = -1;
+    hwlog_info("%s %d: start to read resetinfo from g_cbp_resetinfo", __func__,__LINE__);
+    count = via_resetinfo_read(buf, PAGE_SIZE);
+    return count;
+}
+
+ssize_t modem_via_resetinfo_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+    int ret = -1;
+
+    hwlog_info("%s %d: start to call modem_via_resetinfo_store\n", __func__,__LINE__);
+    if( !strncmp(buf, VIA_RESETINFO_WR_CLEAR, strlen(VIA_RESETINFO_WR_CLEAR)) ) {
+        ret = via_resetinfo_write(VIA_RESETINFO_WR_CLEAR, VIA_RESETINFO_WR_COVER);
+        if(ret != 0) {
+            hwlog_err("%s %d: via_resetinfo_write write failed!\n", __func__,__LINE__);
+            count = -1;
+        }
+        hwlog_info("%s %d: resetinfo has been clean.\n", __func__,__LINE__);
+    }
+    return count;
+}
+
 //static DEVICE_ATTR(state, S_IRUGO | S_IWUSR, modem_boot_get, modem_boot_set);
 static DEVICE_ATTR(state, S_IRUGO | S_IWUSR, modem_state_show, modem_boot_set);
 static DEVICE_ATTR(modem_state, S_IRUGO | S_IWUSR, modem_state_show, modem_state_store);
 static DEVICE_ATTR(sim_switch, S_IRUGO | S_IWUSR, modem_sim_switch_show, modem_sim_switch_store);
 static DEVICE_ATTR(via_backup, S_IRUGO | S_IWUSR, modem_via_backup_show, modem_via_backup_store);
 static DEVICE_ATTR(via_rst_mdm, S_IRUGO | S_IWUSR, modem_via_rst_mdm_show, modem_via_rst_mdm_store);
+static DEVICE_ATTR(via_resetinfo, S_IRUGO | S_IWUGO, modem_via_resetinfo_show, modem_via_resetinfo_store);
+
 static struct attribute *viacbp82d_3rd_modem_attributes[] = {
     &dev_attr_modem_state.attr,
     &dev_attr_state.attr,
     &dev_attr_sim_switch.attr,
     &dev_attr_via_backup.attr,
     &dev_attr_via_rst_mdm.attr,
+    &dev_attr_via_resetinfo.attr,
     NULL,
 };
 

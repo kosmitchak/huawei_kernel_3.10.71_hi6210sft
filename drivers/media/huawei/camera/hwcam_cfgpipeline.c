@@ -28,6 +28,7 @@
 #include <linux/debugfs.h>
 #include <linux/file.h>
 #include <linux/fs.h>
+#include <linux/pid.h>
 #include <linux/sched.h>
 #include <linux/slab.h>
 #include <linux/videodev2.h>
@@ -50,7 +51,6 @@ typedef struct _tag_hwcam_cfgpipeline_mount_req
 
     struct video_device*                        vdev; 
 
-    struct list_head*                           pipelines; 
     hwcam_dev_intf_t*                           cam; 
     int                                         moduleID; 
 
@@ -74,6 +74,9 @@ typedef struct _tag_hwcam_cfgpipeline
 	struct list_head	                        node;
 
     hwcam_dev_intf_t*                           cam;
+    struct pid*                                 cfgsvr;
+	struct wakeup_source*                       ws;
+    struct delayed_work                         stopping;
 
 	struct list_head	                        streams;
 } hwcam_cfgpipeline_t;
@@ -81,6 +84,198 @@ typedef struct _tag_hwcam_cfgpipeline
 #define I2PL(i) container_of(i, hwcam_cfgpipeline_t, intf)
 
 #define REF2PL(r) container_of(r, hwcam_cfgpipeline_t, ref)
+
+static hwcam_cfgpipeline_vtbl_t s_vtbl_cfgpipeline;
+
+static DEFINE_SPINLOCK(s_pipelines_lock);
+static LIST_HEAD(s_pipelines_opened); 
+static DECLARE_WAIT_QUEUE_HEAD(s_wait_closing_pipeline);
+static LIST_HEAD(s_pipelines_closing); 
+static void hwcam_cfgpipeline_force_close(struct work_struct *work);
+
+enum
+{
+    HWCAM_WAIT4STOPPING_TIME                    =   30000,   // 30s
+};
+
+static hwcam_cfgpipeline_intf_t*
+hwcam_cfgpipeline_find_by_device(
+        hwcam_dev_intf_t* cam)
+{
+    hwcam_cfgpipeline_intf_t* pl = NULL; 
+    hwcam_cfgpipeline_t* cur = NULL;
+
+    spin_lock(&s_pipelines_lock); 
+    list_for_each_entry(cur, &s_pipelines_opened, node) {
+        if (cur->cam == cam) {
+            pl = &cur->intf; 
+            hwcam_cfgpipeline_intf_get(pl); 
+            break; 
+        }
+    }
+    spin_unlock(&s_pipelines_lock); 
+    return pl; 
+}
+
+static bool
+hwcam_cfgpipeline_is_device_idle(
+        hwcam_dev_intf_t* cam)
+{
+    bool rc = true;
+    hwcam_cfgpipeline_t* cur = NULL;
+
+    spin_lock(&s_pipelines_lock); 
+    list_for_each_entry(cur, &s_pipelines_closing, node) {
+        if (cur->cam == cam) {
+            rc = false; 
+            break; 
+        }
+    }
+    spin_unlock(&s_pipelines_lock); 
+    return rc; 
+}
+
+int
+hwcam_cfgpipeline_wait_idle(
+        hwcam_dev_intf_t* cam, 
+        int timeout)
+{
+    /*lint -e666 */
+    return wait_event_timeout(
+            s_wait_closing_pipeline, 
+            hwcam_cfgpipeline_is_device_idle(cam),
+            msecs_to_jiffies(timeout));
+    /*lint +e666 */
+}
+
+static int
+hwcam_cfgpipeline_on_opened(
+        hwcam_cfgpipeline_t* pl)
+{
+    spin_lock(&s_pipelines_lock); 
+    hwcam_cfgpipeline_intf_get(&pl->intf); 
+    list_add_tail(&pl->node, &s_pipelines_opened); 
+    __pm_stay_awake(pl->ws); 
+    spin_unlock(&s_pipelines_lock); 
+    return 0; 
+}
+
+static void 
+hwcam_cfgpipeline_force_close(
+        struct work_struct *work)
+{
+    hwcam_cfgpipeline_t* pl = container_of(work, 
+            hwcam_cfgpipeline_t, stopping.work);
+    hwcam_cfgpipeline_t* cur = NULL;
+
+    spin_lock(&s_pipelines_lock); 
+    list_for_each_entry(cur, &s_pipelines_closing, node) {
+        if (cur == pl) {
+            HWCAM_CFG_ERR(
+                    "the server failed to close pipeline, "
+                    "try restarting it! ");
+            kill_pid(pl->cfgsvr, SIGKILL, 1); 
+            break; 
+        }
+    }
+    spin_unlock(&s_pipelines_lock); 
+}
+
+static int
+hwcam_cfgpipeline_on_closing(
+        hwcam_cfgpipeline_t* pl)
+{
+    hwcam_cfgpipeline_t* cur = NULL;
+    hwcam_cfgpipeline_t* tmp = NULL;
+
+    spin_lock(&s_pipelines_lock); 
+    list_for_each_entry_safe(cur, tmp, &s_pipelines_opened, node) {
+        if (cur == pl) {
+            list_move_tail(&pl->node, &s_pipelines_closing); 
+            schedule_delayed_work(&pl->stopping, 
+                    msecs_to_jiffies(HWCAM_WAIT4STOPPING_TIME)); 
+            break; 
+        }
+    }
+    spin_unlock(&s_pipelines_lock); 
+    return 0; 
+}
+
+static int
+hwcam_cfgpipeline_on_closed(
+        hwcam_cfgpipeline_t* pl)
+{
+    hwcam_cfgpipeline_t* cur = NULL;
+    hwcam_cfgpipeline_t* tmp = NULL;
+
+    spin_lock(&s_pipelines_lock); 
+    list_for_each_entry_safe(cur, tmp, &s_pipelines_opened, node) {
+        if (cur == pl) {
+            struct v4l2_event ev =
+            {
+                .type = HWCAM_V4L2_EVENT_TYPE,
+                .id = HWCAM_SERVER_CRASH,
+            };
+            hwcam_dev_intf_notify(pl->cam, &ev); 
+            break; 
+        }
+    }
+    list_for_each_entry(cur, &s_pipelines_closing, node) {
+        if (cur == pl) {
+            cancel_delayed_work_sync(&pl->stopping);
+            break; 
+        }
+    }
+    __pm_relax(pl->ws); 
+    list_del_init(&pl->node); 
+    hwcam_cfgpipeline_intf_put(&pl->intf); 
+    wake_up_all(&s_wait_closing_pipeline); 
+    spin_unlock(&s_pipelines_lock); 
+    return 0; 
+}
+
+#define HWCAM_CFGPIPELINE_WAKEUP_SOURCE_NAME_SIZE (16)
+
+static hwcam_cfgpipeline_t*
+hwcam_cfgpipeline_create_instance(
+        hwcam_cfgpipeline_mount_req_t* req)
+{
+    struct wakeup_source* ws = NULL; 
+    hwcam_cfgpipeline_t* pl = NULL;
+    char sz_name[HWCAM_CFGPIPELINE_WAKEUP_SOURCE_NAME_SIZE] = { 0 };
+
+    snprintf(sz_name, sizeof(sz_name), 
+            "hwcam_pl_%d", req->moduleID); 
+    ws = wakeup_source_register(sz_name);
+    if (!ws) {
+        goto fail_to_register_wakeup_source; 
+    }
+
+    pl = kzalloc(sizeof(hwcam_cfgpipeline_t), GFP_KERNEL);
+    if (pl == NULL) {
+        goto fail_to_alloc; 
+    }
+
+    pl->intf.vtbl = &s_vtbl_cfgpipeline;
+    kref_init(&pl->ref);
+
+	INIT_LIST_HEAD(&pl->node);
+    INIT_DELAYED_WORK(&pl->stopping, hwcam_cfgpipeline_force_close); 
+    pl->cfgsvr = get_pid(task_pid(current)); 
+
+	INIT_LIST_HEAD(&pl->streams);
+    pl->cam = req->cam;
+    pl->ws = ws; 
+
+    HWCAM_CFG_INFO("instance(0x%p)", &pl->intf);
+    return pl; 
+
+fail_to_alloc:
+    wakeup_source_unregister(ws); 
+
+fail_to_register_wakeup_source:
+    return pl;
+}
 
 static void
 hwcam_cfgpipeline_release(
@@ -90,35 +285,14 @@ hwcam_cfgpipeline_release(
 
     HWCAM_CFG_INFO("instance(0x%p)", &pl->intf);
 
+    put_pid(pl->cfgsvr); 
+    wakeup_source_unregister(pl->ws); 
+
     if (!list_empty(&pl->streams)) {
         HWCAM_CFG_ERR("the streams list is not empty!");
     }
 
     kzfree(pl);
-}
-
-static hwcam_cfgpipeline_vtbl_t s_vtbl_cfgpipeline;
-
-static hwcam_cfgpipeline_t*
-hwcam_cfgpipeline_create_instance(
-        hwcam_cfgpipeline_mount_req_t* req)
-{
-    hwcam_cfgpipeline_t* pl = kzalloc(
-            sizeof(hwcam_cfgpipeline_t), GFP_KERNEL);
-    if (pl == NULL) {
-        return NULL;
-    }
-    pl->intf.vtbl = &s_vtbl_cfgpipeline;
-    kref_init(&pl->ref);
-
-	INIT_LIST_HEAD(&pl->node);
-
-	INIT_LIST_HEAD(&pl->streams);
-    pl->cam = req->cam;
-
-    HWCAM_CFG_INFO("instance(0x%p)", &pl->intf);
-
-    return pl;
 }
 
 static void
@@ -152,12 +326,7 @@ hwcam_cfgpipeline_umount(
     req->req.intf = NULL;
     req->kind = HWCAM_CFGPIPELINE_REQ_UNMOUNT;
 
-    hwcam_cfgdev_lock();
-    if (!list_empty(&pl->node)) {
-        list_del_init(&pl->node);
-        hwcam_cfgpipeline_intf_put(&pl->intf);
-    }
-    hwcam_cfgdev_unlock();
+    hwcam_cfgpipeline_on_closing(pl);
 
     return hwcam_cfgdev_send_req(NULL, &ev, &pl->rq, 1, NULL);
 }
@@ -914,27 +1083,24 @@ hwcam_cfgpipeline_vo_close(
         struct inode* i,
         struct file* filep)
 {
-    hwcam_cfgdev_lock();
-    {
-        void* pd = NULL;
-        swap(pd, filep->private_data);
-        if (pd) {
-            hwcam_cfgpipeline_t* pl = I2PL(pd);
+    void* pd = NULL;
+    swap(pd, filep->private_data);
+    if (pd) {
+        hwcam_cfgpipeline_t* pl = I2PL(pd);
 
-            if (!list_empty(&pl->node)) {
-                list_del_init(&pl->node);
-                hwcam_cfgpipeline_intf_put(&pl->intf);
-            }
+        HWCAM_CFG_INFO("instance(0x%p)", &pl->intf);
 
+        hwcam_cfgpipeline_on_closed(pl);
+
+        hwcam_cfgdev_lock();
+        {
             v4l2_fh_del(&pl->rq);
             v4l2_fh_exit(&pl->rq);
-
-            hwcam_cfgpipeline_intf_put(&pl->intf);
-
-            HWCAM_CFG_INFO("instance(0x%p)", &pl->intf);
         }
+        hwcam_cfgdev_unlock();
+
+        hwcam_cfgpipeline_intf_put(&pl->intf);
     }
-    hwcam_cfgdev_unlock();
 
     return 0;
 }
@@ -981,16 +1147,13 @@ hwcam_cfgpipeline_mount_req_on_req(
         goto exit_on_req; 
     }
 
-    list_for_each_entry(plo, mpr->pipelines, node) {
-        if (plo->cam == mpr->cam) {
-            HWCAM_CFG_INFO("the pipeline had been mounted[0x%p]!", &plo->intf);
-            mpr->pipeline = &plo->intf;
-            hwcam_cfgpipeline_intf_get(mpr->pipeline);
-            rc = 0; 
-            req->req.rc = 0; 
-            hwcam_cfgdev_queue_ack(ev);
-            goto exit_on_req;
-        }
+    mpr->pipeline = hwcam_cfgpipeline_find_by_device(mpr->cam); 
+    if (mpr->pipeline) {
+        HWCAM_CFG_INFO("the pipeline had been mounted[0x%p]!", &plo->intf);
+        rc = 0; 
+        req->req.rc = 0; 
+        hwcam_cfgdev_queue_ack(ev);
+        goto exit_on_req;
     }
 
     plo = hwcam_cfgpipeline_create_instance(mpr);
@@ -1022,8 +1185,7 @@ hwcam_cfgpipeline_mount_req_on_req(
     mpr->pipeline = &plo->intf;
     hwcam_cfgpipeline_intf_get(mpr->pipeline);
 
-    list_add_tail(&plo->node, mpr->pipelines);
-    hwcam_cfgpipeline_intf_get(mpr->pipeline);
+    hwcam_cfgpipeline_on_opened(plo);
 
     mpr->finished = 1; 
     rc = 0; 
@@ -1101,7 +1263,6 @@ s_vtbl_req_mount_pipeline =
 int
 hwcam_cfgpipeline_mount_req_create_instance(
         struct video_device* vdev, 
-        struct list_head* pipelines, 
         hwcam_dev_intf_t* cam, 
         int moduleID, 
         hwcam_cfgreq_mount_pipeline_intf_t** req)
@@ -1124,7 +1285,6 @@ hwcam_cfgpipeline_mount_req_create_instance(
     mpr->finished = 0; 
 
     mpr->vdev = vdev; 
-    mpr->pipelines = pipelines; 
     mpr->cam = cam; 
     mpr->moduleID = moduleID; 
 

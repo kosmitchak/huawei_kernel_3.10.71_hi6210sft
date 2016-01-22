@@ -140,6 +140,9 @@ fw-shipped-$(CONFIG_IPPS_SUPPORT) += ipps/ipps-v2.bin
 #hi6402 hifi img
 fw-shipped-$(CONFIG_HI6402_HIFI_MISC) += hifi_6402/hifi_6402.bin
 #touchscreen img
+fw-shipped-y += ts/mogolia_synaptics.img
+fw-shipped-y += ts/jazz_synaptics.img
+fw-shipped-y += ts/pine_synaptics.img
 fw-shipped-y += ts/grace_synaptics_S3320_jdi.img
 fw-shipped-y += ts/plk_synaptics_S3320_jdi.img
 fw-shipped-y += ts/dav_synaptics_S3320_jdi.img
@@ -154,8 +157,10 @@ fw-shipped-y += ts/chm_synaptics_SHNHW_lensone.img
 fw-shipped-y += ts/chm_synaptics_SHNHW_oflim.img
 fw-shipped-y += ts/chm_synaptics_SHNHW_truly.img
 fw-shipped-y += ts/carrera_synaptics_S3718_samsung.img
+fw-shipped-y += ts/carrera_synaptics_S3718_samsung_1.img
 fw-shipped-y += ts/mozart_CS448_truly.bin
 fw-shipped-y += ts/mozart_CS448_ofilm.bin
+fw-shipped-y += ts/mozart_CS448_default.bin
 fw-shipped-all := $(fw-shipped-y) $(fw-shipped-m) $(fw-shipped-)
 
 # Directories which we _might_ need to create, so we have a rule for them.

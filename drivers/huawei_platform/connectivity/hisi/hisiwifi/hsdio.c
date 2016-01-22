@@ -329,6 +329,8 @@ STATIC void hi110x_sdio_build_sg_from_sklist(
     HWIFI_DEBUG("Build Sdio Rx scatter list [list num:%u], total bytes:%u", hi_sdio->rx_sg_len, sum_len);
     return;
 }
+
+
 #ifdef WLAN_PERFORM_DEBUG
 void  hi110x_sdio_put_rxbuf(struct hi110x_sdio *hi_sdio, struct rxbuf_node *node)
 #else
@@ -1760,8 +1762,6 @@ STATIC int32 hi110x_bus_interrupt_pending(struct iodevice *io_dev)
     HWIFI_ASSERT(io_dev != NULL);
     return atomic_read(&(bus_to_sdio(io_dev)->intr_pending));
 }
-
-
 STATIC uint32 hi110x_bus_get_max_transfer_size(struct iodevice *io_dev)
 {
     struct hi110x_sdio *hi_sdio;

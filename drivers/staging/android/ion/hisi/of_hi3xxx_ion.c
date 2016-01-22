@@ -30,9 +30,54 @@
 
 #include <linux/hisi/hi3xxx/global_ddr_map.h>
 
+#define CLUSTER0_RESUME_BIT 	0xfff0A334
+#define CLUSTER1_RESUME_BIT 	0xfff0A338
+#define CLUSTER1_CPU4    	1 << 4
+
 static struct ion_device *idev;
 static int num_heaps;
 static struct ion_heap **heaps;
+static void __iomem * cluster0_resume_bit;
+static void __iomem * cluster1_resume_bit;
+
+static void ion_pm_init(void)
+{
+	cluster0_resume_bit = ioremap(CLUSTER0_RESUME_BIT,sizeof(int));
+	cluster1_resume_bit = ioremap(CLUSTER1_RESUME_BIT,sizeof(int));
+}
+
+void hisi_ion_flush_cache_all(void *dummy)
+{
+	flush_cache_all();
+	return;
+}
+
+void ion_flush_cache_all(void)
+{
+	int cpu;
+	unsigned int cluster0_stat;
+	unsigned int cluster1_stat;
+	unsigned int stat;
+	cpumask_t mask;
+	preempt_disable();
+	cluster0_stat = readl(cluster0_resume_bit) & 0x0f;
+	cluster1_stat = readl(cluster1_resume_bit) & 0x0f;
+
+	stat = ~(cluster0_stat | cluster1_stat << 4) & 0xff;
+	if(cluster1_stat == 0x0f) {
+		stat = stat | CLUSTER1_CPU4;
+	}
+
+	cpumask_clear(&mask);
+	for_each_online_cpu(cpu) {
+		if(stat & (1 << cpu))
+			cpumask_set_cpu(cpu, &mask);
+	}
+
+	on_each_cpu_mask(&mask, hisi_ion_flush_cache_all, NULL, 1);
+	preempt_enable();
+	return;
+}
 
 struct ion_client *hisi_ion_client_create(const char *name)
 {
@@ -45,7 +90,54 @@ static void free_pdata(const struct ion_platform_data *pdata)
 {
 	kfree(pdata);
 }
+#if defined(CONFIG_ARCH_HI3630)
+static struct ion_platform_heap hisi_ion_heaps[] = {
+	{
+		.type = ION_HEAP_TYPE_SYSTEM,
+		.id = ION_SYSTEM_HEAP_ID,
+		.name = "system-heap",
+	},
+	{
+		.type = ION_HEAP_TYPE_SYSTEM_CONTIG,
+		.id = ION_SYSTEM_CONTIG_HEAP_ID,
+		.name = "system-contig-heap",
+	},
+	{
+		.type = ION_HEAP_TYPE_CARVEOUT,
+		.id = ION_GRALLOC_HEAP_ID,
+		.name = "carveout-heap",
+		.base = 0x29600000,
+		.size = 0x2d600000-0x29600000,
+	},
+	/*
+	{
+		.type = ION_HEAP_TYPE_DMA,
+		.id = ION_DMA_HEAP_ID,
+		.name = "ion-dma-heap",
+	},
 
+	{
+		.type = ION_HEAP_TYPE_DMA_POOL,
+		.id = ION_DMA_POOL_HEAP_ID,
+		.name = "ion-dma-pool-heap",
+	},
+	*/
+	{
+		.type = ION_HEAP_TYPE_CPUDRAW,
+		.id = ION_CPU_DRAW_HEAP_ID,
+		.name = "ion-cpu-draw-heap",
+		.base = 0x38000000,
+		.size = 0x3a000000-0x38000000,
+	},
+	{
+		.type = ION_HEAP_TYPE_CARVEOUT,
+		.id = ION_MISC_HEAP_ID,
+		.name = "ion-misc-heap",
+		.base = 0x3a000000,
+		.size = 0x3aa00000-0x3a000000,
+	},
+};
+#else
 static struct ion_platform_heap hisi_ion_heaps[] = {
 	{
 		.type = ION_HEAP_TYPE_SYSTEM,
@@ -70,7 +162,7 @@ static struct ion_platform_heap hisi_ion_heaps[] = {
 		.name = "ion-dma-heap",
 	},
 };
-
+#endif
 #ifndef CONFIG_ARM64
 static int check_vaddr_bounds(unsigned long start, unsigned long end)
 {
@@ -530,6 +622,7 @@ static int hisi_ion_probe(struct platform_device *pdev)
 	free_pdata(pdata);
 
 	platform_set_drvdata(pdev, idev);
+	ion_pm_init();
 	return 0;
 
 freeheaps:

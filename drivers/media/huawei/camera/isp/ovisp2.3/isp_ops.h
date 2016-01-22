@@ -493,6 +493,12 @@ typedef enum {
 #define ISP_LENS_ONLINE_BR_OUTPUT_ADDR(x) 	(COMMAND_SET_BASE + 0x200 + 0x1a + 0x80 * (x))
 #define ISP_LENS_PROFILE_OUTPUT_ADDR(x)		(COMMAND_SET_BASE + 0x200 + 0x1c + 0x80 * (x))
 
+#define REG_MAC_FORCE_OVERFLOW(mac) (REG_MAC_BASE(mac) + 0x31)
+
+#define ISP_PORT_START  (1<<3)
+#define ISP_PORT_DROP   (1<<2)
+#define ISP_PORT_DONE   (1<<1)
+#define ISP_PORT_OVERFLOW   (1<<0)
 
 /* ISP mmu control address*/
 #define REG_MMU_BASE(mac) \

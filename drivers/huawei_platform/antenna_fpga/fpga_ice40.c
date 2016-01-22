@@ -120,6 +120,7 @@ typedef struct fpga_plat_data {
     int power_gpio;
     int cdone_gpio;
     int power_disable;
+    int subpackages;
     char ice40_pre_image_filename[PRE_ICE40_IMAGE_FILENAME];
     char ice40_fpga_vccio0[ICE40_VCCIO0_STR];
 }fpga_plat_data;
@@ -186,6 +187,7 @@ static int get_image_version(char *buf);
 static  fpga_data* get_fpga_data(void);
 static int hexTou16(const unsigned char *indata, int len);
 static int ice40_dir_download_firmware(char *name, int cs_ps);
+int fpga_ice40_get_subpackages_config(void);
 
 int g_spi_fpga_cs_gpio;
 
@@ -353,6 +355,7 @@ static int read_file_and_download_firmware(char *name)
     int file_size = 0;
     loff_t pos;
     int ret = 0;
+    int dummy_datalen = 7;//The dummy data len.Move the dummy data here, will never be able to change the truth table.
     fpga_data *drv_data = get_fpga_data();
     if(!drv_data) {
         hwlog_err("%s drv data is null.\n", __func__);
@@ -366,16 +369,16 @@ static int read_file_and_download_firmware(char *name)
         goto erro_open_file;
     }
 
-    file_size =(int)(vfs_llseek(fp, 0L, SEEK_END));
+    file_size =(int)(vfs_llseek(fp, 0L, SEEK_END)) + dummy_datalen;
     hwlog_info("start sending fpga firmware.. size=0x%x\n", file_size);
-    drv_data->tx_buf = __get_free_pages(GFP_KERNEL|GFP_DMA, get_order(file_size));
+    drv_data->tx_buf = __get_free_pages(GFP_KERNEL|GFP_DMA|__GFP_ZERO, get_order(file_size));
     if (!drv_data->tx_buf ){
         hwlog_err("probe - can not alloc dma buf page\n");
         goto error_alloc;
     }
     vfs_llseek(fp, 0L, SEEK_SET);
     pos = fp->f_pos;
-    ret = vfs_read(fp, (char *)drv_data->tx_buf, file_size, &pos);
+    ret = vfs_read(fp, (char *)drv_data->tx_buf, file_size - dummy_datalen, &pos);
     if (ret < 0) {
         hwlog_err("%s vfs read error %d\n", __func__, ret);
         goto error_read_file;
@@ -442,14 +445,7 @@ static int ice40_dir_download_firmware(char *name, int cs_ps)
             continue;
         }
 
-        /*step3:send the dummy data.*/
-        ret = ice40_send_dummy_data();
-        if(ret) {
-            hwlog_err("%s:FPGA:send dummy data fail\n", __func__);
-            msleep(SLEEP_BETWEEN_DOWNLOAD);
-            continue;
-        }
-
+        /*step3:send the dummy data. move the dummy data sending follow firmware.*/
         /*step4:get the cdone gpio to judge if firmware success.*/
         if(INVALID_CDONE_GPIO != plat_data->cdone_gpio) {
             ret = ice40_firmware_cdone();
@@ -535,10 +531,10 @@ static void fpga_download_work(struct work_struct *work)
     }
 
     if(plat_data->crc_gpio > NORMAL_GPIO_MAX){
-        ret = request_threaded_irq (irq, NULL, fpga_exception_callback, IRQF_TRIGGER_FALLING, DRIVER_NAME "(fpga_crc)", NULL);
-        if (ret) {
-            hwlog_err("%s: %d fail to request irq for CRC_Result!\n", __func__, __LINE__);
-        }
+        //ret = request_threaded_irq (irq, NULL, fpga_exception_callback, IRQF_TRIGGER_FALLING, DRIVER_NAME "(fpga_crc)", NULL);
+        //if (ret) {
+        //    hwlog_err("%s: %d fail to request irq for CRC_Result!\n", __func__, __LINE__);
+        //}
     }else {
         ret = request_irq(irq, fpga_exception_callback, IRQF_TRIGGER_FALLING, DRIVER_NAME "(fpga_crc)", NULL);
         if (ret < 0) {
@@ -1117,6 +1113,38 @@ static ssize_t show_download_times(struct device *pdev, struct device_attribute 
     return snprintf(buf, STR_RETURN_LEN, "%d", fpga_download_times);
 }
 
+static ssize_t store_subpackage_flag(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+    int subpackage_flag = 0;
+    fpga_data *drv_data = get_fpga_data();
+    fpga_plat_data *plat_data = NULL;
+
+    if(!drv_data) {
+        hwlog_err("%s drv data is null.\n", __func__);
+        return FAIL;
+    }
+    plat_data = &drv_data->plat_data;
+
+    kstrtoint(buf,10, &subpackage_flag);
+    plat_data->subpackages = subpackage_flag;
+    hwlog_info("%s subpackages = %d \n", __func__, plat_data->subpackages);
+
+    return count;
+}
+
+static ssize_t show_subpackage_flag(struct device *pdev, struct device_attribute *attr, char *buf)
+{
+    int subpackages = fpga_ice40_get_subpackages_config();
+
+    if(subpackages < 0){
+        hwlog_err("%s subpackages data is invalid.\n", __func__);
+        return FAIL;
+    }
+
+    return snprintf(buf, 10, "%d\n", subpackages);
+}
+
+
 static DEVICE_ATTR(ice40bin_download_dir, S_IRUGO |S_IWUSR, show_download_result, store_ice40bin_dir);
 static DEVICE_ATTR(ice40bin_version,  S_IRUGO, show_version, NULL);
 static DEVICE_ATTR(ice40bin_scan_fpga_table,  0660, show_scan_result, input_scan_talbe);
@@ -1128,6 +1156,7 @@ static DEVICE_ATTR(crc,  S_IRUGO , show_gpio_crc, NULL);
 static DEVICE_ATTR(preimagename,  S_IRUGO , show_preimagename, NULL);
 static DEVICE_ATTR(testmode,  S_IRUGO |S_IWUSR , show_testmode, set_testmode);
 static DEVICE_ATTR(download_times,  S_IRUGO , show_download_times, NULL);
+static DEVICE_ATTR(subpackage_flag, S_IRUGO |S_IWUSR, show_subpackage_flag, store_subpackage_flag);
 
 static struct attribute *download_times_attributes[] = {
         &dev_attr_download_times.attr,
@@ -1200,6 +1229,17 @@ static const struct attribute_group ice40bin_download_dir_attr_group = {
         .attrs = ice40bin_download_dir_attributes,
 };
 
+//subpackage_flag
+static struct attribute *subpackage_flag_attributes[] = {
+        &dev_attr_subpackage_flag.attr,
+        NULL
+};
+
+static const struct attribute_group subpackage_flag_attr_group = {
+        .attrs = subpackage_flag_attributes,
+};
+
+
 static struct attribute *ice40bin_version_attributes[] = {
         &dev_attr_ice40bin_version.attr,
         NULL
@@ -1245,6 +1285,12 @@ static int create_system_group()
         hwlog_err("Error creating ice40bin_download_dir_attr_group sysfs entries\n");
         return FAIL;
     }
+    ret =  sysfs_create_group(&fpga_ice40_dev.dev.kobj, &subpackage_flag_attr_group);
+    if (ret){
+        hwlog_err("Error creating subpackage_flag_attr_group sysfs entries\n");
+        return FAIL;
+    }
+
     ret =  sysfs_create_group(&fpga_ice40_dev.dev.kobj, &ice40bin_version_attr_group);
     if (ret){
         hwlog_err("Error creating ice40bin_version_attr_group sysfs entries\n");
@@ -1332,6 +1378,22 @@ static int fpga_ice40_regulator_config(struct device *dev)
     return SUCCESS;
 }
 
+int fpga_ice40_get_subpackages_config(void)
+{
+    int subpackages = 0;
+    fpga_data *drv_data = get_fpga_data();
+    fpga_plat_data *plat_data = NULL;
+    if(!drv_data) {
+        hwlog_err("%s drv data is null.\n", __func__);
+        return -1;
+    }
+    plat_data = &drv_data->plat_data;
+
+    subpackages = plat_data->subpackages;
+    hwlog_info("%s subpackages = %d \n", __func__, subpackages);
+    return subpackages;
+}
+
 static int fpga_ice40_get_dts_config(struct fpga_plat_data *plat_data)
 {
     int ret = 0;
@@ -1406,6 +1468,16 @@ static int fpga_ice40_get_dts_config(struct fpga_plat_data *plat_data)
         strncpy(plat_data->ice40_fpga_vccio0, p_string, strlen(p_string));
         hwlog_info("antenna_fpga,pre-vccio0-filename = %s\n", plat_data->ice40_fpga_vccio0);
     }
+
+    /*seventh, read subpackages control flag from dts.*/
+    ret = of_property_read_u32(np, "antenna_fpga,subpackages",&(plat_data->subpackages));
+    if(ret)
+    {
+        plat_data->subpackages = 0;
+        hwlog_info("antenna_fpga,subpackages not exist, set  subpackages = %d\n", plat_data->subpackages);
+    }
+    hwlog_info("antenna_fpga,subpackages = %d\n", plat_data->subpackages);
+
     return SUCCESS;
 
 err_get_vccio0_str:

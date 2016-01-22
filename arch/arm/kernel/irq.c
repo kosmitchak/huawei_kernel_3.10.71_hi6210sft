@@ -66,7 +66,6 @@ void int_switch_hook_delete(void)
 EXPORT_SYMBOL(int_switch_hook_delete);
 #else
 
-#if 0
 void int_switch_hook_add(rdr_funcptr_3 p_hook_func)
 {
 }
@@ -74,24 +73,7 @@ void int_switch_hook_add(rdr_funcptr_3 p_hook_func)
 void int_switch_hook_delete(void)
 {
 }
-#endif
 
-/*y00145322*/
-
-static unsigned int curr_int_num = 0xffffffff;
-static rdr_funcptr_3 int_switch_hook;
-static unsigned int int_switch_flag;
-
-void int_switch_hook_add(rdr_funcptr_3 p_hook_func)
-{
-	int_switch_hook = p_hook_func;
-}
-EXPORT_SYMBOL(int_switch_hook_add);
-
-void int_switch_hook_delete(void)
-{
-	int_switch_hook = NULL;
-}
 EXPORT_SYMBOL(int_switch_hook_delete);
 
 
@@ -134,6 +116,7 @@ void handle_IRQ(unsigned int irq, struct pt_regs *regs)
 #endif
 #endif
 
+#if 0
     /*y00145322*/
 
 	unsigned int old_int_num = curr_int_num;
@@ -144,7 +127,7 @@ void handle_IRQ(unsigned int irq, struct pt_regs *regs)
 		int_switch_hook(0, old_int_num, curr_int_num);
 		int_switch_flag = 1;
 	}
-	
+#endif	
 
 	irq_enter();
 
@@ -170,11 +153,12 @@ void handle_IRQ(unsigned int irq, struct pt_regs *regs)
 #endif
 #endif
 
+#if 0
     /*y00145322*/
 	/*call exception interrupt hook func*/
 	if ((NULL != int_switch_hook) && (0 != int_switch_flag))
 		int_switch_hook(1, old_int_num, curr_int_num);
-
+#endif
 
 	set_irq_regs(old_regs);
 }

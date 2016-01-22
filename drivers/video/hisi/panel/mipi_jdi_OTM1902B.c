@@ -14,6 +14,7 @@
 #include "hisi_fb.h"
 #include <linux/huawei/hisi_adc.h>
 #include <huawei_platform/log/log_jank.h>
+#include <linux/hisi/hi3xxx-lcd_type.h>
 
 #define DTS_COMP_JDI_OTM1902B "hisilicon,mipi_jdi_OTM1902B"
 #define LCD_VDDIO_TYPE_NAME	"lcd-vddio-type"
@@ -1129,7 +1130,7 @@ static int mipi_jdi_panel_set_fastboot(struct platform_device *pdev)
 
 extern void ts_power_gpio_enable(void);
 extern void ts_power_gpio_disable(void);
-static int mipi_jdi_panel_on(struct platform_device *pdev)
+static int mipi_jdi_OTM1902B_panel_on(struct platform_device *pdev)
 {
 	struct hisi_fb_data_type *hisifd = NULL;
 	struct hisi_panel_info *pinfo = NULL;
@@ -1214,7 +1215,7 @@ static int mipi_jdi_panel_on(struct platform_device *pdev)
 	return 0;
 }
 
-static int mipi_jdi_panel_off(struct platform_device *pdev)
+static int mipi_jdi_OTM1902B_panel_off(struct platform_device *pdev)
 {
 	struct hisi_fb_data_type *hisifd = NULL;
 
@@ -1639,8 +1640,8 @@ static struct hisi_panel_info jdi_panel_info = {0};
 static struct hisi_fb_panel_data jdi_panel_data = {
 	.panel_info = &jdi_panel_info,
 	.set_fastboot = mipi_jdi_panel_set_fastboot,
-	.on = mipi_jdi_panel_on,
-	.off = mipi_jdi_panel_off,
+	.on = mipi_jdi_OTM1902B_panel_on,
+	.off = mipi_jdi_OTM1902B_panel_off,
 	.remove = mipi_jdi_panel_remove,
 	.set_backlight = mipi_jdi_panel_set_backlight,
 	.lcd_model_show = mipi_jdi_panel_lcd_model_show,
@@ -1659,7 +1660,7 @@ static struct hisi_fb_panel_data jdi_panel_data = {
 /*******************************************************************************
 **
 */
-static int mipi_jdi_probe(struct platform_device *pdev)
+static int mipi_jdi_OTM1902B_probe(struct platform_device *pdev)
 {
 	int ret = 0;
 	struct hisi_panel_info *pinfo = NULL;
@@ -1670,7 +1671,7 @@ static int mipi_jdi_probe(struct platform_device *pdev)
 		goto err_probe_defer;
 	}
 
-	HISI_FB_DEBUG("+.\n");
+	HISI_FB_INFO("+.\n");
 
 	np = of_find_compatible_node(NULL, NULL, DTS_COMP_JDI_OTM1902B);
 	if (!np) {
@@ -1713,8 +1714,13 @@ static int mipi_jdi_probe(struct platform_device *pdev)
 	pinfo->bl_min = 1;
 	pinfo->bl_max = 255;
 
+#ifdef CONFIG_FB_3630
+	pinfo->vsync_ctrl_type = (VSYNC_CTRL_ISR_OFF |
+		VSYNC_CTRL_MIPI_ULPS);
+#else
 	pinfo->vsync_ctrl_type = (VSYNC_CTRL_ISR_OFF |
 		VSYNC_CTRL_MIPI_ULPS | VSYNC_CTRL_CLK_OFF);
+#endif
 	pinfo->frc_enable = 0;
 	pinfo->esd_enable = 0;
 	pinfo->dirty_region_updt_support = 1;
@@ -1793,7 +1799,7 @@ static int mipi_jdi_probe(struct platform_device *pdev)
 
 	hisi_fb_add_device(pdev);
 
-	HISI_FB_DEBUG("-.\n");
+	HISI_FB_INFO("-.\n");
 
 	return 0;
 
@@ -1817,7 +1823,7 @@ static const struct of_device_id hisi_panel_match_table[] = {
 MODULE_DEVICE_TABLE(of, hisi_panel_match_table);
 
 static struct platform_driver this_driver = {
-	.probe = mipi_jdi_probe,
+	.probe = mipi_jdi_OTM1902B_probe,
 	.remove = NULL,
 	.suspend = NULL,
 	.resume = NULL,
@@ -1832,6 +1838,13 @@ static struct platform_driver this_driver = {
 static int __init mipi_jdi_panel_init(void)
 {
 	int ret = 0;
+
+#ifdef CONFIG_FB_3630
+        if (get_lcd_type() != JDI_OTM1902B_LCD) {
+                HISI_FB_INFO("lcd type is not JDI_OTM1902B_LCD, return!\n");
+                return ret;
+        }
+#endif
 
 	ret = platform_driver_register(&this_driver);
 	if (ret) {

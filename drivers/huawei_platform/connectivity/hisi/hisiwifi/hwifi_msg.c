@@ -139,7 +139,7 @@ void hwifi_roam_calc_tx_failed_scale(struct cfg_struct *cfg, uint32 tx_success_p
 #endif
 void hwifi_get_rate_info(DEVICE_STATS_STRU stStatInfo, struct rate_info *rate_info);
 static int32 smooth_signal_rssi(struct cfg_struct *cfg, int32 rssi);
-extern uint32 get_wifi_rssi(void);
+extern int32 get_wifi_rssi(void);
 
 int32  hwifi_sta_2040_enable_ctrl_set(struct cfg_struct *cfg,uint8 enabled)
 {
@@ -2205,7 +2205,7 @@ int32 hwifi_recv_stats_result(struct cfg_struct *cfg, uint8 *buf)
         stats_result.signal = -1;
     }
 
-	stats_result.signal -= get_wifi_rssi();
+	stats_result.signal += get_wifi_rssi();
 	HWIFI_DEBUG("======eanble rssi fix, rssi=%d===========\n", get_wifi_rssi());
 #ifdef __ROAM__
     cfg->roam.roam_fsm.roam_scan_interval_s = calc_scan_interval(&cfg->roam, cfg->latest_signal);

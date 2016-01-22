@@ -51,7 +51,6 @@ struct dsm_sdcard_cmd_log dsm_sdcard_cmd_logs[] =
 #ifdef CONFIG_HW_SD_HEALTH_DETECT
 static unsigned int g_sd_speed_class = 0;
 #endif
-
 static const unsigned int tran_exp[] = {
 	10000,		100000,		1000000,	10000000,
 	0,		0,		0,		0
@@ -732,7 +731,7 @@ MMC_DEV_ATTR(name, "%s\n", card->cid.prod_name);
 MMC_DEV_ATTR(oemid, "0x%04x\n", card->cid.oemid);
 MMC_DEV_ATTR(serial, "0x%08x\n", card->cid.serial);
 MMC_DEV_ATTR(speed_class, "0x%08x\n", card->ssr.speed_class);
-
+MMC_DEV_ATTR(state, "0x%08x\n", card->state);
 
 static struct attribute *sd_std_attrs[] = {
 	&dev_attr_cid.attr,
@@ -748,6 +747,7 @@ static struct attribute *sd_std_attrs[] = {
 	&dev_attr_oemid.attr,
 	&dev_attr_serial.attr,
 	&dev_attr_speed_class.attr,
+	&dev_attr_state.attr,
 	NULL,
 };
 
@@ -823,14 +823,7 @@ try_again:
 	    printk(KERN_ERR "%s:send acmd41 to get ocr fail,err=%d\n",mmc_hostname(host),err);
 		return err;
 	}
-	if(rocr)
-	{
-	    printk(KERN_ERR "%s:send acmd41 with ocr:0x%x,get rocr:0x%x\n",mmc_hostname(host),ocr,*rocr);
-	}
-	else
-	{
-	    printk(KERN_ERR "%s:rocr is null!!!\n",mmc_hostname(host));
-	}
+	printk(KERN_ERR "%s:send acmd41 with ocr:0x%x,get rocr:0x%x\n",mmc_hostname(host),ocr,*rocr);
 
 	/*
 	 * In case CCS and S18A in the response is set, start Signal Voltage
@@ -1519,7 +1512,6 @@ unsigned int mmc_get_sd_speed()
    return speed;
 }
 #endif
-
 #ifdef CONFIG_HUAWEI_SDCARD_DSM
 char *dsm_sdcard_get_log(int cmd,int err)
 {	

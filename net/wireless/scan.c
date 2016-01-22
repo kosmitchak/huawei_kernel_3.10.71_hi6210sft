@@ -371,6 +371,11 @@ void cfg80211_bss_expire(struct cfg80211_registered_device *dev)
 	__cfg80211_bss_expire(dev, jiffies - IEEE80211_SCAN_RESULT_EXPIRE);
 }
 
+void cfg80211_bss_expire_p2p(struct cfg80211_registered_device *dev)
+{
+	__cfg80211_bss_expire(dev, jiffies);
+}
+
 const u8 *cfg80211_find_ie(u8 eid, const u8 *ies, int len)
 {
 	while (len > 2 && ies[0] != eid) {

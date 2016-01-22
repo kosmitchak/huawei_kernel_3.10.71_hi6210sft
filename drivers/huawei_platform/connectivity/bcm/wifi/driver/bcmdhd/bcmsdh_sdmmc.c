@@ -885,11 +885,13 @@ retry:
 		goto retry;
 	}
 #ifdef HW_WIFI_DMD_LOG
+#ifndef HW_WIFI_DMD_CLOSE_CMD52_LOG
 	if((err_ret != 0) && (retry_times == 0)) {
 		hw_wifi_dsm_client_notify(DSM_WIFI_CMD52_ERROR,
 		            "bcmsdh_sdmmc: Failed to %s byte F%d:@0x%x=0x%x, Err: %d\n",
 		            rw ? "Write" : "Read", func, regaddr, *byte, err_ret);
 	}
+#endif
 #endif
 #endif
 	return ((err_ret == 0) ? SDIOH_API_RC_SUCCESS : SDIOH_API_RC_FAIL);
@@ -978,11 +980,13 @@ retry:
 	}
 
 #ifdef HW_WIFI_DMD_LOG
+#ifndef HW_WIFI_DMD_CLOSE_CMD52_LOG
 	if((err_ret != 0) && (retry_times == 0)) {
 		hw_wifi_dsm_client_notify(DSM_WIFI_CMD52_ERROR,
 		          "bcmsdh_sdmmc: Failed to %s word, Err: 0x%x\n",
 		          rw ? "Write" : "Read", err_ret);
 	}
+#endif
 #endif
 #endif
 	return ((err_ret == 0) ? SDIOH_API_RC_SUCCESS : SDIOH_API_RC_FAIL);

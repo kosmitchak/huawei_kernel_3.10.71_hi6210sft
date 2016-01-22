@@ -2617,9 +2617,9 @@ int r600_init(struct radeon_device *rdev)
 		}
 	}
 
-	r = r600_audio_init(rdev);
-	if (r)
-		return r; /* TODO error handling */
+	/* posting read */
+	RREG32(R_000E50_SRBM_STATUS);
+
 	return 0;
 }
 

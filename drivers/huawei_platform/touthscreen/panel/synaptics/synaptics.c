@@ -73,8 +73,6 @@
 #define S3320_F54_CMD_BASE_ADDR 0x015C
 
 #ifdef ROI
-#define ROI_DATA_ADDR_OFFSET				0x18
-#define ROI_CONTROL_ADDR_OFFSET				0x2D
 #define ENABLE_ROI 							0x01
 static bool f51found = false;
 static u8 f51_roi_switch = 0;
@@ -121,6 +119,7 @@ static int synaptics_before_suspend(void);
 static int synaptics_suspend(void);
 static int synaptics_resume(void);
 static int synaptics_after_resume(void *feature_info);
+static int synaptics_wakeup_gesture_enable_switch(struct ts_wakeup_gesture_enable_info *info);
 static void synaptics_shutdown(void);
 static int synaptics_input_config(struct input_dev *input_dev);
 static int synaptics_rmi4_reset_device(struct synaptics_rmi4_data *rmi4_data);
@@ -189,6 +188,9 @@ static int synaptics_regs_operate(struct ts_regs_info *info);
 #define SYNAPTICS_VDDIO_GPIO_TYPE	 "vddio_gpio_type"
 #define SYNAPTICS_VDDIO_REGULATOR_TYPE	 "vddio_regulator_type"
 #define SYNAPTICS_COVER_FORCE_GLOVE	 "force_glove_in_smart_cover"
+#define SYNAPTICS_RAWDATA_DISP_FORMAT "rawdata_disp_format"
+#define SYNAPTICS_RAWDATA_ARRANGE_SWAP "rawdata_arrange_swap"
+
 //#define SYNAPTICS_IOMUX	 "block_tp"
 
 #define SYNAPTICS_FWV_G_UPDATE_CHECK "fwv_g_update_check"
@@ -741,6 +743,7 @@ struct ts_device_ops ts_synaptics_ops = {
 	.chip_suspend = synaptics_suspend,
 	.chip_resume = synaptics_resume,
 	.chip_after_resume = synaptics_after_resume,
+	.chip_wakeup_gesture_enable_switch = synaptics_wakeup_gesture_enable_switch,
 	.chip_get_rawdata = synaptics_get_rawdata,
 	.chip_glove_switch = synaptics_glove_switch,
 	.chip_shutdown = synaptics_shutdown,
@@ -944,6 +947,19 @@ static int synaptics_parse_dts(struct device_node *device,struct ts_device_data 
 		retval = -EINVAL;
 		goto err;
 	}
+
+	retval = of_property_read_u32(device, SYNAPTICS_RAWDATA_DISP_FORMAT, &chip_data->rawdata_disp_format);
+	if (retval) {
+		TS_LOG_ERR("get rawdata_disp_format failed\n");
+		chip_data->rawdata_disp_format = 0;
+	}
+
+	retval = of_property_read_u32(device, SYNAPTICS_RAWDATA_ARRANGE_SWAP, &chip_data->rawdata_arrange_swap);
+	if (retval) {
+		TS_LOG_ERR("get rawdata_arrange_swap failed\n");
+		chip_data->rawdata_arrange_swap = 0;
+	}
+
 	/*0 is power supplied by gpio, 1 is power supplied by ldo*/
 	if (1 == chip_data->vci_gpio_type) {
 		chip_data->vci_gpio_ctrl = of_get_named_gpio(device, SYNAPTICS_VCI_GPIO_CTRL, 0);
@@ -993,9 +1009,10 @@ static int synaptics_parse_dts(struct device_node *device,struct ts_device_data 
 		retval = 0;
 	}
 
-	TS_LOG_INFO("reset_gpio = %d, irq_gpio = %d, irq_config = %d, algo_id = %d, ic_type = %d, x_max = %d, y_max = %d, x_mt = %d,y_mt = %d\n", \
+	TS_LOG_INFO("reset_gpio = %d, irq_gpio = %d, irq_config = %d, algo_id = %d, ic_type = %d, x_max = %d, y_max = %d, x_mt = %d,y_mt = %d, rawdata_disp_format = %d, rawdata_arrange_swap = %d\n", \
 		chip_data->reset_gpio, chip_data->irq_gpio, chip_data->irq_config, chip_data->algo_id, chip_data->ic_type,
-		chip_data->x_max, chip_data->y_max, chip_data->x_max_mt, chip_data->y_max_mt);
+		chip_data->x_max, chip_data->y_max, chip_data->x_max_mt, chip_data->y_max_mt,
+		chip_data->rawdata_disp_format, chip_data->rawdata_arrange_swap);
 err:
 	return retval;
 }
@@ -1053,7 +1070,6 @@ static void synaptics_power_on(void)
 		TS_LOG_INFO("Only vddio was controlled by gpio add delay 1ms\n");
 		ts_power_gpio_enable();
 	}
-	msleep(1);
 	synaptics_power_on_gpio_set();
 }
 
@@ -1836,6 +1852,47 @@ static int s3320_set_effective_window(struct synaptics_rmi4_data *rmi4_data)
 	return ret;
 }
 
+static int synaptics_set_wakeup_gesture_enable_switch(u8 enable)
+{
+	int retval = NO_ERR;
+	u8 write_value = 0;
+	unsigned short wakeup_gesture_enable_addr = 0;
+
+	switch (rmi4_data->synaptics_chip_data->ic_type)
+	{
+	case SYNAPTICS_S3320:
+		wakeup_gesture_enable_addr = rmi4_data->rmi4_feature.f51_ctrl_base_addr + S3320_HOLSTER_SWITCH_OFFSET;
+		break;
+	case SYNAPTICS_S3718:
+		wakeup_gesture_enable_addr = rmi4_data->rmi4_feature.f12_ctrl_base_addr + S3718_HOLSTER_SWITCH_OFFSET;
+		break;
+	default:
+		TS_LOG_ERR("rmi4_data->synaptics_chip_data->ic_type = %d do not support wakeup gesture enable switch\n", rmi4_data->synaptics_chip_data->ic_type);
+		retval = -EINVAL;
+		goto out;
+	}
+
+	TS_LOG_INFO("%s, write TP IC\n", __func__);
+
+	if (WAKEUP_GESTURE_ENABLE == enable){
+		write_value = 0;
+	} else {
+		if (SYNAPTICS_S3320 == rmi4_data->synaptics_chip_data->ic_type){
+			write_value = 1;
+		} else if (SYNAPTICS_S3718 == rmi4_data->synaptics_chip_data->ic_type){
+			write_value = 2;
+		}
+	}
+	retval = synaptics_rmi4_i2c_write(rmi4_data, wakeup_gesture_enable_addr, &write_value, 1);
+	if (retval < 0) {
+		TS_LOG_ERR("switch wakeup gesture enable mode failed: %d\n", retval);
+	}
+
+out:
+	return retval;
+}
+
+
 static int synaptics_set_holster_switch(u8 holster_switch)
 {
 	int retval = NO_ERR;
@@ -1966,8 +2023,9 @@ static int synaptics_set_roi_switch(u8 roi_switch)
 		return -ENODEV;
 
 	roi_switch = roi_switch > 0 ? ENABLE_ROI : 0;
-	roi_ctrl_addr = rmi4_data->rmi4_feature.f51_ctrl_base_addr + ROI_CONTROL_ADDR_OFFSET;
+	roi_ctrl_addr = rmi4_data->rmi4_feature.f51_ctrl_base_addr + g_ts_data.feature_info.roi_info.roi_control_addr_offset;
 	TS_LOG_INFO("roi_ctrl_write_addr=0x%4x, roi_switch=%d\n", roi_ctrl_addr, roi_switch);
+	
 	retval = synaptics_rmi4_i2c_write(rmi4_data, roi_ctrl_addr, &roi_switch, sizeof(roi_switch));
 	if (retval < 0) {
 		TS_LOG_ERR("set roi switch failed: %d\n", retval);
@@ -1992,7 +2050,8 @@ static int synaptics_read_roi_switch(void)
 	if(!f51found)
 		return -ENODEV;
 
-	roi_ctrl_addr = rmi4_data->rmi4_feature.f51_ctrl_base_addr + ROI_CONTROL_ADDR_OFFSET;
+	roi_ctrl_addr = rmi4_data->rmi4_feature.f51_ctrl_base_addr + g_ts_data.feature_info.roi_info.roi_control_addr_offset;
+
 	retval = synaptics_rmi4_i2c_read(rmi4_data, roi_ctrl_addr, &roi_switch, sizeof(roi_switch));
 	if (retval < 0) {
 		TS_LOG_ERR("read roi switch failed: %d\n", retval);
@@ -2419,6 +2478,24 @@ static void synaptics_put_device_into_easy_wakeup(void)
 		} else {
 			rmi4_data->sensor_sleep = true;
 		}
+		
+		/* set into doze mode*/
+		retval = synaptics_rmi4_i2c_read(rmi4_data,
+				rmi4_data->rmi4_feature.f01_ctrl_base_addr,
+				&device_ctrl,
+				sizeof(device_ctrl));
+		if (retval < 0) {
+			TS_LOG_ERR("%s: Failed to read doze mode\n", __func__);
+		}
+
+		device_ctrl &= ~0x04; //bit2=0 set ic into doze mode(nosleep disable)
+		retval = synaptics_rmi4_i2c_write(rmi4_data,
+				rmi4_data->rmi4_feature.f01_ctrl_base_addr,
+				&device_ctrl,
+				sizeof(device_ctrl));
+		if (retval < 0) {
+			TS_LOG_ERR("%s: Failed to set into mode\n", __func__);
+		}
 	}else {
 		gusture_ctrl_offset = rmi4_data->rmi4_feature.geswakeup_feature.f12_2d_ctrl20_lpm;
 		f12_ctrl_base = rmi4_data->rmi4_feature.f12_ctrl_base_addr;
@@ -2483,6 +2560,24 @@ static void synaptics_put_device_outof_easy_wakeup(struct synaptics_rmi4_data *r
 			return;
 		} else {
 			rmi4_data->sensor_sleep = false;
+		}
+		
+		/* set out of doze mode */
+		retval = synaptics_rmi4_i2c_read(rmi4_data,
+				rmi4_data->rmi4_feature.f01_ctrl_base_addr,
+				&device_ctrl,
+				sizeof(device_ctrl));
+		if (retval < 0) {
+			TS_LOG_ERR("%s:Failed to read doze mode\n", __func__);
+		}
+
+		device_ctrl |= 0x04; //bit2=1 set ic out of doze mode(nosleep enable)
+		retval = synaptics_rmi4_i2c_write(rmi4_data,
+				rmi4_data->rmi4_feature.f01_ctrl_base_addr,
+				&device_ctrl,
+				sizeof(device_ctrl));
+		if (retval < 0) {
+			TS_LOG_ERR("Failed to set out of doze mode\n");
 		}
 	}else {
 		gusture_ctrl_offset = rmi4_data->rmi4_feature.geswakeup_feature.f12_2d_ctrl20_lpm;
@@ -2609,6 +2704,30 @@ static int synaptics_after_resume(void *feature_info)
 			rmi4_data->synaptics_chip_data->easy_wakeup_info.palm_cover_control, retval);
 	}
 	TS_LOG_INFO("after_resume -\n");
+	return retval;
+}
+
+static int synaptics_wakeup_gesture_enable_switch(struct ts_wakeup_gesture_enable_info *info)
+{
+	int retval = NO_ERR;
+
+	if (!info) {
+		TS_LOG_ERR("%s: info is Null\n", __func__);
+		retval = -ENOMEM;
+		return retval;
+	}
+
+	if (info->op_action == TS_ACTION_WRITE){
+		retval = synaptics_set_wakeup_gesture_enable_switch(info->switch_value);
+		TS_LOG_DEBUG("write deep_sleep switch: %d\n", info->switch_value);
+		if (retval < 0) {
+			TS_LOG_ERR("set deep_sleep switch(%d), failed: %d\n", info->switch_value, retval);
+		}
+	}else {
+		TS_LOG_INFO("invalid deep_sleep switch(%d) action: %d\n", info->switch_value, info->op_action);
+		retval = -EINVAL;
+	}
+
 	return retval;
 }
 
@@ -4008,6 +4127,7 @@ static int synaptics_rmi4_key_gesture_report(struct synaptics_rmi4_data *rmi4_da
 	}
 
 	if(0 != reprot_gesture_key_value) {
+		wake_lock_timeout(&g_ts_data.ts_wake_lock, 5*HZ);
 		mutex_lock(&wrong_touch_lock);
 		if (true == rmi4_data->synaptics_chip_data->easy_wakeup_info.off_motion_on) {
 			rmi4_data->synaptics_chip_data->easy_wakeup_info.off_motion_on = false;
@@ -4418,9 +4538,9 @@ static void synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 
 #ifdef ROI
 	TS_LOG_DEBUG("pre_finger_status=%d, temp_finger_status=%d\n", pre_finger_status, temp_finger_status);
-	if ((temp_finger_status != pre_finger_status && ((temp_finger_status&pre_finger_status)!=temp_finger_status))) {
-		if (ENABLE_ROI == f51_roi_switch) {
-			roi_data_addr = rmi4_data->rmi4_feature.f51_data_base_addr + ROI_DATA_ADDR_OFFSET;
+	if (ENABLE_ROI == f51_roi_switch) {
+		if ((temp_finger_status != pre_finger_status && ((temp_finger_status&pre_finger_status)!=temp_finger_status))) {
+			roi_data_addr = rmi4_data->rmi4_feature.f51_data_base_addr + g_ts_data.feature_info.roi_info.roi_data_addr_offset;
 			TS_LOG_DEBUG("roi_data_addr=0x%4x\n", roi_data_addr);
 			retval = synaptics_rmi4_i2c_read(rmi4_data, roi_data_addr, roi_data, ROI_DATA_READ_LENGTH);
 			if (retval < 0) {

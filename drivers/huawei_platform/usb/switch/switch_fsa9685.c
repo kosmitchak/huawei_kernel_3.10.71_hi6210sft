@@ -47,7 +47,7 @@
 #include "switch_chip.h"
 #include <linux/huawei/usb/hisi_usb.h>
 #ifdef CONFIG_HDMI_K3
-#include <../video/k3/hdmi/k3_hdmi.h>
+#include <../../../../../../kernel/drivers/video/hisi/hdmi/k3_hdmi.h>
 #endif
 #ifdef CONFIG_HUAWEI_HW_DEV_DCT
 #include <linux/hw_dev_dec.h>
@@ -105,6 +105,25 @@ static int fsa9685_read_reg(int reg)
 #ifdef CONFIG_FSA9685_DEBUG_FS
     chip_regs[reg] = ret;
 #endif
+    return ret;
+}
+
+static int fsa9685_write_reg_mask(int reg, int value,int mask)
+{
+    int val=0,ret=0;
+    if (NULL == this_client) {
+        ret = -ERR_NO_DEV;
+        hwlog_err("%s: this_client=NULL!!! ret=%d\n", __func__, ret);
+        return ret;
+    }
+    val= fsa9685_read_reg(reg);
+    if(val < 0)
+    {
+        return val;
+    }
+    val &= ~mask;
+    val |=value & mask;
+    ret = fsa9685_write_reg(reg,val);
     return ret;
 }
 
@@ -293,12 +312,6 @@ static void fsa9685_intb_work(struct work_struct *work)
     vbus_status = fsa9685_read_reg(FSA9685_REG_VBUS_STATUS);
     hwlog_info("%s: read FSA9685_REG_INTERRUPT. reg_intrpt=0x%x\n", __func__, reg_intrpt);
 
-    /* if supprot fcp read /clear interrupt */
-    if(0 == is_support_fcp())
-    {
-        hwlog_info("%s : read ACCP interrupt,reg[0x59]=0x%x,reg[0x5A]=0x%x\n",__func__,
-            fsa9685_read_reg(FSA9685_REG_ACCP_INTERRUPT1), fsa9685_read_reg(FSA9685_REG_ACCP_INTERRUPT2));
-    }
     if (unlikely(reg_intrpt < 0)) {
         hwlog_err("%s: read FSA9685_REG_INTERRUPT error!!!\n", __func__);
     } else if (unlikely(reg_intrpt == 0)) {
@@ -326,6 +339,15 @@ static void fsa9685_intb_work(struct work_struct *work)
             }
             if (reg_dev_type1 & FSA9685_MHL_DETECTED) {
                 hwlog_info("%s: FSA9685_MHL_DETECTED\n", __func__);
+                unsigned int is_Recovery_mode = get_boot_into_recovery_flag();
+                hwlog_info("%s: FSA9685_MHL_DETECTED is_fastbootmode:%d\n", __func__, is_Recovery_mode);
+#ifdef CONFIG_HDMI_K3
+                if (!is_Recovery_mode) {
+                    hwlog_info("%s: FSA9685_MHL_DETECTED , call  k3_hdmi_enable_hpd\n", __func__);
+                        k3_hdmi_enable_hpd(true);
+                }
+#endif
+
             }
             if (reg_dev_type1 & FSA9685_CDP_DETECTED) {
                 hwlog_info("%s: FSA9685_CDP_DETECTED\n", __func__);
@@ -541,6 +563,160 @@ read_reg_failed:
 static DEVICE_ATTR(switchctrl, S_IRUGO | S_IWUSR, switchctrl_show, switchctrl_store);
 
 /****************************************************************************
+  Function:     fcp_adapter_reset
+  Description:  reset adapter
+  Input:         NA
+  Output:       NA
+  Return:        0: success
+                -1: fail
+***************************************************************************/
+int fcp_adapter_reset(void)
+{
+   int ret = 0,val = 0;
+   val = FSA9685_ACCP_MSTR_RST | FAS9685_ACCP_SENDCMD |FSA9685_ACCP_IS_ENABLE;
+   ret =  fsa9685_write_reg_mask(FSA9685_REG_ACCP_CNTL, val,FAS9685_ACCP_CNTL_MASK);
+   hwlog_info("%s : send fcp adapter reset %s \n",__func__,ret < 0 ? "fail": "sucess");
+   return ret;
+}
+/****************************************************************************
+  Function:     switch_chip_reset
+  Description:  reset fsa9688
+  Input:         NA
+  Output:       NA
+  Return:        0: success
+                -1: fail
+***************************************************************************/
+int switch_chip_reset(void)
+{
+    int ret = 0,reg_ctl = 0,gpio_value = 0;
+    ret = fsa9685_write_reg(0x19, 0x89);
+    if(ret < 0)
+    {
+        hwlog_err("reset fsa9688 failed \n");
+    }
+    ret = fsa9685_write_reg(FSA9685_REG_DETACH_CONTROL, 1);
+    if ( ret < 0 ){
+        hwlog_err("%s: write FSA9685_REG_DETACH_CONTROL error!!! ret=%d", __func__, ret);
+    }
+
+    /* disable accp interrupt */
+    ret |= fsa9685_write_reg(FSA9685_REG_ACCP_INTERRUPT_MASK1, 0xFF);
+    ret |= fsa9685_write_reg(FSA9685_REG_ACCP_INTERRUPT_MASK2, 0xFF);
+    if(ret < 0)
+    {
+        hwlog_err("accp interrupt mask write failed \n");
+    }
+
+    /* clear INT MASK */
+    reg_ctl = fsa9685_read_reg(FSA9685_REG_CONTROL);
+    if ( reg_ctl < 0 ) {
+        hwlog_err("%s: read FSA9685_REG_CONTROL error!!! reg_ctl=%d.\n", __func__, reg_ctl);
+        return -1;
+    }
+    hwlog_info("%s: read FSA9685_REG_CONTROL. reg_ctl=0x%x.\n", __func__, reg_ctl);
+
+    reg_ctl &= (~FSA9685_INT_MASK);
+    ret = fsa9685_write_reg(FSA9685_REG_CONTROL, reg_ctl);
+    if ( ret < 0 ) {
+        hwlog_err("%s: write FSA9685_REG_CONTROL error!!! reg_ctl=%d.\n", __func__, reg_ctl);
+        return -1;
+    }
+    hwlog_info("%s: write FSA9685_REG_CONTROL. reg_ctl=0x%x.\n", __func__, reg_ctl);
+
+    ret = fsa9685_write_reg(FSA9685_REG_DCD, 0x0c);
+    if ( ret < 0 ) {
+        hwlog_err("%s: write FSA9685_REG_DCD error!!! reg_DCD=0x%x.\n", __func__, 0x08);
+        return -1;
+    }
+    hwlog_info("%s: write FSA9685_REG_DCD. reg_DCD=0x%x.\n", __func__, 0x0c);
+
+    gpio_value = gpio_get_value(gpio);
+    hwlog_info("%s: intb=%d after clear MASK.\n", __func__, gpio_value);
+
+    if (gpio_value == 0) {
+        schedule_work(&g_intb_work);
+    }
+    return 0;
+}
+/****************************************************************************
+  Function:     fcp_cmd_transfer_check
+  Description:  check cmd transfer success or fail
+  Input:         NA
+  Output:       NA
+  Return:        0: success
+                   -1: fail
+***************************************************************************/
+int fcp_cmd_transfer_check(void)
+{
+    int reg_val1 = 0,reg_val2 =0,i =0;
+    /*read accp interrupt registers until value is not zero */
+    do{
+        msleep(10);
+        reg_val1 = fsa9685_read_reg(FSA9685_REG_ACCP_INTERRUPT1);
+        reg_val2 = fsa9685_read_reg(FSA9685_REG_ACCP_INTERRUPT2);
+        i++;
+    }while(i<5 && reg_val1== 0 && reg_val2 == 0);
+
+    if(reg_val1== 0 && reg_val2 == 0)
+    {
+        hwlog_info("%s : read accp interrupt time out,total time is %d ms\n",__func__,i*10);
+    }
+    if(reg_val1 < 0 || reg_val2 < 0 )
+    {
+        hwlog_err("%s: read  error!!! reg_val1=%d,reg_val2=%d \n", __func__, reg_val1,reg_val2);
+        return -1;
+    }
+
+    /*if something  changed print reg info */
+    if(reg_val2 & (FAS9685_PROSTAT | FAS9685_DSDVCSTAT) )
+    {
+        hwlog_info("%s : ACCP state changed  ,reg[0x59]=0x%x,reg[0x5A]=0x%x\n",__func__,reg_val1,reg_val2);
+    }
+
+    /* judge if cmd transfer success */
+    if((reg_val1 & FAS9685_ACK) &&(reg_val1 & FAS9685_CMDCPL)
+        && !(reg_val1 & FAS9685_CRCPAR)
+        && !(reg_val2 & (FAS9685_CRCRX | FAS9685_PARRX)))
+    {
+        return 0;
+    }
+    else
+    {
+        hwlog_err("%s : reg[0x59]=0x%x,reg[0x5A]=0x%x\n",__func__,reg_val1,reg_val2);
+        return -1;
+    }
+}
+/****************************************************************************
+  Function:     fcp_protocol_restart
+  Description:  disable accp protocol and enable again
+  Input:         NA
+  Output:       NA
+  Return:        0: success
+                   -1: fail
+***************************************************************************/
+void fcp_protocol_restart(void)
+{
+    int reg_val =0;
+    /* disable accp protocol */
+    fsa9685_write_reg_mask(FSA9685_REG_ACCP_CNTL, 0,FAS9685_ACCP_CNTL_MASK);
+    msleep(100);
+    reg_val = fsa9685_read_reg(FSA9685_REG_ACCP_STATUS);
+    if(FSA9688_ACCP_STATUS_SLAVE_GOOD == (reg_val & FSA9688_ACCP_STATUS_MASK))
+    {
+        hwlog_err("%s : disable accp enable bit failed ,accp status [0x40]=0x%x  \n",__func__,reg_val);
+    }
+
+    /* enable accp protocol */
+    fsa9685_write_reg_mask(FSA9685_REG_ACCP_CNTL, FSA9685_ACCP_IS_ENABLE,FAS9685_ACCP_CNTL_MASK);
+    msleep(100);
+    reg_val = fsa9685_read_reg(FSA9685_REG_ACCP_STATUS);
+    if(FSA9688_ACCP_STATUS_SLAVE_GOOD != (reg_val & FSA9688_ACCP_STATUS_MASK))
+    {
+        hwlog_err("%s : enable accp enable bit failed, accp status [0x40]=0x%x  \n",__func__,reg_val);
+    }
+    hwlog_info("%s :disable and enable accp protocol accp status  is 0x%x \n",__func__,reg_val);
+}
+/****************************************************************************
   Function:     fcp_adapter_reg_read
   Description:  read adapter register
   Input:        reg:register's num
@@ -551,24 +727,45 @@ static DEVICE_ATTR(switchctrl, S_IRUGO | S_IWUSR, switchctrl_show, switchctrl_st
 ***************************************************************************/
 int fcp_adapter_reg_read(int* val, int reg)
 {
-    int reg_val = 0;
+    int reg_val1 = 0,reg_val2 =0;
+    int i=0,ret =0;
+    for(i=0;i< FCP_RETRY_MAX_TIMES;i++)
+    {
+        /*before send cmd, read and clear accp interrupt registers */
+        reg_val1 = fsa9685_read_reg(FSA9685_REG_ACCP_INTERRUPT1);
+        reg_val2 = fsa9685_read_reg(FSA9685_REG_ACCP_INTERRUPT2);
 
-    fsa9685_write_reg(FSA9685_REG_ACCP_CMD, FCP_CMD_SBRRD);
-    fsa9685_write_reg(FSA9685_REG_ACCP_ADDR, reg);
-    fsa9685_write_reg(FSA9685_REG_ACCP_CNTL, FSA9685_ACCP_IS_ENABLE | FAS9685_ACCP_SENDCMD);
-    mdelay(50);
-    /*only show err,not deal with*/
-    reg_val = fsa9685_read_reg(FSA9685_REG_ACCP_INTERRUPT1);
-    if (reg_val & FAS9685_CRCPAR){
-        hwlog_err("%s:crc or par err by not responding,reg[0x59]=%d.\n", __func__, reg_val);
-    }
-    reg_val = fsa9685_read_reg(FSA9685_REG_ACCP_INTERRUPT2);
-    if (reg_val & (FAS9685_CRCRX | FAS9685_PARRX)){
-        hwlog_err("%s:crc or par err from slave,reg[0x5a]=%d.\n", __func__, reg_val);
-    }
+        ret |= fsa9685_write_reg(FSA9685_REG_ACCP_CMD, FCP_CMD_SBRRD);
+        ret |= fsa9685_write_reg(FSA9685_REG_ACCP_ADDR, reg);
+        ret |= fsa9685_write_reg_mask(FSA9685_REG_ACCP_CNTL, FSA9685_ACCP_IS_ENABLE | FAS9685_ACCP_SENDCMD,FAS9685_ACCP_CNTL_MASK);
+        if(ret)
+        {
+            hwlog_err("%s: write error ret is %d \n",__func__,ret);
+            return -1;
+        }
 
-    *val = fsa9685_read_reg(FSA9685_REG_ACCP_DATA);
-    return 0;
+        /* check cmd transfer success or fail */
+        if(0 ==fcp_cmd_transfer_check())
+        {
+            /* recived data from adapter */
+            *val = fsa9685_read_reg(FSA9685_REG_ACCP_DATA);
+            break;
+        }
+
+        /* if transfer failed, restart accp protocol */
+        fcp_protocol_restart();
+        hwlog_err("%s : adapter register read fail times=%d ,register=0x%x,data=0x%x,reg[0x59]=0x%x,reg[0x5A]=0x%x \n",__func__,i,reg,*val,reg_val1,reg_val2);
+    }
+    hwlog_debug("%s : adapter register retry times=%d ,register=0x%x,data=0x%x,reg[0x59]=0x%x,reg[0x5A]=0x%x \n",__func__,i,reg,*val,reg_val1,reg_val2);
+    if(FCP_RETRY_MAX_TIMES == i)
+    {
+        hwlog_err("%s : ack error,retry %d times \n",__func__,i);
+        return -1;
+    }
+    else
+    {
+        return 0;
+    }
 }
 
 /****************************************************************************
@@ -582,24 +779,45 @@ int fcp_adapter_reg_read(int* val, int reg)
 ***************************************************************************/
 int fcp_adapter_reg_write(int val, int reg)
 {
-    int reg_val = 0;
+    int reg_val1 = 0,reg_val2 =0;
+    int i = 0,ret = 0;
+    for(i=0;i< FCP_RETRY_MAX_TIMES;i++)
+    {
+        /*before send cmd, clear accp interrupt registers */
+        reg_val1 = fsa9685_read_reg(FSA9685_REG_ACCP_INTERRUPT1);
+        reg_val2 = fsa9685_read_reg(FSA9685_REG_ACCP_INTERRUPT2);
 
-    fsa9685_write_reg(FSA9685_REG_ACCP_CMD, FCP_CMD_SBRWR);
-    fsa9685_write_reg(FSA9685_REG_ACCP_ADDR, reg);
-    fsa9685_write_reg(FSA9685_REG_ACCP_DATA, val);
-    fsa9685_write_reg(FSA9685_REG_ACCP_CNTL, FSA9685_ACCP_IS_ENABLE | FAS9685_ACCP_SENDCMD);
-    mdelay(50);
+        ret |=fsa9685_write_reg(FSA9685_REG_ACCP_CMD, FCP_CMD_SBRWR);
+        ret |=fsa9685_write_reg(FSA9685_REG_ACCP_ADDR, reg);
+        ret |=fsa9685_write_reg(FSA9685_REG_ACCP_DATA, val);
+        ret |=fsa9685_write_reg_mask(FSA9685_REG_ACCP_CNTL, FSA9685_ACCP_IS_ENABLE | FAS9685_ACCP_SENDCMD,FAS9685_ACCP_CNTL_MASK);
+        if(ret < 0)
+        {
+            hwlog_err("%s: write error ret is %d \n",__func__,ret);
+            return -1;
+        }
 
-   /*only show err,not deal with*/
-    reg_val = fsa9685_read_reg(FSA9685_REG_ACCP_INTERRUPT1);
-    if (reg_val & FAS9685_CRCPAR){
-        hwlog_err("%s:crc or par err by not responding,reg[0x59]=%d.\n", __func__, reg_val);
+        /* check cmd transfer success or fail */
+        if(0 ==fcp_cmd_transfer_check())
+        {
+            break;
+        }
+
+        /* if transfer failed, restart accp protocol */
+        fcp_protocol_restart();
+        hwlog_err("%s : adapter register write fail times=%d ,register=0x%x,data=0x%x,reg[0x59]=0x%x,reg[0x5A]=0x%x \n",__func__,i,reg,val,reg_val1,reg_val2);
     }
-    reg_val = fsa9685_read_reg(FSA9685_REG_ACCP_INTERRUPT2);
-    if (reg_val & (FAS9685_CRCRX | FAS9685_PARRX)){
-        hwlog_err("%s:crc or par err from slave,reg[0x5a]=%d.\n", __func__, reg_val);
+    hwlog_debug("%s : adapter register retry times=%d ,register=0x%x,data=0x%x,reg[0x59]=0x%x,reg[0x5A]=0x%x \n",__func__,i,reg,val,reg_val1,reg_val2);
+
+    if(FCP_RETRY_MAX_TIMES == i)
+    {
+        hwlog_err("%s : ack error,retry %d times \n",__func__,i);
+        return -1;
     }
-    return 0;
+    else
+    {
+        return 0;
+    }
 }
 
 /****************************************************************************
@@ -635,7 +853,7 @@ int fcp_adapter_detect(void)
 
     /* enable accp */
     reg_val1 = fsa9685_read_reg(FSA9685_REG_CONTROL2);
-    reg_val1 |= (FSA9685_ACCP_AUTO_ENABLE | FSA9685_ACCP_ENABLE);
+    reg_val1 |= FSA9685_ACCP_ENABLE;
     fsa9685_write_reg(FSA9685_REG_CONTROL2, reg_val1);
 
     /*detect hisi fcp charger*/
@@ -695,7 +913,7 @@ void switch_dump_register(void)
   Function:     fcp_get_adapter_output_vol
   Description:  get fcp output vol
   Input:        NA.
-  Output:       fcp output vol(5V/9V/12V)
+  Output:       fcp output vol(5V/9V/12V)*10
   Return:        0: success
                 -1: fail
 ***************************************************************************/
@@ -703,22 +921,29 @@ int fcp_get_adapter_output_vol(int *vol)
 {
     int num = 0;
     int output_vol = 0;
+    int ret =0;
     if(NULL == this_client)
     {
         return -1;
     }
 
     /*get adapter vol list number,exclude 5V*/
-    fcp_adapter_reg_read(&num, FCP_SLAVE_REG_DISCRETE_CAPABILITIES);
+    ret = fcp_adapter_reg_read(&num, FCP_SLAVE_REG_DISCRETE_CAPABILITIES);
     /*currently,fcp only support three out vol config(5v/9v/12v)*/
-    if (num > 2){
+    if (ret || num > 2 )
+    {
         hwlog_err("%s: vout list support err, reg[0x21] = %d.\n", __func__, num);
         return -1;
     }
 
     /*get max out vol value*/
-    fcp_adapter_reg_read(&output_vol, FCP_SLAVE_REG_DISCRETE_OUT_V(num));
-    *vol = output_vol/FCP_VOL_SETP;
+   ret = fcp_adapter_reg_read(&output_vol, FCP_SLAVE_REG_DISCRETE_OUT_V(num));
+    if(ret )
+    {
+        hwlog_err("%s: get max out vol value failed ,ouputvol=%d,num=%d.\n",__func__,output_vol,num);
+        return -1;
+    }
+    *vol = output_vol;
     hwlog_info("%s: get adapter max out vol = %d,num= %d.\n", __func__, output_vol,num);
     return 0;
 }
@@ -736,7 +961,7 @@ int fcp_set_adapter_output_vol(void)
 {
     int val = 0;
     int vol = 0;
-    int i = 0;
+    int ret = 0;
 
     if(NULL == this_client)
     {
@@ -744,47 +969,44 @@ int fcp_set_adapter_output_vol(void)
     }
 
     /*read ID OUTI , for identify huawei adapter*/
-    fcp_adapter_reg_read(&val, FCP_SLAVE_REG_ID_OUT0);
-    hwlog_info("%s: id out reg[0x4] = %d.\n", __func__, val);
-    /*get adapter vol list number*/
-
-    /*currently,fcp only suport two out vol config(5v/9v)*/
-    /*get max out vol value*/
-    for(i=0; i<FCP_RETRY_MAX_TIMES; i++)
+    ret = fcp_adapter_reg_read(&val, FCP_SLAVE_REG_ID_OUT0);
+    if(ret < 0)
     {
-        if(0 == fcp_get_adapter_output_vol(&vol))
-        {
-            break;
-        }
+        hwlog_err("%s: adapter ID OUTI read failed, ret is %d \n",__func__,ret);
+        return -1;
     }
-    if(FCP_RETRY_MAX_TIMES == i)
+    hwlog_info("%s: id out reg[0x4] = %d.\n", __func__, val);
+
+    /*get adapter max output vol value*/
+    ret = fcp_get_adapter_output_vol(&vol);
+    if(ret <0)
     {
-        hwlog_err("%s: fcp get output vol err.\n", __func__);
+        hwlog_err("%s: fcp get adapter output vol err.\n", __func__);
         return -1;
     }
 
     /* PLK only support 5V/9V */
-    if(vol > FCP_OUTPUT_VOL_9V)
+    if(vol > FCP_OUTPUT_VOL_9V * FCP_VOL_STEP)
     {
-        vol = FCP_OUTPUT_VOL_9V;
+        vol = FCP_OUTPUT_VOL_9V * FCP_VOL_STEP;
     }
-    vol *=FCP_VOL_SETP;
-    /*try 3 times if write fail */
-    for (i=0; i<FCP_RETRY_MAX_TIMES; i++)
+
+    /*retry if write fail */
+    ret |= fcp_adapter_reg_write(vol, FCP_SLAVE_REG_VOUT_CONFIG);
+    ret |= fcp_adapter_reg_read(&val, FCP_SLAVE_REG_VOUT_CONFIG);
+    hwlog_info("%s: vout config reg[0x2c] = %d.\n", __func__, val);
+    if(ret <0 ||val != vol )
     {
-        fcp_adapter_reg_write(vol, FCP_SLAVE_REG_VOUT_CONFIG);
-        fcp_adapter_reg_read(&val, FCP_SLAVE_REG_VOUT_CONFIG);
-        hwlog_info("%s: vout config reg[0x2c] = %d.\n", __func__, val);
-        if (val == vol){
-            break;
-        }
-    }
-    /*if try 3 times return fail */
-    if (FCP_RETRY_MAX_TIMES == i){
         hwlog_err("%s:out vol config err, reg[0x2c] = %d.\n", __func__, val);
         return -1;
     }
-    fcp_adapter_reg_write(FCP_SLAVE_SET_VOUT, FCP_SLAVE_REG_OUTPUT_CONTROL);
+
+    ret = fcp_adapter_reg_write(FCP_SLAVE_SET_VOUT, FCP_SLAVE_REG_OUTPUT_CONTROL);
+    if(ret < 0)
+    {
+        hwlog_err("%s : enable adapter output voltage failed \n ",__func__);
+        return -1;
+    }
     hwlog_info("fcp adapter output vol set ok.\n");
     return 0;
 }
@@ -796,18 +1018,26 @@ int fcp_set_adapter_output_vol(void)
   Output:       NA
   Return:       MAX POWER(W)
 ***************************************************************************/
-int fcp_get_adapter_max_power(void)
+int fcp_get_adapter_max_power(int *max_power)
 {
     int reg_val = 0;
+    int ret =0;
     if(NULL == this_client)
     {
         return -1;
     }
 
     /*read max power*/
-    fcp_adapter_reg_read(&reg_val, FCP_SLAVE_REG_MAX_PWR);
+    ret = fcp_adapter_reg_read(&reg_val, FCP_SLAVE_REG_MAX_PWR);
+    if(ret != 0)
+    {
+        hwlog_err("%s: read max power failed \n",__func__);
+        return -1;
+    }
+
     hwlog_info("%s: max power reg[0x22] = %d.\n", __func__, reg_val);
-    return (reg_val >> 1);
+    *max_power = (reg_val >> 1);
+    return 0;
 }
 
 /**********************************************************
@@ -819,16 +1049,22 @@ int fcp_get_adapter_max_power(void)
 int fcp_get_adapter_output_current(void)
 {
     int output_current = 0;
-    int output_vol     = 0;
+    int output_vol = 0;
+    int max_power = 0;
+    int ret =0;
     if(NULL == this_client)
     {
         return -1;
     }
 
-    fcp_get_adapter_output_vol(&output_vol);
-    if (output_vol){
-        output_current = fcp_get_adapter_max_power()*1000/output_vol;
+    ret |= fcp_get_adapter_output_vol(&output_vol);
+    ret |= fcp_get_adapter_max_power(&max_power);
+    if (ret != 0)
+    {
+        hwlog_err("%s : output current read failed \n",__func__);
+        return -1;
     }
+    output_current = max_power*1000/output_vol;
     hwlog_info("%s: output current = %d.\n", __func__, output_current);
     return output_current;
 }
@@ -890,8 +1126,15 @@ int fcp_read_switch_status(void)
 **********************************************************/
 int fcp_read_adapter_status (void)
 {
-    int val = 0;
-    fcp_adapter_reg_read(&val, FCP_ADAPTER_STATUS);
+    int val = 0,ret =0;
+    ret = fcp_adapter_reg_read(&val, FCP_ADAPTER_STATUS);
+    if(ret !=0)
+    {
+        hwlog_err("%s : read failed ,ret = %d \n",__func__,ret);
+        return 0;
+    }
+    hwlog_info("val is %d \n",val);
+
     if( FCP_ADAPTER_OVLT == (val & FCP_ADAPTER_OVLT))
     {
        return FCP_ADAPTER_OVLT;
@@ -914,6 +1157,8 @@ struct fcp_adapter_device_ops fcp_fsa9688_ops = {
     .set_adapter_output_vol     = fcp_set_adapter_output_vol,
     .detect_adapter             = fcp_adapter_detect,
     .is_support_fcp             = is_support_fcp,
+    .switch_chip_reset          = switch_chip_reset,
+    .fcp_adapter_reset          = fcp_adapter_reset,
 };
 
 /**********************************************************
@@ -1062,6 +1307,16 @@ static int fsa9685_probe(
         hwlog_err("%s: write FSA9685_REG_DETACH_CONTROL error!!! ret=%d", __func__, ret);
     }
 
+    /* if support fcp ,disable fcp interrupt */
+    if( 0 == is_support_fcp())
+    {
+        ret |= fsa9685_write_reg(FSA9685_REG_ACCP_INTERRUPT_MASK1, 0xFF);
+        ret |= fsa9685_write_reg(FSA9685_REG_ACCP_INTERRUPT_MASK2, 0xFF);
+        if(ret < 0)
+        {
+            hwlog_err("accp interrupt mask write failed \n");
+        }
+    }
     /* interrupt register */
     INIT_WORK(&g_intb_work, fsa9685_intb_work);
 

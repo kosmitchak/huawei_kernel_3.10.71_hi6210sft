@@ -36,4 +36,13 @@
 		gpio_type = <0>;
 		status = "disabled";
 	};
+
+	dts_eagle: dts_eagle@0 {
+		compatible = "huawei,dts_eagle";
+		u32_reg = <0x11>;
+		product_id = "eagle";
+		vendor_id = "dts";
+		hw,public = "product_id", "vendor_id";
+		status = "disabled";
+	};
 };

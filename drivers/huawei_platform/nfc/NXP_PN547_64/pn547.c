@@ -77,6 +77,7 @@ static char g_nfc_chip_type[MAX_NFC_CHIP_TYPE_SIZE];
 static char g_nfc_fw_version[MAX_NFC_FW_VERSION_SIZE];
 static char g_nfc_detect_se_str[MAX_DETECT_SE_SIZE];
 static bool g_nfc_detect_se = false;
+static int g_nfcservice_lock = 0;
 
 #ifdef CONFIG_V8R2_NFC
 spinlock_t	g_alel21_lock;
@@ -997,6 +998,26 @@ static ssize_t nfc_chip_type_show(struct device *dev, struct device_attribute *a
     }
     return (ssize_t)(snprintf(buf,  MAX_ATTRIBUTE_BUFFER_SIZE-1, "%s", g_nfc_chip_type));
 }
+
+static ssize_t nfcservice_lock_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+    return (ssize_t)(snprintf(buf,  MAX_ATTRIBUTE_BUFFER_SIZE-1, "%d", g_nfcservice_lock));
+}
+
+static ssize_t nfcservice_lock_store(struct device *dev, struct device_attribute *attr,
+             const char *buf, size_t count)
+{
+    int val = 0;
+
+    if (sscanf(buf, "%1d", &val) == 1) {
+        g_nfcservice_lock = val;
+    }else{
+        pr_err("%s: set g_nfcservice_lock error\n", __func__);
+        g_nfcservice_lock = 0;
+    }
+    pr_info("%s: g_nfcservice_lock:%d\n", __func__, g_nfcservice_lock);
+    return (ssize_t)count;
+}
 static struct device_attribute pn547_attr[] ={
 
 	__ATTR(nfc_fwupdate, 0664, nfc_fwupdate_show, nfc_fwupdate_store),
@@ -1010,6 +1031,7 @@ static struct device_attribute pn547_attr[] ={
 	__ATTR(nfc_card_num, 0444, nfc_card_num_show, NULL),
 	__ATTR(nfc_chip_type, 0444, nfc_chip_type_show, NULL),
 	__ATTR(nfc_fw_version, 0444, nfc_fw_version_show, NULL),
+	__ATTR(nfcservice_lock, 0664, nfcservice_lock_show, nfcservice_lock_store),
 };
 static int create_sysfs_interfaces(struct device *dev)
 {

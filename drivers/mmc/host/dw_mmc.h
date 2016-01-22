@@ -215,6 +215,7 @@
 struct dw_mci_hs_priv_data {
 	int				id;
 	int				old_timing;
+	int 				in_suspend;
 	int				gpio_cd;
 	int				gpio_sw;
 	int				sw_value;

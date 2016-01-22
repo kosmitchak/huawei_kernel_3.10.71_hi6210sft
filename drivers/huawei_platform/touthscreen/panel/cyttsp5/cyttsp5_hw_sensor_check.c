@@ -913,9 +913,14 @@ static int cyttsp5_get_mutual_noise(struct device *dev)
         }
     }
 
+    //store noise value for debug
+    for (i = 0; i < length; i++) {
+        dad->data_buf[i] = max_raw[i] - min_raw[i];
+    }
+
     j =0;
     for (i = 0; i < length; i++) {
-        if(mut_noise.max[j] < (max_raw[i] - min_raw[i])) {
+        if(mut_noise.max[j] < dad->data_buf[i]) {
             TS_LOG_ERR( "%s mutual noise check  failed. raw[%d] is %d-%d, mut_noise.max[%d] is %d \n",__func__, i, min_raw[i], max_raw[i], j, mut_noise.max[j]);
             ret = -1;
             goto exit;
@@ -980,9 +985,14 @@ static int cyttsp5_get_self_noise(struct device *dev)
         }
     }
 
+    //store noise value for debug
+    for (i = 0; i < length; i++) {
+        dad->data_buf[i] = max_raw[i] - min_raw[i];
+    }
+
     j =0;
     for (i = 0; i < length; i++) {
-        if(s_noise.max[j] < (max_raw[i] - min_raw[i])) {
+        if(s_noise.max[j] < dad->data_buf[i]) {
             TS_LOG_ERR( "%s self noise check  failed.  raw[%d] is %d-%d, s_noise.max[%d] is %d \n",__func__, i, min_raw[i], max_raw[i], j, s_noise.max[j]);
             ret = -1;
             goto exit;

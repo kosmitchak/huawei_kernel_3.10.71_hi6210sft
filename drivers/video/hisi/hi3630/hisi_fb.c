@@ -14,6 +14,7 @@
 #include "hisi_fb.h"
 #include "hisi_overlay_utils.h"
 #include <huawei_platform/log/log_jank.h>
+#include <linux/init.h>
 #if defined (CONFIG_HUAWEI_DSM)
 static struct dsm_dev dsm_lcd = {
     .name = "dsm_lcd",
@@ -32,6 +33,8 @@ struct dsm_client *lcd_dclient = NULL;
 /sys/devices/platform/
 #endif
 
+static u8 greydisp_buf[8] = {0};
+
 static int hisi_fb_resource_initialized;
 static struct platform_device *pdev_list[HISI_FB_MAX_DEV_LIST] = {0};
 
@@ -46,6 +49,9 @@ static int hisifd_list_index;
 
 uint32_t g_dts_resouce_ready = 0;
 uint32_t g_fpga_flag = 0;
+#ifdef CONFIG_FB_3630
+uint32_t g_dss_base_phy = 0;
+#endif
 
 static char __iomem *hisifd_dss_base;
 static char __iomem *hisifd_crgperi_base;
@@ -277,6 +283,10 @@ struct platform_device *hisi_fb_add_device(struct platform_device *pdev)
 	hisifd->mipi_dsi0_base = hisifd->dss_base + DSS_MIPI_DSI0_OFFSET;
 	hisifd->mipi_dsi1_base = hisifd->dss_base + DSS_MIPI_DSI1_OFFSET;
 	hisifd->crgperi_base = hisifd_crgperi_base;
+
+#ifdef CONFIG_FB_3630
+	hisifd->dss_base_phy = g_dss_base_phy;
+#endif
 
 	hisifd->dss_axi_clk_name = g_dss_axi_clk_name;
 	hisifd->dss_pri_clk_name = g_dss_pri_clk_name;
@@ -1517,6 +1527,7 @@ static int hisi_fb_register(struct hisi_fb_data_type *hisifd)
 	hisifd->ref_cnt = 0;
 	hisifd->panel_power_on = false;
 	hisifd->hisi_fb_shutdown = false;
+	hisifd->powerdown_enable = false;
 	sema_init(&hisifd->blank_sem, 1);
 
 	memset(&hisifd->dss_clk_rate, 0, sizeof(struct dss_clk_rate));
@@ -1525,6 +1536,11 @@ static int hisi_fb_register(struct hisi_fb_data_type *hisifd)
 
 	hisifd->on_fnc = hisifb_ctrl_on;
 	hisifd->off_fnc = hisifb_ctrl_off;
+
+	if(hisifd->panel_info.grayscale_support)
+		hisifd->grayscale_enabled = greydisp_buf[0];
+	else
+		hisifd->grayscale_enabled = 0;
 
 	if (hisifd->index == PRIMARY_PANEL_IDX) {
 		g_primary_lcd_xres = panel_info->xres;
@@ -1729,7 +1745,13 @@ static int hisi_fb_probe(struct platform_device *pdev)
 			HISI_FB_ERR("failed to get fastboot_enable_flag resource.\n");
 			return -ENXIO;
 		}
-
+#ifdef CONFIG_FB_3630
+		ret = of_property_read_u32(np, "dss_base_phy", &g_dss_base_phy);
+		if (ret) {
+			HISI_FB_ERR("failed to get dss_base_phy.\n");
+			return -ENXIO;
+		}
+#endif
 		/* get irq no */
 		hisifd_irq_pdp = irq_of_parse_and_map(np, 0);
 		if (!hisifd_irq_pdp) {
@@ -1852,7 +1874,7 @@ static int hisi_fb_probe(struct platform_device *pdev)
 	hisifd = platform_get_drvdata(pdev);
 	BUG_ON(hisifd == NULL);
 
-	HISI_FB_DEBUG("fb%d, +.\n", hisifd->index);
+	HISI_FB_INFO("fb%d, +.\n", hisifd->index);
 
 	ret = hisi_fb_register(hisifd);
 	if (ret) {
@@ -1873,7 +1895,7 @@ static int hisi_fb_probe(struct platform_device *pdev)
 	/* set device probe status */
 	hisi_fb_device_set_status1(hisifd);
 
-	HISI_FB_DEBUG("fb%d, -.\n", hisifd->index);
+	HISI_FB_INFO("fb%d, -.\n", hisifd->index);
 #if defined (CONFIG_HUAWEI_DSM)
 	if(!lcd_dclient) {
 		lcd_dclient = dsm_register_client(&dsm_lcd);
@@ -2179,6 +2201,7 @@ static int hisi_fb_pm_suspend(struct device *dev)
 	return 0;
 }
 
+#if 0
 static int hisi_fb_pm_resume(struct device *dev)
 {
 	struct hisi_fb_data_type *hisifd = NULL;
@@ -2202,6 +2225,7 @@ static int hisi_fb_pm_resume(struct device *dev)
 
 	return 0;
 }
+#endif
 #endif
 
 static void hisi_fb_shutdown(struct platform_device *pdev)
@@ -2291,6 +2315,30 @@ static int __init hisi_fb_init(void)
 
 	return ret;
 }
+
+static int __init early_parse_greydisp_cmdline(char *arg)
+{
+	int len = 0;
+	u8 grey_disp = 0;
+	memset(greydisp_buf, 0, sizeof(greydisp_buf));
+	if (arg) {
+		len = strlen(arg);
+
+		if (len > sizeof(greydisp_buf)) {
+			len = sizeof(greydisp_buf);
+		}
+		memcpy(greydisp_buf, arg, len);
+	} else {
+		HISI_FB_ERR("%s : arg is NULL\n", __func__);
+		greydisp_buf[0] = 0;
+	}
+
+	grey_disp = (u8)simple_strtol(greydisp_buf, NULL, 10);
+	HISI_FB_INFO("greydisp_buf = %s, grey_disp = %d\n", greydisp_buf, grey_disp);
+	greydisp_buf[0] = grey_disp;
+	return 0;
+}
+early_param("GREY-D", early_parse_greydisp_cmdline);
 
 module_init(hisi_fb_init);
 

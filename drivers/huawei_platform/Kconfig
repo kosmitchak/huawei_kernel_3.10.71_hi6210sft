@@ -12,7 +12,8 @@ config SENSORHUB_FEATURE_SUPPORT
 
 menu "huawei linux device driver support"
 source "drivers/huawei_platform/sensor/Kconfig"
-source "drivers/huawei_platform/inputhub/Kconfig"
+source "drivers/huawei_platform/inputhub/kirin920/Kconfig"
+source "drivers/huawei_platform/inputhub/kirin930/Kconfig"
 source "drivers/huawei_platform/touthscreen/Kconfig"
 source "drivers/huawei_platform/irda/Kconfig"
 source "drivers/huawei_platform/log/Kconfig"
@@ -22,6 +23,7 @@ source "drivers/huawei_platform/ext_modem/Kconfig"
 source "drivers/huawei_platform/storage/Kconfig"
 source "drivers/huawei_platform/chipverification/Kconfig"
 source "drivers/huawei_platform/chr/Kconfig"
+source "drivers/huawei_platform/immersion/Kconfig"
 endmenu
 
 source "drivers/huawei_platform/audio/Kconfig"

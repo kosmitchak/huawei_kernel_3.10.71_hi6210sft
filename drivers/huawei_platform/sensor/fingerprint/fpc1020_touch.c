@@ -10,7 +10,7 @@
 //#define DEBUG
 //#define	FPC1020_NAV_DBG
 //#define	FPC1020_NAV_TOUCH_DBG
-//#define FPC1020_NAV_DPAD_DBG
+//#define	FPC1020_NAV_DPAD_DBG
 //#define DEBUG_TIME
 #include <linux/input.h>
 #include <linux/delay.h>
@@ -38,7 +38,12 @@ static int capture_nav_image(fpc1020_data_t* fpc1020);
 /* -------------------------------------------------------------------- */
 #define FPC1020_KEY_FINGER_PRESENT	KEY_F18	/* 188*/
 
-#define FPC1020_INPUT_POLL_INTERVAL (20000u)
+#define FPC1020_INPUT_POLL_INTERVAL (10000u)
+#define FPC1020_CLICK_INTERVAL		(10000u)
+#define THRESHOLD_DURATION_CLICK	300/*click threshold*/
+#define THRESHOLD_DURATION_HOLD		500/*long press threshold*/
+#define THRESHOLD_DURATION_DTAP		500
+#define THRESHOLD_DURATION_TAP		1500
 #define FLOAT_MAX 100
 
 #define DEVICE_WIDTH 1080
@@ -72,7 +77,7 @@ int fpc1020_capture_nav_wait_finger_down(fpc1020_data_t* fpc1020)
 {
     int error = 0;
 
-    error = fpc1020_wait_finger_present(fpc1020);
+    error = fpc1020_nav_wait_finger_present(fpc1020);
 
 
     fpc1020_read_irq(fpc1020, true);
@@ -111,6 +116,10 @@ void init_enhanced_navi_setting(fpc1020_data_t* fpc1020)
             fpc1020->nav.duration_ptr_clear = 100;
             fpc1020->nav.nav_finger_up_threshold = 1;
             fpc1020->nav.threshold_key_start = 8;
+            fpc1020->nav.threshold_key_start_up = 120;
+            fpc1020->nav.threshold_key_start_down = 120;
+            fpc1020->nav.threshold_key_start_left = 120;
+            fpc1020->nav.threshold_key_start_right = 120;
             fpc1020->nav.threshold_key_offset = 8;
             fpc1020->nav.duration_key_clear = 2000;
             fpc1020->nav.duration_ptr_clear = 100;
@@ -146,55 +155,67 @@ static void dispatch_dpad_event(fpc1020_data_t* fpc1020, int x, int y, int finge
     static int issued_key = 0;
     static unsigned long prev_time = 0;
     unsigned long current_time = jiffies * 1000 / HZ;
-
+    key_code = -1;
     switch (finger_status)
     {
         case FNGR_ST_DETECTED:
             fpc1020->nav.sum_x = 0;
             fpc1020->nav.sum_y = 0;
-            input_report_key(fpc1020->touch_pad_dev, KEY_EXIT, 1);
-            input_sync(fpc1020->touch_pad_dev);
-            input_report_key(fpc1020->touch_pad_dev, KEY_EXIT, 0);
-            input_sync(fpc1020->touch_pad_dev);
-	    break;
+			break;
+
         case FNGR_ST_LOST:
+            if (fpc1020->nav.move_down_cnt == 1)
+            {
+                if (fpc1020->nav.tap_status != FNGR_ST_TAP)
+                {
+                    fpc1020->nav.tap_status = FNGR_ST_TAP;
+                    fpc1020->nav.tap_start = current_time;
+                }
+               else if (fpc1020->nav.tap_status == FNGR_ST_TAP
+                                && current_time - fpc1020->nav.tap_start <= THRESHOLD_DURATION_DTAP)
+                {
+                    fpc1020->nav.report_key = KEY_DELETE;
+                    queue_work(fpc1020->fpc_nav_workqueue, &fpc1020->fpc_nav_work);
+                    fpc1020->nav.tap_status = -1;
+                    pr_info("[FPC/DPAD] report m_double click\n");
+                }
+            }
             fpc1020->nav.sum_x = 0;
             fpc1020->nav.sum_y = 0;
             fpc1020->nav.move_up_cnt = 0;
             fpc1020->nav.move_down_cnt = 0;
+            fpc1020->nav.throw_event = 0;
+            fpc1020->nav.throw_event_move = 0;
             break;
 
 
         case  FNGR_ST_TAP:
-#ifdef FPC1020_NAV_DPAD_DBG
+//#ifdef FPC1020_NAV_DPAD_DBG
             pr_info("[FPC/DPAD] report single click\n");
-#endif
+//#endif
             break;
 
 
         case FNGR_ST_DOUBLE_TAP:
-            input_report_key(fpc1020->touch_pad_dev, KEY_DELETE, 1);
-            input_sync(fpc1020->touch_pad_dev);
-            input_report_key(fpc1020->touch_pad_dev, KEY_DELETE, 0);
-            input_sync(fpc1020->touch_pad_dev);
+            fpc1020->nav.report_key = KEY_DELETE;
+            queue_work(fpc1020->fpc_nav_workqueue, &fpc1020->fpc_nav_work);
             fpc1020->nav.tap_status = -1;
             //msleep(500);
-#ifdef FPC1020_NAV_DPAD_DBG
+//#ifdef FPC1020_NAV_DPAD_DBG
             pr_info("[FPC/DPAD] report double click\n");
-#endif
+//#endif
             break;
 
         case FNGR_ST_HOLD:
-            input_report_key(fpc1020->touch_pad_dev, KEY_ENTER, 1);
-            input_sync(fpc1020->touch_pad_dev);
-            input_report_key(fpc1020->touch_pad_dev, KEY_ENTER, 0);
-            input_sync(fpc1020->touch_pad_dev);
-            mdelay(30);
-            fpc1020->nav.throw_event = 1;
-            fpc1020->nav.tap_status = -1;
-#ifdef FPC1020_NAV_DPAD_DBG
-            pr_info("[FPC/DPAD] report long press\n");
-#endif
+            if (fpc1020->nav.throw_event_move == 0)
+            {
+                fpc1020->nav.report_key = KEY_ENTER;
+                queue_work(fpc1020->fpc_nav_workqueue, &fpc1020->fpc_nav_work);
+                mdelay(30);
+                pr_info("[FPC/DPAD] report long press\n");
+                fpc1020->nav.throw_event = 1;
+             }
+             fpc1020->nav.tap_status = -1;
             break;
 
         case FNGR_ST_MOVING:
@@ -317,7 +338,7 @@ static void dispatch_dpad_event(fpc1020_data_t* fpc1020, int x, int y, int finge
                         input_report_key(fpc1020->touch_pad_dev, key_code, 0);
                         input_sync(fpc1020->touch_pad_dev);
 			fpc1020->nav.throw_event = 1;
-#ifdef FPC1020_NAV_DPAD_DBG
+//#ifdef FPC1020_NAV_DPAD_DBG
                         switch (key_code)
                         {
                             case KEY_UP:
@@ -335,7 +356,7 @@ static void dispatch_dpad_event(fpc1020_data_t* fpc1020, int x, int y, int finge
                             default:
                                 break;
                         }
-#endif
+//#endif
                     }
                     //fpc1020->nav.sum_x = 0;
                     //fpc1020->nav.sum_y = 0;
@@ -516,8 +537,7 @@ static void process_navi_event(fpc1020_data_t* fpc1020, int dx, int dy, int fing
 {
     const int THRESHOLD_RANGE_TAP = 500000;
     const int THRESHOLD_RANGE_MIN_TAP = 4;
-    const unsigned long THRESHOLD_DURATION_TAP = 1500;/*long press threshold*/
-    const unsigned long THRESHOLD_DURATION_DTAP = 1300;
+    const int THRESHOLD_RANGE_DOUBLE_TAP = 1600;
     //const unsigned long THRESHOLD_DURATION_TAP = 3000;//350;
     int filtered_finger_status = finger_status;
     static int deviation_x = 0;
@@ -547,8 +567,8 @@ static void process_navi_event(fpc1020_data_t* fpc1020, int dx, int dy, int fing
         //fpc1020->nav.nav_sum_x = dx;
         //fpc1020->nav.nav_sum_y = dy; 
 #ifdef FPC1020_NAV_DBG
-        pr_info("[FPC] %s:deviation=%d, duration=%d, finger_status=%d\n",
-                __func__, deviation, duration, finger_status);
+        pr_info("[FPC] %s: report deviation=%d, duration=%d, finger status=%d, thraw =%d, double %d\n",
+                __func__, deviation, duration, fpc1020->nav.tap_status, fpc1020->nav.throw_event,  tick_curr - fpc1020->nav.tap_start);
 #endif
         if (deviation > THRESHOLD_RANGE_TAP)
         {
@@ -571,11 +591,11 @@ static void process_navi_event(fpc1020_data_t* fpc1020, int dx, int dy, int fing
         {
             if (duration < THRESHOLD_DURATION_TAP)
             {
-                if (finger_status == FNGR_ST_LOST && fpc1020->nav.detect_zones != 0)
+                if (finger_status == FNGR_ST_LOST && fpc1020->nav.detect_zones > 1)
                 {
                     if (fpc1020->nav.tap_status == FNGR_ST_TAP
 				&& tick_curr - fpc1020->nav.tap_start <= THRESHOLD_DURATION_DTAP
-				&& ((deviation == 0)||((dy == fpc1020->nav.move_pre_y)&& (dx==fpc1020->nav.move_pre_x))))
+				&& ((deviation <= THRESHOLD_RANGE_DOUBLE_TAP )||((dy == fpc1020->nav.move_pre_y)&& (dx==fpc1020->nav.move_pre_x))))
                     {
                         fpc1020->nav.tap_status = FNGR_ST_DOUBLE_TAP;
                         filtered_finger_status = FNGR_ST_DOUBLE_TAP;
@@ -584,7 +604,8 @@ static void process_navi_event(fpc1020_data_t* fpc1020, int dx, int dy, int fing
                         pr_info("[FPC] %s:prepare report double click\n", __func__);
 #endif
                     }
-                    else if (deviation <= THRESHOLD_RANGE_MIN_TAP || (dy == fpc1020->nav.move_pre_y)&& (dx==fpc1020->nav.move_pre_x))
+                    else if ((deviation <= THRESHOLD_RANGE_DOUBLE_TAP || ((dy == fpc1020->nav.move_pre_y)&& (dx==fpc1020->nav.move_pre_x)))&&
+			            duration < THRESHOLD_DURATION_CLICK)
                     {
                         filtered_finger_status = FNGR_ST_TAP;
                         fpc1020->nav.tap_status = FNGR_ST_TAP;
@@ -605,10 +626,24 @@ static void process_navi_event(fpc1020_data_t* fpc1020, int dx, int dy, int fing
                     deviation_x = 0;
                     deviation_y = 0;
                 }
+                else if ((deviation <= THRESHOLD_RANGE_MIN_TAP ||
+                   ((dy == fpc1020->nav.move_pre_y)&& (dx==fpc1020->nav.move_pre_x)))
+                && duration > THRESHOLD_DURATION_HOLD)
+               {
+#ifdef FPC1020_NAV_DBG
+                printk("[FPC] %s:inside  prepare report long press\n", __func__);
+#endif
+                //if (deviation < THRESHOLD_RANGE_MIN_TAP)
+                filtered_finger_status = FNGR_ST_HOLD;// FNGR_ST_L_HOLD;
+                fpc1020->nav.tap_status = -1;
+                tick_down = 0;
+                deviation_x = 0;
+                deviation_y = 0;
+              }
             }
             else if ((deviation <= THRESHOLD_RANGE_MIN_TAP ||
                    ((dy == fpc1020->nav.move_pre_y)&& (dx==fpc1020->nav.move_pre_x)))
-		&& tick_curr - fpc1020->nav.tap_start > THRESHOLD_DURATION_TAP && fpc1020->nav.throw_event != 1)
+		&& duration > THRESHOLD_DURATION_HOLD)
             {
 #ifdef FPC1020_NAV_DBG
                 printk("[FPC] %s: prepare report long press\n", __func__);
@@ -641,12 +676,23 @@ static void process_navi_event(fpc1020_data_t* fpc1020, int dx, int dy, int fing
             dispatch_touch_event(fpc1020, dy, dx, filtered_finger_status);
             break;
         default:
-            pr_info("[FPC] %s: undefined input mode\n");
+            pr_info("[FPC]: undefined input mode\n");
             break;
     }
 }
 
+#ifdef FPC1020_NAV_WQ
+static void fpc_nav_work_func(struct work_struct *work)
+{
 
+        fpc1020_data_t *fpc1020 =
+            container_of(work, fpc1020_data_t, fpc_nav_work);
+        input_report_key(fpc1020->touch_pad_dev, fpc1020->nav.report_key, 1);
+        input_sync(fpc1020->touch_pad_dev);
+        input_report_key(fpc1020->touch_pad_dev, fpc1020->nav.report_key, 0);
+        input_sync(fpc1020->touch_pad_dev);
+}
+#endif
 /* -------------------------------------------------------------------- */
 int  fpc1020_input_init(fpc1020_data_t* fpc1020)
 {
@@ -686,7 +732,7 @@ int  fpc1020_input_init(fpc1020_data_t* fpc1020)
         set_bit(EV_REL, fpc1020->input_dev->evbit);
         input_set_capability(fpc1020->input_dev, EV_REL, REL_X);
         input_set_capability(fpc1020->input_dev, EV_REL, REL_Y);
-        input_set_capability(fpc1020->input_dev, EV_KEY, BTN_MOUSE);
+        //input_set_capability(fpc1020->input_dev, EV_KEY, BTN_MOUSE);
         input_set_capability(fpc1020->input_dev, EV_KEY, KEY_ENTER);
 #if defined (SUPPORT_DOUBLE_TAP)
         input_set_capability(fpc1020->input_dev, EV_KEY, KEY_VOLUMEUP);
@@ -771,7 +817,8 @@ int  fpc1020_input_init(fpc1020_data_t* fpc1020)
 #endif
     if (!error)
     {
-        if ((fpc1020->chip.type == FPC1020_CHIP_1150A) || (fpc1020->chip.type == FPC1020_CHIP_1150B))
+        if (fpc1020->chip.type == FPC1020_CHIP_1150A
+            || fpc1020->chip.type == FPC1020_CHIP_1150B)
         {
             nav_image_width = NAV_IMAGE_HEIGHT;
             nav_image_height = NAV_IMAGE_WIDTH;
@@ -785,8 +832,13 @@ int  fpc1020_input_init(fpc1020_data_t* fpc1020)
         fpc1020->nav.input_mode = FPC1020_INPUTMODE_DPAD;
         //fpc1020->nav.input_mode = FPC1020_INPUTMODE_TOUCH;
         init_enhanced_navi_setting(fpc1020);
+        fpc1020->nav.throw_event = 0;
     }
-
+#ifdef FPC1020_NAV_WQ
+    fpc1020->fpc_nav_workqueue =
+                        create_singlethread_workqueue("fpc_nav_wq");
+    INIT_WORK(&fpc1020->fpc_nav_work, fpc_nav_work_func);
+#endif
     return error;
 }
 
@@ -812,10 +864,30 @@ void fpc1020_input_enable(fpc1020_data_t* fpc1020, bool enabled)
     return ;
 }
 
+int fpc1020_subzrea_zones_sum(int zones)
+{
+    u8 count = 0;
+    u16 mask = FPC1020_FINGER_DETECT_ZONE_MASK;
+    if (zones < 0)
+        return zones;
+    else {
+        zones &= mask;
+        while (zones && mask) {
+            count += (zones & 1) ? 1 : 0;
+            zones >>= 1;
+            mask >>= 1;
+        }
+    }
+        // dev_dbg(&fpc1020->spi->dev, "%s %d zones\n", __func__, count);
+    return (int)count;
+}
 
 /* -------------------------------------------------------------------- */
 int fpc1020_input_task(fpc1020_data_t* fpc1020)
 {
+    u8 zones;
+    u32 abs_x;
+    u32 abs_y;
 #ifdef DEBUG_TIME
     ktime_t capture_start_time;
 #endif
@@ -828,14 +900,26 @@ int fpc1020_input_task(fpc1020_data_t* fpc1020)
     unsigned char* prevBuffer = NULL;
     unsigned char* curBuffer = NULL;
     unsigned long diffTime = 0;
+    unsigned long click_diffTime = 0;
 
     dev_dbg(&fpc1020->spi->dev, "%s\n", __func__);
     //set_cpus_allowed_ptr(current, cpumask_of(3));
     error = fpc1020_write_nav_setup(fpc1020);
+    if (fpc1020->diag.result && (fpc1020->finger_status == FPC1020_FINGER_DOWN)){
+        error = fpc1020_capture_wait_finger_up(fpc1020);
+        if (0 == error)
+            fpc1020->finger_status = FPC1020_FINGER_UP;
+        dev_info(&fpc1020->spi->dev, "%s, finger_status = %d\n", __func__,fpc1020->finger_status);
+     }
+
     while (!fpc1020->worker.stop_request &&
            fpc1020->nav.enabled && (error >= 0))
     {
-        error = fpc1020_capture_nav_wait_finger_down(fpc1020);
+#ifdef CONFIG_ARCH_HI3630
+        error = fpc1020_capture_wait_finger_down(fpc1020);
+#else
+		error = fpc1020_capture_nav_wait_finger_down(fpc1020);
+#endif
         if (error < 0)
         { break; }
         error = fpc1020_write_nav_setup(fpc1020);
@@ -843,8 +927,17 @@ int fpc1020_input_task(fpc1020_data_t* fpc1020)
         { break; }
         error = fpc1020_check_finger_present_raw(fpc1020);
         process_navi_event(fpc1020, 0, 0, FNGR_ST_DETECTED);
+#ifdef FPC1020_NAV_WQ
+        fpc1020->nav.report_key = KEY_EXIT;
+        queue_work(fpc1020->fpc_nav_workqueue, &fpc1020->fpc_nav_work);
+#endif
+        fpc1020->nav.click_start = jiffies;
         fpc1020->down = true;
-        fpc1020->nav.detect_zones = error;
+        zones = fpc1020_subzrea_zones_sum(error);
+        fpc1020->nav.detect_zones = zones;
+#ifdef  FPC1020_NAV_DBG
+        pr_info("[FPC] report touch zones=%d\n", fpc1020->nav.detect_zones);
+#endif
 #ifdef DEBUG_TIME
         capture_start_time = ktime_get();
 #endif // DEBUG_TIME
@@ -874,6 +967,30 @@ int fpc1020_input_task(fpc1020_data_t* fpc1020)
             {
 #ifdef  FPC1020_NAV_DBG
                 pr_info("[FPC] prepare report finger up\n");
+#endif
+
+#if 1
+                click_diffTime = abs(jiffies - fpc1020->nav.click_start);
+                click_diffTime = click_diffTime * 1000000 / HZ;
+                if (click_diffTime <= FPC1020_CLICK_INTERVAL&&fpc1020->nav.detect_zones == 0)
+                {
+                    if (fpc1020->nav.tap_status == FNGR_ST_TAP &&
+                        ((jiffies * 1000 / HZ)-fpc1020->nav.tap_start <= THRESHOLD_DURATION_DTAP))
+                    {
+                    #ifdef FPC1020_NAV_DBG
+                        pr_info("[FPC] prepare fast report#1 double click\n");
+                    #endif
+                        process_navi_event(fpc1020, 0, 0, FNGR_ST_DOUBLE_TAP);
+                    }
+                    else
+                    {
+                    #ifdef FPC1020_NAV_DBG
+                        pr_info("[FPC] prepare fast report#1 single click\n");
+                    #endif
+                        fpc1020->nav.tap_status = FNGR_ST_TAP;
+                        fpc1020->nav.tap_start = jiffies * 1000 / HZ;
+                    }
+                }
 #endif
                 process_navi_event(fpc1020, 0, 0, FNGR_ST_LOST);
                 fpc1020->down = false;
@@ -929,6 +1046,31 @@ int fpc1020_input_task(fpc1020_data_t* fpc1020)
 #ifdef	FPC1020_NAV_DBG
 		pr_info("[FPC] prepare report finger up\n");
 #endif
+
+#if 1
+                click_diffTime = abs(jiffies - fpc1020->nav.click_start);
+                click_diffTime = click_diffTime * 1000000 / HZ;
+                if (click_diffTime <= FPC1020_CLICK_INTERVAL && fpc1020->nav.detect_zones == 0)
+                {
+                    if (fpc1020->nav.tap_status == FNGR_ST_TAP &&
+                        ((jiffies * 1000 / HZ)-fpc1020->nav.tap_start <= THRESHOLD_DURATION_DTAP))
+                    {
+                    #ifdef FPC1020_NAV_DBG
+                        pr_info("[FPC] prepare fast report#2 double click\n");
+                    #endif
+                        process_navi_event(fpc1020, 0, 0, FNGR_ST_DOUBLE_TAP);
+                    }
+                    else
+                    {
+                        fpc1020->nav.tap_status = FNGR_ST_TAP;
+                        fpc1020->nav.tap_start = jiffies * 1000 / HZ;
+                    #ifdef FPC1020_NAV_DBG
+                        pr_info("[FPC] prepare fast report#2 single click\n");
+                    #endif
+                    }
+                }
+#endif
+
                 process_navi_event(fpc1020, 0, 0, FNGR_ST_LOST);
                 fpc1020->down = false;
                 fpc1020->nav.throw_event = 0;
@@ -955,7 +1097,14 @@ int fpc1020_input_task(fpc1020_data_t* fpc1020)
                     "Navigation, caculate time: %lld ns\n",
                     (ktime_get().tv64 - capture_start_time.tv64));
 #endif
-
+            /*workaround to filter data*/
+            abs_x = dx > 0 ? dx:-dx;
+            abs_y = dy > 0 ? dy:-dy;
+            if(abs_x >=28 || abs_y>=28)
+            {
+                dx = 0;
+                dy = 0;
+            }
             sumX += dx;
             sumY += dy;
 #ifdef FPC1020_NAV_DBG
@@ -998,6 +1147,43 @@ int fpc1020_input_task(fpc1020_data_t* fpc1020)
 /* -------------------------------------------------------------------- */
 static int fpc1020_write_nav_setup(fpc1020_data_t* fpc1020)
 {
+#ifdef CONFIG_ARCH_HI3630
+	const int mux = 2;
+	int error = 0;
+	u16 temp_u16;
+	fpc1020_reg_access_t reg;
+
+	dev_dbg(&fpc1020->spi->dev, "%s %d\n", __func__, mux);
+
+	error = fpc1020_wake_up(fpc1020);
+	if (error)
+		goto out;
+
+	error = fpc1020_write_sensor_setup(fpc1020);
+	if(error)
+		goto out;
+
+	temp_u16 = fpc1020->setup.adc_shift[mux];
+	temp_u16 <<= 8;
+	temp_u16 |= fpc1020->setup.adc_gain[mux];
+
+	FPC1020_MK_REG_WRITE(reg, FPC102X_REG_ADC_SHIFT_GAIN, &temp_u16);
+	error = fpc1020_reg_access(fpc1020, &reg);
+	if (error)
+		goto out;
+
+	temp_u16 = fpc1020->setup.pxl_ctrl[mux];
+	FPC1020_MK_REG_WRITE(reg, FPC102X_REG_PXL_CTRL, &temp_u16);
+	error = fpc1020_reg_access(fpc1020, &reg);
+	if (error)
+		goto out;
+
+	error = fpc1020_capture_set_crop(fpc1020,
+				fpc1020->nav.image_nav_col_start, fpc1020->nav.image_nav_col_groups,
+				fpc1020->nav.image_nav_row_start, fpc1020->nav.image_nav_row_count);
+	if (error)
+		goto out;
+#else
     const int mux = 2;
     int error = 0;
     u16 temp_u16;
@@ -1098,7 +1284,7 @@ static int fpc1020_write_nav_setup(fpc1020_data_t* fpc1020)
     temp_u8 = 0x08;
     FPC1020_MK_REG_WRITE(reg, FPC1020_REG_FNGR_DET_THRES, &temp_u8);
     error = fpc1020_reg_access(fpc1020, &reg);
-
+#endif
     dev_dbg(&fpc1020->spi->dev, "%s, (%d, %d, %d, %d)\n", __func__,
             fpc1020->nav.image_nav_col_start, fpc1020->nav.image_nav_col_groups,
             fpc1020->nav.image_nav_row_start, fpc1020->nav.image_nav_row_count);

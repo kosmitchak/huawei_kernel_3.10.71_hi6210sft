@@ -3,7 +3,7 @@
 
 
 
-#define MAX_ERR_TIMES 10
+#define MAX_ERR_TIMES 5
 #define MAX_ERR_TYPE 5
 #define PRT_TIME_PERIOD 10000000000  //10s
 #define SD_IO_BUSY 95

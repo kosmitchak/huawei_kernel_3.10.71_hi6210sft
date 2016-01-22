@@ -1576,13 +1576,14 @@ int balong_fb_open(struct fb_info *info, int user)
     balongfd = (struct balong_fb_data_type *)info->par;
     BUG_ON(balongfd == NULL);
 
+	LOG_JANK_D(JLID_KERNEL_LCD_OPEN, "%s", "JL_KERNEL_LCD_OPEN");
     if (!balongfd->ref_cnt) {
         ret = balong_fb_blank_sub(FB_BLANK_UNBLANK, info);
         if (ret != 0) {
             balongfb_loge("can't turn on display!\n");
             return ret;
         }
-        LOG_JANK_D(JLID_KERNEL_LCD_OPEN, "%s", "JL_KERNEL_LCD_OPEN");
+        //LOG_JANK_D(JLID_KERNEL_LCD_OPEN, "%s", "JL_KERNEL_LCD_OPEN");
         balongfb_logi("index=%d, exit!\n", balongfd->index);
     }
     balongfd->ref_cnt++;

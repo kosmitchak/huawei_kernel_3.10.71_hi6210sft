@@ -216,6 +216,8 @@ static DEVICE_ATTR(register_list, S_IRUGO | S_IWUSR, max98925_register_show, NUL
 
 static int max98925_digital_mute(struct max98925_priv *max98925, int mute)
 {
+	mutex_lock(&max98925->lock);
+
 	if (mute) {
 		pr_info("%s: maxim smartpa mute\n",__func__);
 		regmap_update_bits(max98925->regmapL, MAX98925_R02D_GAIN,
@@ -237,9 +239,16 @@ static int max98925_digital_mute(struct max98925_priv *max98925, int mute)
 		regmap_write(max98925->regmapL, MAX98925_R038_GLOBAL_ENABLE,
 			M98925_EN_MASK);
 	}
-
+	mutex_unlock(&max98925->lock);
 	return 0;
 }
+
+void smartpa_digital_mute(int mute)
+{
+	BUG_ON(NULL == max98925_data);
+	max98925_digital_mute(max98925_data,mute);
+}
+EXPORT_SYMBOL(smartpa_digital_mute);
 
 /* codec sample rate and n/m dividers parameter table */
 static const struct {
@@ -686,6 +695,7 @@ static int max98925_i2c_probe(struct i2c_client *i2c_l,
 */
 	ret = sysfs_create_file(&i2c_l->dev.kobj, &dev_attr_register_list.attr);
 	ret |= misc_register(&max98925_ctrl_miscdev);
+	mutex_init(&max98925_data->lock);
 
 	pr_info("%s: ret %d\n", __func__, ret);
 

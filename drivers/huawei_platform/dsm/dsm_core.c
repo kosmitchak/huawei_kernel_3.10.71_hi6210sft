@@ -420,8 +420,7 @@ static ssize_t dsm_write(struct file *file, const char __user *buf, size_t count
 	}
 
 	client = dsm_find_client(client_name);
-//#ifdef CONFIG_HUAWEI_SDCARD_VOLD
-#if 0
+#ifdef CONFIG_HUAWEI_SDCARD_VOLD
 		if(client && !strncasecmp("sdcard_vold",client_name,size)&&(!dsm_client_ocuppy(client)))
 		{
 		    DSM_LOG_DEBUG("dsm write find sdcard_vold\n");

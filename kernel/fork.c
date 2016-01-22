@@ -71,6 +71,9 @@
 #include <linux/signalfd.h>
 #include <linux/uprobes.h>
 #include <linux/aio.h>
+#ifdef CONFIG_HUAWEI_MSG_POLICY
+#include <huawei_platform/power/msgnotify.h>
+#endif
 
 #include <asm/pgtable.h>
 #include <asm/pgalloc.h>
@@ -1559,7 +1562,9 @@ static struct task_struct *copy_process(unsigned long clone_flags,
 	if (clone_flags & CLONE_THREAD)
 		threadgroup_change_end(current);
 	perf_event_fork(p);
-
+#ifdef CONFIG_HUAWEI_MSG_POLICY
+	p->ms.main_looper_thread = false;
+#endif
 	trace_task_newtask(p, clone_flags);
 
 	return p;

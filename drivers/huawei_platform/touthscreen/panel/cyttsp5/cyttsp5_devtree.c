@@ -756,6 +756,16 @@ static struct cyttsp5_core_platform_data *create_and_get_core_pdata(
         goto fail_free;
     }
 
+    rc = of_property_read_u32(core_node, "cy,support_second_upgrad_firmware", &value);
+    if (!rc) {
+        pdata->support_sec_upgrd_firmware = value;
+        TS_LOG_DEBUG("%s,pdata->support_sec_upgrd_firmware = %d.\n",
+                    __func__,pdata->support_sec_upgrd_firmware);
+    } else {
+        pdata->support_sec_upgrd_firmware = 0;
+        TS_LOG_DEBUG("%s,[cy,support_sec_upgrd_firmware] read fail, rc = %d.\n",__func__, rc);
+    }
+
     rc = of_property_read_u32(core_node, "cy,has_touchplus", &value);
     if (!rc) {
         pdata->has_touchplus = (u8)value;

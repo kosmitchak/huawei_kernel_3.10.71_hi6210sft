@@ -539,7 +539,11 @@ static struct file_operations vpp_file_ops =
 {
     .open = vpp_open,
     .release = vpp_close,
+#ifdef CONFIG_ARM64
     .compat_ioctl = vpp_ioctl,
+#else
+    .unlocked_ioctl = vpp_ioctl,
+#endif
 #ifdef VPP_MMAP
     .mmap = vpp_mmap,
 #endif

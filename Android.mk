@@ -1,6 +1,6 @@
 #Android makefile to build kernel as a part of Android Build
 ifeq ($(BALONG_TOPDIR),)
-export BALONG_TOPDIR := $(shell pwd)/vendor/hisi
+export BALONG_TOPDIR       := $(shell pwd)/vendor/hisi
 endif
 
 ifeq ($(OBB_PRODUCT_NAME),)
@@ -11,6 +11,8 @@ HISI_3635_MODEM_DEFCONFIG := vendor/hisi/config/product/$(OBB_PRODUCT_NAME)/os/a
 ifeq ($(strip $(TARGET_BOARD_PLATFORM)), hi3635)
 HISI_3635_MODEM_DEFCONFIG := vendor/hisi/config/product/$(OBB_PRODUCT_NAME)/os/acore/hi3635_modem_defconfig
 endif
+
+HISI_3630_MODEM_DEFCONFIG := vendor/hisi/config/product/$(OBB_PRODUCT_NAME)/os/acore/hi6930_modem_defconfig
 
 ifeq ($(OBB_PRINT_CMD), true)
 KERNEL_OUT := vendor/hisi/build/delivery/$(OBB_PRODUCT_NAME)/obj/android
@@ -92,8 +94,13 @@ $(KERNEL_GEN_CONFIG_PATH): FORCE
 ifneq ($(filter hi3635fpga hi3635 hi3635emulator, $(TARGET_BOARD_PLATFORM)),)
 ifeq ($(strip $(CFG_HISI_MINI_AP)), false)
 	cat $(HISI_3635_MODEM_DEFCONFIG) >> $(KERNEL_GEN_CONFIG_PATH)
+endif
+endif
+ifneq ($(filter hi3630 , $(TARGET_BOARD_PLATFORM)),)
+ifeq ($(strip $(CFG_HISI_MINI_AP)), false)
+	cat $(HISI_3630_MODEM_DEFCONFIG) >> $(KERNEL_GEN_CONFIG_PATH)
 	echo     >> $(KERNEL_GEN_CONFIG_PATH)
-	echo "CONFIG_HISI_BALONG_MODEM_HI3XXX=y" >> $(KERNEL_GEN_CONFIG_PATH)
+	echo "CONFIG_HISI_BALONG_MODEM_HI3630=y" >> $(KERNEL_GEN_CONFIG_PATH)
 endif
 endif
 

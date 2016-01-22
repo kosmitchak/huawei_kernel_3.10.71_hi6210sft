@@ -121,6 +121,100 @@ static struct partition partitions[] = {
 	{ 0, 0 },
 
 };
+
+#elif defined CONFIG_MACH_HI3630
+#if defined(CONFIG_DOUBLE_ANDROID_SYSTEM)
+static struct partition partitions[] = {
+	{ "-"                , 128             } , /* ptable             128K */
+	{ "vrl"              , 128             } , /* VRL                128K p1*/
+	{ "vrl_backup"       , 128             } , /* VRL backup         128K p2*/
+	{ "reserved1"        , 1664            } , /* reserved1          1664K p3*/
+	{ "fastboot"         , 1792            } , /* fastboot           1792K p4*/
+	{ "fw_lpm3"          , 256             } , /* fw_lpm3            256K p5*/
+	{ "nvme"             , 4 * 1024        } , /* nvme               4M p6*/
+	{ "modemnvm_factory" , 4 * 1024        } , /* modemnvm_factory   4M p7*/
+	{ "hibench"          , 2 * 1024        } , /* fw_iom3            2M p8*/
+	{ "fw_hifi"          , 4 * 1024        } , /* fw_hifi            4M p9*/
+	{ "teeos"            , 2 * 1024        } , /* teeos              2M p10*/
+	{ "misc"             , 4 * 1024        } , /* misc               4M p11*/
+	{ "reserved2"        , 4 * 1024        } , /* reserved2          4M p12*/
+	{ "boot"             , 12 * 1024       } , /* boot               12M p13*/
+	{ "recovery"         , 15 * 1024       } , /* recovery           15M p14*/
+	{ "recovery2"        , 1 * 1024        } , /* recovery2          1M p15*/
+	{ "oeminfo"          , 32 * 1024       } , /* oeminfo            32M p16*/
+	{ "sensorhub"        , 32 * 1024       } , /* sensorhub          32M p17*/
+	{ "splash"           , 8 * 1024        } , /* splash             8M p18*/
+	{ "splash3"          , 8 * 1024        } , /* splash3            8M p19*/
+	{ "dts"              , 32 * 1024       } , /* dts                32M p20*/
+	{ "secure_storage"   , 20 * 1024       } , /* securestorage      20M p21*/
+	{ "dfx"              , 8 * 1024        } , /* dfx                8M p22*/
+	{ "modemnvm_backup"  , 4 * 1024        } , /* modemnvm_backup    4M p23*/
+	{ "modemnvm_img"     , 8 * 1024        } , /* modemnvm_img       8M p24*/
+	{ "modemnvm_system"  , 4 * 1024        } , /* modemnvm system    4M p25*/
+	{ "modem"            , 60 * 1024       } , /* modemimage         60M p26*/
+	{ "modem_dsp"        , 4 * 1024        } , /* modem DSP          4M  p27*/
+	{ "modem_om"         , 12 * 1024       } , /* modem om           12M p28*/
+	{ "modemnvm_update"  , 24 * 1024       } , /* modemnvm update    24M p29*/
+	{ "container"        , 32 * 1024       } , /* 3rdmodem           32M p30*/
+	{ "3rdmodem"         , 96 * 1024       } , /* 3rdmodem           96M p31*/
+	{ "3rdmodemnvm"      , 32 * 1024       } , /* 3rdmodemnvm        32M p32*/
+	{ "3rdmodemnvmbkp"   , 16 * 1024       } , /* 3rdmodemnvmbkp     16M p33*/
+	{ "splash2"          , 64 * 1024       } , /* splash2            64M p34*/
+	{ "hisitest0"        , 2 * 1024        } , /* hisitest0          2M p35*/
+	{ "hisitest1"        , 2 * 1024        } , /* hisitest1          2M p36*/
+	{ "cust"             , 512 * 1024      } , /* cust               512M p37*/
+	{ "system"           , 1536 * 1024     } , /* system             1536M p38*/
+	{ "cache"            , 256 * 1024      } , /* cache              256M p39*/
+	{ "userdata"         , 4 * 1024 * 1024 } , /* userdata           4G p40*/
+	{ 0                  , 0               } ,
+};
+#else
+static struct partition partitions[] = {
+	{ "-"                , 128             } , /* ptable             128K */
+	{ "vrl"              , 128             } , /* VRL                128K p1*/
+	{ "vrl_backup"       , 128             } , /* VRL backup         128K p2*/
+	{ "reserved1"        , 1664            } , /* reserved1          1664K p3*/
+	{ "fastboot"         , 1792            } , /* fastboot           1792K p4*/
+	{ "fw_lpm3"          , 256             } , /* fw_lpm3            256K p5*/
+	{ "nvme"             , 4 * 1024        } , /* nvme               4M p6*/
+	{ "modemnvm_factory" , 4 * 1024        } , /* modemnvm_factory   4M p7*/
+	{ "hibench"          , 2 * 1024        } , /* fw_iom3            2M p8*/
+	{ "fw_hifi"          , 4 * 1024        } , /* fw_hifi            4M p9*/
+	{ "teeos"            , 2 * 1024        } , /* teeos              2M p10*/
+	{ "misc"             , 4 * 1024        } , /* misc               4M p11*/
+	{ "reserved2"        , 2 * 1024        } , /* reserved2          2M p12*/
+	{ "boot"             , 14 * 1024       } , /* boot               14M p13*/
+	{ "recovery"         , 15 * 1024       } , /* recovery           15M p14*/
+	{ "recovery3"        , 1 * 1024        } , /* recovery3          1M p15*/
+	{ "oeminfo"          , 32 * 1024       } , /* oeminfo            32M p16*/
+	{ "sensorhub"        , 32 * 1024       } , /* sensorhub          32M p17*/
+	{ "splash"           , 8 * 1024        } , /* splash             8M p18*/
+	{ "splash3"          , 8 * 1024        } , /* splash3            8M p19*/
+	{ "dts"              , 32 * 1024       } , /* dts                32M p20*/
+	{ "secure_storage"   , 20 * 1024       } , /* securestorage      20M p21*/
+	{ "dfx"              , 8 * 1024        } , /* dfx                8M p22*/
+	{ "modemnvm_backup"  , 4 * 1024        } , /* modemnvm_backup    4M p23*/
+	{ "modemnvm_img"     , 8 * 1024        } , /* modemnvm_img       8M p24*/
+	{ "modemnvm_system"  , 4 * 1024        } , /* modemnvm system    4M p25*/
+	{ "modem"            , 60 * 1024       } , /* modemimage         60M p26*/
+	{ "modem_dsp"        , 4 * 1024        } , /* modem DSP          4M  p27*/
+	{ "modem_om"         , 12 * 1024       } , /* modem om           12M p28*/
+	{ "modemnvm_update"  , 24 * 1024       } , /* modemnvm update    24M p29*/
+	{ "recovery2"        , 64 * 1024       } , /* recovery2          64M p30*/
+	{ "3rdmodem"         , 64 * 1024       } , /* 3rdmodem           64M p31*/
+	{ "3rdmodemnvm"      , 32 * 1024       } , /* 3rdmodemnvm        32M p32*/
+	{ "3rdmodemnvmbkp"   , 16 * 1024       } , /* 3rdmodemnvmbkp     16M p33*/
+	{ "splash2"          , 64 * 1024       } , /* splash2            64M p34*/
+	{ "hisitest0"        , 2 * 1024        } , /* hisitest0          2M p35*/
+	{ "hisitest1"        , 2 * 1024        } , /* hisitest1          2M p36*/
+	{ "cust"             , 512 * 1024      } , /* cust               512M p37*/
+	{ "system"           , 1536 * 1024     } , /* system             1536M p38*/
+	{ "cache"            , 256 * 1024      } , /* cache              256M p39*/
+	{ "userdata"         , 4 * 1024 * 1024 } , /* userdata           4G p40*/
+	{ 0                  , 0               } ,
+};
+#endif
+
 #elif defined CONFIG_MACH_HI3635
 
 static struct partition partitions[] = {

@@ -2820,25 +2820,6 @@ typedef struct
     VOS_UINT8    aucReserved[83];
 }AT_WIFI_SSID_STRU;
 
-/*****************************************************************************
- 结构名    : AT_WIFI_SEC_STRU
- 协议表格  :
- ASN.1描述 :
- 结构说明  : en_NV_Item_WIFI_KEY NV项对应的结构，
-             用于保存wifi 安全信息
-             nv_wifisec_type结构的副本必须与NV项50012的数据结构nv_wifisec_type保持一致
-             aucwlAuthMode              鉴权模式
-             aucBasicEncryptionModes    基本加密模式
-             aucWPAEncryptionModes      WPA加密模式
-             aucWifiWepKey1...aucWifiWepKey4               WIFI KEY
-             ulKeyIndex                 使用的WIFI KEY index,例如，1代表使用wlKeys1
-             aucWpaPsk                  WPA的密码
-             ucWpsEnable                wps是否使能开关
-             ucWpsCfg                   是否允许register来改变enrollee的参数,  0:不允许(默认);  1:允许
-
-  1.日    期   : 2012年4月6日
-    作    者   : l60609
-*****************************************************************************/
 typedef struct
 {
     VOS_UINT8    aucWifiAuthmode[16];

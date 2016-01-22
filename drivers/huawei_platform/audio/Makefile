@@ -5,3 +5,4 @@ obj-y	+= speakerID/
 obj-y	+= anc_hs/
 obj-y	+= tfa9895/
 obj-y	+= earpiece_pa/
+obj-y	+= dts_eagle/

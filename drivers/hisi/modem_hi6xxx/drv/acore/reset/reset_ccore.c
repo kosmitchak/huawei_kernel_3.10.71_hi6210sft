@@ -531,7 +531,7 @@ int ccore_reset_module_init(void)
 
     gic_base_addr = ioremap(REG_BASE_GIC, REG_GIC_IOSIZE);
     BUG_ON(!gic_base_addr);
-    exch_mdm_panic_cb_reg((exch_mdm_panic_reg)Reset_set_ccorefileok_flag);
+
     /*init delayed work*/
     INIT_DELAYED_WORK(&init_ccore_reset_irq_work, init_ccore_reset_irq_do_work);
 

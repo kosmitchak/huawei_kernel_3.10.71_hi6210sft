@@ -47,6 +47,7 @@ extern void set_watchdog_resetflag(void);
 #include <huawei_platform/dsm/dsm_pub.h>
 #endif
 #include <linux/hw_lcd_common.h>
+#include <huawei_platform/log/log_jank.h>
 
 #define TRUE				(1)
 #define FALSE				(0)
@@ -110,6 +111,8 @@ static irqreturn_t hisi_powerkey_handler(int irq, void *data)
 	wake_lock_timeout(&info->pwr_wake_lock, HZ);
 
 	if (info->irq[0] == irq) {
+	        /*Jnak Log */
+	        LOG_JANK_D(JLID_POWERKEY_PRESS, "%s", "JL_POWERKEY_PRESS");
 			pr_info("[%s]response press interrupt!\n", __FUNCTION__);
 			power_key_ps=true;
 
@@ -135,6 +138,8 @@ static irqreturn_t hisi_powerkey_handler(int irq, void *data)
 			}
 #endif
 	} else if (info->irq[1] == irq) {
+	        /*Jnak Log */
+	        LOG_JANK_D(JLID_POWERKEY_RELEASE, "%s", "JL_POWERKEY_RELEASE");
 			pr_info("[%s]response release interrupt!\n", __FUNCTION__);
 			#if defined(CONFIG_HISILICON_PLATFORM_MAINTAIN)
                         #ifdef CONFIG_ARCH_HI6XXX

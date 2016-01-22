@@ -81,7 +81,7 @@
 #define DDR_CURR_BANDWIDTH_PATH "/sys/class/devfreq/ddrfreq/ddr_bandwidth"
 
 /* VARIABLES AND ARRARYS */
-k3_isp_data isp_data;
+static k3_isp_data isp_data;
 static isp_hw_controller *isp_hw_ctl;
 static isp_tune_ops *camera_tune_ops;
 static camera_flash_state flash_exif = FLASH_OFF;
@@ -550,9 +550,9 @@ int k3_isp_try_fmt(struct v4l2_format *fmt, camera_state state, camera_setting_v
 	sensor_frmsize.width = fs.discrete.width;
 	sensor_frmsize.height = fs.discrete.height;
 	if (CAMERA_ZSL_ON == k3_isp_get_zsl_state()) {
-		ret = isp_data.sensor->set_framesizes(STATE_PREVIEW, &sensor_frmsize, 0, view_type, true, isp_data.b_shutter_state, isp_data.ecgc_support_type);
+		ret = isp_data.sensor->set_framesizes(STATE_PREVIEW, &sensor_frmsize, 0, view_type, true);
 	} else {
-	    ret = isp_data.sensor->set_framesizes(state, &sensor_frmsize, 0, view_type, false, isp_data.b_shutter_state,isp_data.ecgc_support_type);
+	    ret = isp_data.sensor->set_framesizes(state, &sensor_frmsize, 0, view_type, false);
 	}
 	if (ret != 0) {
 		print_error("%s:fail to set sensor framesize, width = %d, height= %d",
@@ -2677,52 +2677,7 @@ void k3_isp_set_hw_3a_mode(int mode)
 	}
 }
 
-void k3_isp_set_b_shutter_mode(int b_shutter_mode)
-{
-	print_info("enter %s()", __func__);
-	isp_hw_ctl->isp_set_b_shutter_mode(b_shutter_mode);
-}
 
-int k3_isp_set_b_shutter_long_ae(b_shutter_ae_iso_s* b_shutter_ae_iso)
-{
-	int retVal = -1;
-	print_info("%s enter %s()", BSHUTTER_LOG_TAG, __func__);
-
-	retVal = isp_hw_ctl->isp_set_b_shutter_long_ae(b_shutter_ae_iso);
-
-	return retVal;
-}
-
-int k3_isp_set_b_shutter_hdr_ae(b_shutter_hdr_aeciso_s* b_shutter_hdr_ae_iso)
-{
-	int retVal = -1;
-	print_info("%s enter %s()", BSHUTTER_LOG_TAG, __func__);
-
-	retVal = isp_hw_ctl->isp_set_b_shutter_hdr_ae(b_shutter_hdr_ae_iso);
-
-	return retVal;
-}
-
-int k3_isp_get_aec_state(void)
-{
-	bool retVal = false;
-	print_info("%s enter %s()", BSHUTTER_LOG_TAG, __func__);
-	retVal=isp_hw_ctl->isp_get_aec_state();
-	if(true == retVal)
-		return CAMERA_AEC_STABLE;
-	else
-		return CAMERA_AEC_NONE_STABLE;
-}
-
-int k3_isp_set_b_shutter_ecgc(b_shutter_ae_iso_s* b_shutter_tryae_ecgc)
-{
-	int retVal = -1;
-	print_info("%s enter %s()", BSHUTTER_LOG_TAG, __func__);
-
-	retVal = isp_hw_ctl->isp_set_b_shutter_ecgc(b_shutter_tryae_ecgc);
-
-	return retVal;
-}
 
 /*
  **************************************************************************
@@ -2793,13 +2748,6 @@ static void k3_isp_set_default(void)
 	isp_data.awb_lock                        = AUTO_AWB;
 
 	isp_data.ddr_lock_freq		= 0;
-
-	//initial b_shutter relative struct
-	memset(&isp_data.b_shutter_aecagc,0, sizeof(isp_data.b_shutter_aecagc));
-	memset(&isp_data.b_shutter_hdr_aecagc,0, sizeof(isp_data.b_shutter_hdr_aecagc));
-	memset(&isp_data.b_shutter_tryae_aecagc,0, sizeof(isp_data.b_shutter_tryae_aecagc));
-	isp_data.b_shutter_state = CAMERA_B_SHUTTER_MODE_OFF;
-	isp_data.ecgc_support_type = ECGC_TYPE_MAX ;
 }
 
 /* c00144034:zsl */

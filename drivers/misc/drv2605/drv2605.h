@@ -59,6 +59,9 @@
 #define MODE_REG            0x01
 #define MODE_DEFAULT        0x40
 
+#define MODE_STANDBY        0x40
+#define MODE_DEVICE_READY   0x00
+
 #define DRV260X_MODE_MASK           0x07
 #define MODE_INTERNAL_TRIGGER       0
 #define MODE_EXTERNAL_TRIGGER_EDGE  1
@@ -299,4 +302,33 @@
 
 #define DEFAULT_DRIVE_TIME      0x17
 
+/*immersion begin*/
+
+/*
+** Frequency constant parameters to control force output values and signals.
+*/
+#define VIBE_KP_CFG_FREQUENCY_PARAM1        85
+#define VIBE_KP_CFG_FREQUENCY_PARAM2        86
+#define VIBE_KP_CFG_FREQUENCY_PARAM3        87
+#define VIBE_KP_CFG_FREQUENCY_PARAM4        88
+#define VIBE_KP_CFG_FREQUENCY_PARAM5        89
+#define VIBE_KP_CFG_FREQUENCY_PARAM6        90
+
+#ifdef __KERNEL__
+typedef int8_t		VibeInt8;
+typedef u_int8_t	VibeUInt8;
+typedef int16_t		VibeInt16;
+typedef u_int16_t	VibeUInt16;
+typedef int32_t		VibeInt32;
+typedef u_int32_t	VibeUInt32;
+typedef u_int8_t	VibeBool;
+typedef VibeInt32	VibeStatus;
+#endif
+
+extern int ImmVibeSPI_ForceOut_AmpDisable(VibeUInt8 nActuatorIndex);
+extern int ImmVibeSPI_ForceOut_AmpEnable(VibeUInt8 nActuatorIndex);
+extern int ImmVibeSPI_ForceOut_SetSamples(VibeUInt8 nActuatorIndex, VibeUInt16 nOutputSignalBitDepth, VibeUInt16 nBufferSizeInBytes, VibeInt8* pForceOutputBuffer);
+extern int ImmVibeSPI_ForceOut_SetFrequency(VibeUInt8 nActuatorIndex, VibeUInt16 nFrequencyParameterID, VibeUInt32 nFrequencyParameterValue);
+extern int ImmVibeSPI_Device_GetName(VibeUInt8 nActuatorIndex, char *szDevName, int nSize);
+/*immersion end*/
 #endif /*_DRV2605_H*/

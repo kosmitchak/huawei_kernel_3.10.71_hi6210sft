@@ -1885,6 +1885,7 @@ STATIC struct attribute_group hcc_queues_attribute_group = {
     .attrs = hcc_entity,
 };
 
+
 STATIC ssize_t set_hcc_flow_ctrl_wl(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
 {
     int i;
@@ -1898,7 +1899,9 @@ STATIC ssize_t set_hcc_flow_ctrl_wl(struct device *dev, struct device_attribute 
         return count;
     }
     hcc = g_hi110x_dev->hcc;
+
     ret = sscanf(buf, "%100s %d %d", buff_t,  &lo_wl, &hi_wl);
+
     if(3!= ret)
     {
         printk(KERN_EMERG"wrong input argument format, want 3 input, but now : %zd\n", ret);
@@ -1963,6 +1966,8 @@ STATIC struct attribute_group flow_ctrl_attribute_group = {
     .name = "flow_ctrl",
     .attrs = flow_ctrl_entity,
 };
+
+
 
 STATIC ssize_t hcc_net_stream_get_stat(struct device *dev, struct device_attribute *attr, char *buf)
 {
@@ -2192,6 +2197,7 @@ STATIC struct attribute_group net_stream_attribute_group = {
     .attrs = net_stream_stat_entity,
 };
 
+
 DECLARE_HCC_LIMIT(tx_ctrl_limit,        HCC_TX, CTRL_QUEUE);
 DECLARE_HCC_LIMIT(tx_hi_data_limit,     HCC_TX, DATA_HI_QUEUE);
 DECLARE_HCC_LIMIT(tx_tcp_data_limit,    HCC_TX, DATA_TCP_DATA_QUEUE);
@@ -2256,21 +2262,7 @@ void hwifi_union_log_register(hwifi_union_log* log, void* data)
     HWIFI_INFO("Log module %s added![%pF]", log->module,(void*)_RET_IP_);
 }
 
-/*
- * Prototype    : userctr_loglevel_init
- * Description  : init the interface
- * Input        : void
- * Output       : None
- * Return Value : int32
- * Calls        :
- * Called By    :
- *
- *   History        :
- *   1.Date         : 2012/11/26
- *     Author       : z00209041
- *     Modification : Created function
- *
- */
+
 int32 userctrl_init(void)
 {
     int32   ret = SUCC;

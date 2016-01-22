@@ -88,7 +88,7 @@
 #define HISI_DSS_OFFLINE_MAX_BLOCK	(64)
 #define HISI_DSS_OFFLINE_MAX_LIST	(128)
 
-
+#define EXTRA_NUM 1 
 //#define CONFIG_HISI_FB_COLORBAR_USED
 //#define CONFIG_HISI_FB_VSYNC_THREAD
 #define CONFIG_HISI_FB_BACKLIGHT_DELAY
@@ -100,6 +100,7 @@
 #if defined (CONFIG_HUAWEI_DSM)
 #define UNDERFLOW_EXPIRE_COUNT (3)
 #define UNDERFLOW_INTERVAL (1000)
+#define VACTIVE0_TIMEOUT_EXPIRE_COUNT	(6)
 #endif
 enum {
 	DISPLAY_LOW_POWER_LEVEL_FHD = 0x0,
@@ -180,6 +181,10 @@ struct hisi_fb_data_type {
 	char __iomem *mipi_dsi1_base;
 	char __iomem *crgperi_base;
 
+#ifdef CONFIG_FB_3630
+	uint32_t dss_base_phy;
+#endif
+
 	uint32_t dpe_irq;
 	uint32_t dsi0_irq;
 	uint32_t dsi1_irq;
@@ -208,6 +213,7 @@ struct hisi_fb_data_type {
 	bool panel_power_on;
 	bool hisi_fb_shutdown;
 	bool lcd_self_testing;
+	bool powerdown_enable;
 	struct semaphore blank_sem;
 
 	void (*sysfs_attrs_append_fnc) (struct hisi_fb_data_type *hisifd, struct attribute *attr);
@@ -334,6 +340,7 @@ struct hisi_fb_data_type {
 	struct work_struct dss_debug_work;
 #endif
 	bool fb_mem_free_flag;
+	uint8_t grayscale_enabled;
 };
 
 

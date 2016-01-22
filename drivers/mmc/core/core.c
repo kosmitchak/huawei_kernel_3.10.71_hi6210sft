@@ -640,13 +640,13 @@ static void mmc_dsm_request_response_error_check(struct mmc_host *host, struct m
 				goto free;
 			if(ext_csd[EXT_CSD_EXP_EVENTS_STATUS] &
 			     EXT_CSD_DYNCAP_NEEDED) {
-				DSM_EMMC_LOG(NULL, DSM_EMMC_DYNCAP_NEEDED,
+				DSM_EMMC_LOG(host->card, DSM_EMMC_DYNCAP_NEEDED,
 					"DYNCAP_NEEDED [58]: %d, the device may degrade in performance and eventually become non-functional\n",
 			       ext_csd[58]);
 			}
 			if(ext_csd[EXT_CSD_EXP_EVENTS_STATUS] &
 			     EXT_CSD_SYSPOOL_EXHAUSTED) {
-				DSM_EMMC_LOG(NULL, DSM_EMMC_SYSPOOL_EXHAUSTED,
+				DSM_EMMC_LOG(host->card, DSM_EMMC_SYSPOOL_EXHAUSTED,
 					"SYSPOOL_EXHAUSTED, System resources pool exhausted\n");
 			}
 free:

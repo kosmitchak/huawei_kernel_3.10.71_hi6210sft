@@ -112,7 +112,11 @@ static int jpu_alloc_dma_buffer(jpudrv_buffer_t *jb)
 
     jb->base = (unsigned long)(s_video_memory.base + (jb->phys_addr - s_video_memory.phys_addr));
 #else
+#ifdef CONFIG_ARM64
     jb->base = (unsigned long)dma_alloc_coherent(s_jpu_dev, PAGE_ALIGN(jb->size), (dma_addr_t *) (&jb->phys_addr), GFP_DMA | GFP_KERNEL);
+#else
+    jb->base = (unsigned long)dma_alloc_coherent(NULL, PAGE_ALIGN(jb->size), (dma_addr_t *) (&jb->phys_addr), GFP_DMA | GFP_KERNEL);
+#endif
     if ((void *)(jb->base) == NULL)
     {
         printk(KERN_ERR "[JPUDRV] Physical memory allocation error size=%d\n", jb->size);
@@ -440,7 +444,11 @@ struct file_operations jpu_fops = {
     .open           = jpu_open,
     .read           = jpu_read,
     .write          = jpu_write,
+#ifdef CONFIG_ARM64
     .compat_ioctl = jpu_ioctl,
+#else
+    .unlocked_ioctl = jpu_ioctl,
+#endif
     .release        = jpu_release,
     .fasync         = jpu_fasync,
     .mmap           = jpu_mmap,

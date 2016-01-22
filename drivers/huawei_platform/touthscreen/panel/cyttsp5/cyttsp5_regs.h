@@ -70,6 +70,7 @@
 
 #define CY_COVER_MODE_TIMEOUT 50
 #define FINGER_ONLY_MODE    0
+#define FINGER_ONLY_MODE_CS448    1
 #define FINGER_GLOVE_MODE   3
 #define FINGER_HOVER_MODE   8
 

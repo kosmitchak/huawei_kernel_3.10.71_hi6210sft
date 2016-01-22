@@ -203,7 +203,14 @@ extern void UT_STUB_INIT(void);
 
 
 #if (NAS_FEATURE_CCBS == FEATURE_ON)
-
+/******************************************************************************
+类名     : Test_MMI_FillInDeactivateCCBSPara
+功能描述 : MMI_FillInDeactivateCCBSPara UT工程类
+修改历史 :
+ 1.日   期  : 2014-05-28
+   作   者  : Y00213812
+   修改内容 : 64bit ut修改
+******************************************************************************/
 class Test_MMI_FillInDeactivateCCBSPara: public ::testing::Test
 {
 public:
@@ -329,7 +336,14 @@ TEST_F(Test_MMI_FillInDeactivateCCBSPara,Test_MMI_FillInDeactivateCCBSPara_04)
 
 #endif
 
-
+/******************************************************************************
+类名     : Test_MMI_MatchSsOpTbl
+功能描述 : MMI_MatchSsOpTbl UT工程类
+修改历史 :
+ 1.日   期  : 2014-05-28
+   作   者  : Y00213812
+   修改内容 : 64bit ut修改
+******************************************************************************/
 class Test_MMI_MatchSsOpTbl: public ::testing::Test
 {
 public:
@@ -572,7 +586,14 @@ TEST_F(Test_MMI_MatchSsOpTbl,Test_MMI_MatchSsOpTbl_06)
 
 }
 
-
+/******************************************************************************
+类名     : Test_MMI_JudgeSsOperation
+功能描述 : MMI_JudgeSsOperation UT工程类
+修改历史 :
+ 1.日   期  : 2014-05-28
+   作   者  : Y00213812
+   修改内容 : 64bit ut修改
+******************************************************************************/
 class Test_MMI_JudgeSsOperation: public ::testing::Test
 {
 public:
@@ -721,7 +742,14 @@ TEST_F(Test_MMI_JudgeSsOperation,Test_MMI_JudgeSsOperation_04)
 
 }
 
-
+/******************************************************************************
+类名     : Test_MMI_JudgeMmiOperationType
+功能描述 : MMI_JudgeMmiOperationType UT工程类
+修改历史 :
+ 1.日   期  : 2014-05-28
+   作   者  : Y00213812
+   修改内容 : 64bit ut修改
+******************************************************************************/
 class Test_MMI_JudgeMmiOperationType: public ::testing::Test
 {
 public:

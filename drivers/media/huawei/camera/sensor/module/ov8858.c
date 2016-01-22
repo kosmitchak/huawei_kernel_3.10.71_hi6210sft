@@ -186,6 +186,17 @@ static int ov8858_i2c_read (hwsensor_intf_t* intf, void * data)
 	return ret;
 }
 
+static int ov8858_i2c_read_otp (hwsensor_intf_t* intf, void * data)
+{
+	sensor_t* sensor = NULL;
+	int ret = 0;
+
+	sensor= I2S(intf);
+	ret = hw_sensor_i2c_read_otp(sensor,data);
+
+	return ret;
+}
+
 /*
 0x300A        chipid         0x00       chipid[23:16]
 0x300B        chipid         0x88       chipid[15:8]
@@ -272,6 +283,7 @@ s_ov8858_vtbl =
 	.i2c_write = ov8858_i2c_write,
 	.i2c_read_seq = ov8858_i2c_read_seq,
 	.i2c_write_seq = ov8858_i2c_write_seq,
+	.i2c_read_otp = ov8858_i2c_read_otp,
 	//.ioctl = ov8858_ioctl,
 	.match_id = ov8858_match_id,
 	//.set_expo_gain = ov8858_set_expo_gain,
@@ -309,7 +321,7 @@ ov8858_config(
 			}
 			break;
 		case SEN_CONFIG_WRITE_REG:
-			ret = si->vtbl->i2c_read(si,argp);
+			ret = si->vtbl->i2c_write(si,argp);
 			break;
 		case SEN_CONFIG_READ_REG:
 			ret = si->vtbl->i2c_read(si,argp);
@@ -336,6 +348,9 @@ ov8858_config(
 			break;
 		case SEN_CONFIG_MATCH_ID:
 			ret = si->vtbl->match_id(si,argp);
+			break;
+		case SEN_CONFIG_READ_REG_OTP:
+			ret = si->vtbl->i2c_read_otp(si,argp);
 			break;
 		default:
 			break;

@@ -27,6 +27,7 @@ balongfb-objs += \
 	../panel/mipi_yassy_ILI9881-3.o \
 	../panel/mipi_cmi_OTM1284A.o \
 	../panel/mipi_cmi_OTM1283A.o \
+	../panel/mipi_tm_OTM1287A.o \
 	../panel/mipi_boe_NT35521_5P0.o \
 	../panel/mipi_boe_NT35521S_5P0.o \
 	../panel/mipi_boe_NT35521_5P0_3lane.o \

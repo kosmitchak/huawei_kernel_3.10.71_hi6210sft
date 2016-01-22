@@ -40,6 +40,8 @@
 #include "hwcam_intf.h"
 #include "hwcam_compat32.h"
 
+#define HWCAM_CFGSTREAM_MAX                     16      //  no more than 16 streams
+
 typedef struct _tag_hwcam_cfgstream_mount_req
 {
     struct mutex                                lock; 
@@ -1377,27 +1379,27 @@ hwcam_cfgstream_vo_close(
         struct inode* i,
         struct file* filep)
 {
-    hwcam_cfgdev_lock();
-    {
-        void* pd = NULL;
-        swap(pd, filep->private_data);
-        if (pd) {
-            hwcam_cfgstream_t* stm = I2STM(pd);
+    void* pd = NULL;
+    swap(pd, filep->private_data);
+    if (pd) {
+        hwcam_cfgstream_t* stm = I2STM(pd);
 
-            if (!list_empty(&stm->node)) {
-                list_del_init(&stm->node);
-                hwcam_cfgstream_intf_put(&stm->intf);
-            }
+        HWCAM_CFG_INFO("instance(0x%p)", &stm->intf);
 
+        if (!list_empty(&stm->node)) {
+            list_del_init(&stm->node);
+            hwcam_cfgstream_intf_put(&stm->intf);
+        }
+
+        hwcam_cfgdev_lock();
+        {
             v4l2_fh_del(&stm->rq);
             v4l2_fh_exit(&stm->rq);
-
-            hwcam_cfgstream_intf_put(&stm->intf);
-
-            HWCAM_CFG_INFO("instance(0x%p)", &stm->intf);
         }
+        hwcam_cfgdev_unlock();
+
+        hwcam_cfgstream_intf_put(&stm->intf);
     }
-    hwcam_cfgdev_unlock();
     return 0;
 }
 
@@ -1435,6 +1437,7 @@ hwcam_cfgstream_mount_req_on_req(
 {
     hwcam_cfgstream_mount_req_t* msr = I2MSR(pintf);
     int rc = 0;
+    int count = 0; 
     hwcam_cfgstream_t* so = NULL;
     hwcam_cfgreq2pipeline_t* req = (hwcam_cfgreq2pipeline_t*)&ev->u.data;
     struct dma_buf* buf = NULL; 
@@ -1457,6 +1460,15 @@ hwcam_cfgstream_mount_req_on_req(
             hwcam_cfgdev_queue_ack(ev);
             goto exit_mount_stream;
         }
+        count++; 
+    }
+    if (count > HWCAM_CFGSTREAM_MAX) {
+        HWCAM_CFG_ERR("too many streams! \n");
+        dma_buf_put(buf); 
+        rc = -EINVAL; 
+        req->req.rc = -EINVAL; 
+        hwcam_cfgdev_queue_ack(ev);
+        goto exit_mount_stream;
     }
 
     req->stream.info = msr->info->info;

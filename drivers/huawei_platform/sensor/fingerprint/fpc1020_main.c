@@ -58,7 +58,7 @@ typedef enum {
 /* -------------------------------------------------------------------- */
 /* global variables                         */
 /* -------------------------------------------------------------------- */
-static int fpc1020_device_count;
+//static int fpc1020_device_count;
 
 static fpc1020_data_t *fpc1020 = NULL;
 /* -------------------------------------------------------------------- */
@@ -96,7 +96,7 @@ enum {
 #define FPC1020_WORKER_THREAD_NAME      "fpc1020_worker"
 
 #define FPC1020_MAJOR                   235
-
+#define TEST_DEADPIXELS_CAPTURE_TIMEOUT (3000*HZ/1000)
 
 /* -------------------------------------------------------------------- */
 /* function prototypes                          */
@@ -266,11 +266,11 @@ static ssize_t fingerprint_chip_info_show(struct device *dev, struct device_attr
 
 
     if (gpio_is_valid(fpc1020->moduleID_gpio)){
-        val = gpio_get_value(fpc1020->moduleID_gpio);
+        val = gpio_get_value_cansleep(fpc1020->moduleID_gpio);
         if(val)
             strncpy(module, "CT",3);
         else
-            strncpy(module, "LO",3);
+            strncpy(module, "OF",3);
     }
     else
         strncpy(module, "NN",3);
@@ -423,7 +423,11 @@ static int fb_notifier_callback(struct notifier_block *self, unsigned long event
                 dev_dbg(&fpc1020->spi->dev,"fb_notifier_callback FB_EARLY_EVENT_BLANK resume: event = %lu\n", event);
                 break;
             case FB_EVENT_BLANK:
-
+                atomic_set(&fpc1020->state, fp_LCD_UNBLANK);
+                if ((fp_CAPTURE != atomic_read(&fpc1020->taskstate)))
+                {
+                    fpc1020_start_navigation(fpc1020);
+                }
                 dev_dbg(&fpc1020->spi->dev,"fb_notifier_callback FB_EVENT_BLANK resume: event = %lu\n", event);
                 break;
             default:
@@ -439,6 +443,12 @@ static int fb_notifier_callback(struct notifier_block *self, unsigned long event
                 dev_dbg(&fpc1020->spi->dev,"fb_notifier_callback FB_EARLY_EVENT_BLANK suspend: event = %lu\n", event);
                 break;
             case FB_EVENT_BLANK:
+                cancel_work_sync(&fpc1020->fpc_nav_work);
+                atomic_set(&fpc1020->state, fp_LCD_POWEROFF);
+                if ((fp_CAPTURE != atomic_read(&fpc1020->taskstate)))
+                {
+                    fpc1020_start_navigation(fpc1020);
+                }
                 dev_dbg(&fpc1020->spi->dev,"fb_notifier_callback FB_EVENT_BLANK suspend: event = %lu\n", event);
                 break;
             default:
@@ -522,6 +532,17 @@ int fpc1020_get_dts_data(struct device *dev, fpc1020_data_t *fpc1020_data)
 
 
     fpc1020_data->moduleID_gpio = of_get_named_gpio(np, "fpc1020,moduleid_gpio",0);
+	if((int)(fpc1020_data->moduleID_gpio) < 0) {
+		ret = of_property_read_u32(np, "fpc1020,moduleid_gpio",
+		&fpc1020_data->moduleID_gpio);
+		if(ret) {
+			fpc1020_data->moduleID_gpio = -EINVAL;
+			dev_err(dev,"failed to moduleID_gpio gpio from device tree\n");
+		}
+		dev_dbg(&fpc1020->spi->dev,"fpc1020_data->moduleID_gpio=%u\n", fpc1020_data->moduleID_gpio);
+	} else {
+		dev_dbg(&fpc1020->spi->dev,"fpc1020_data->moduleID_gpio=%u\n", fpc1020_data->moduleID_gpio);
+	}
 
     fpc1020_data->spidev0_chip_info.hierarchy = 0;
     of_property_read_u32(np, "pl022,interface",
@@ -682,7 +703,7 @@ static int fpc1020_probe(struct spi_device *spi)
                 }
    }
 
-
+/*
     error = register_chrdev_region(fpc1020->devno, 1, FPC1020_DEV_NAME);
 
     if (error) {
@@ -691,7 +712,7 @@ static int fpc1020_probe(struct spi_device *spi)
 
         goto err_sysfs;
     }
-
+*/
     cdev_init(&fpc1020->cdev, &fpc1020_fops);
     fpc1020->cdev.owner = THIS_MODULE;
 
@@ -718,6 +739,15 @@ static int fpc1020_probe(struct spi_device *spi)
     }
 
     fpc1020_sleep(fpc1020, true);
+
+#if defined(CONFIG_FB)
+    if(fpc1020->fb_notify.notifier_call == NULL)
+    {
+        fpc1020->fb_notify.notifier_call = fb_notifier_callback;
+
+        fb_register_client(&fpc1020->fb_notify);
+    }
+#endif
 
     wake_lock_init(&fpc1020->fp_wake_lock, WAKE_LOCK_SUSPEND, "fingerprint_wakelock");
     up(&fpc1020->mutex);
@@ -747,6 +777,15 @@ static int  fpc1020_remove(struct spi_device *spi)
         return 0;
 
     printk(KERN_INFO "%s\n", __func__);
+#if defined(CONFIG_FB)
+    if(fpc1020->fb_notify.notifier_call != NULL)
+    {
+        fpc1020->fb_notify.notifier_call = NULL;
+
+        fb_unregister_client(&fpc1020->fb_notify);
+    }
+#endif
+
     wake_lock_destroy(&fpc1020->fp_wake_lock);
     fpc1020_manage_sysfs(fpc1020, false);
 
@@ -1317,7 +1356,14 @@ static int fpc1020_create_device(fpc1020_data_t *fpc1020)
 
     dev_dbg(&fpc1020->spi->dev, "%s\n", __func__);
 
-    fpc1020->devno = MKDEV(FPC1020_MAJOR, fpc1020_device_count++);
+    //fpc1020->devno = MKDEV(FPC1020_MAJOR, fpc1020_device_count++);
+    error = alloc_chrdev_region(&fpc1020->devno, 0, 1, FPC1020_DEV_NAME);
+    if (error)
+    {
+        dev_err(&fpc1020->spi->dev,
+                "alloc_chrdev_region failed error=%d.\n", error);
+        return error;
+    }
 
     fpc1020->device = device_create(fpc1020->class, NULL, fpc1020->devno,
                         NULL, "%s", FPC1020_DEV_NAME);
@@ -1581,11 +1627,11 @@ static ssize_t fpc1020_show_attr_diag(struct device *dev,
 
     if (fpc_attr->offset == offsetof(fpc1020_diag_t, chip_id)) {
         if (gpio_is_valid(fpc1020->moduleID_gpio)){
-            val = gpio_get_value(fpc1020->moduleID_gpio);
+            val = gpio_get_value_cansleep(fpc1020->moduleID_gpio);
             if(val)
                 strncpy(module, "CT",3);
             else
-                strncpy(module , "LO",3);
+                strncpy(module , "OF",3);
         }
         else
             strncpy(module , "NN",3);
@@ -1707,53 +1753,14 @@ static ssize_t fpc1020_store_attr_diag(struct device *dev,
         error = kstrtou64(buf, 0, &val);
         if (!error)
         {
-            if(val == 0)
-            {
-                if(fpc1020->diag.navigation_enable == 1)
-                {
-                    fpc1020->diag.navigation_enable = val;
-                    fpc1020_start_navigation(fpc1020);
-                }
-            }
-            else if(val == 1)
-            {
                 fpc1020->diag.navigation_enable = val;
-                if(fp_LCD_POWEROFF == atomic_read(&fpc1020->state)){
-                    dev_dbg(&fpc1020->spi->dev,"%s fp_LCD_POWEROFF no navigation \n", __func__);
-                }
-                else
                     fpc1020_start_navigation(fpc1020);
-            }
             printk("fpc1020 bnavigation enable = %d \n",fpc1020->diag.navigation_enable);
         }
     } else if(fpc_attr->offset == offsetof(fpc1020_diag_t, wakeup_enable)){
         error = kstrtou64(buf, 0, &val);
         if (!error)
         {
-            if(val == 0 )
-            {
-                fpc1020->diag.wakeup_enable = val;
-                #if defined(CONFIG_FB)
-                if(fpc1020->fb_notify.notifier_call != NULL)
-                {
-                    fpc1020->fb_notify.notifier_call = NULL;
-
-                    fb_unregister_client(&fpc1020->fb_notify);
-                }
-                #endif
-            }
-            else if(val == 1)
-            {
-                fpc1020->diag.wakeup_enable = val;
-                #if defined(CONFIG_FB)
-                if(fpc1020->fb_notify.notifier_call == NULL)
-                {
-                    fpc1020->fb_notify.notifier_call = fb_notifier_callback;
-
-                    fb_register_client(&fpc1020->fb_notify);
-                }
-                #endif
-            }
             printk("fpc1020 bwakeup enable = %d \n",fpc1020->diag.wakeup_enable);
         }
     } else if(fpc_attr->offset == offsetof(fpc1020_diag_t, result)){
@@ -1787,8 +1794,7 @@ int fpc1020_check_deadpixels_in_detect_zone(fpc1020_data_t *fpc1020, int index)
       int x = 0, y = 0;
       int xp_1020[] = { 16, 64, 120, 168 }, yp_1020[] = { 28, 92, 156 };
       int xp_1021[] = { 16, 56, 88, 128 }, yp_1021[] = { 20, 76, 132 };
-      int xp_1150[] = { 208 - 184 - 8, 208 - 128 - 8, 208 - 72 - 8, 208 - 8 - 8 };
-      int yp_1150[] = { 64, 32, 8 };
+      int xp_1150[]  =   {8, 82, 128, 184},yp_1150[] =  { 8, 32, 64 };
       int* xp;
       int* yp;
     switch (fpc1020->chip.type) {
@@ -1807,8 +1813,8 @@ int fpc1020_check_deadpixels_in_detect_zone(fpc1020_data_t *fpc1020, int index)
             break;
     case FPC1020_CHIP_1150A:
     case FPC1020_CHIP_1150B:
-           ypos = index / 208;
-           xpos = index % 208;
+           xpos = index / 80;
+           ypos = index % 80;
            xp = xp_1150;
            yp = yp_1150;
            break;
@@ -1819,7 +1825,7 @@ int fpc1020_check_deadpixels_in_detect_zone(fpc1020_data_t *fpc1020, int index)
 
     for (x = 0; x < 4; x++) {
             for (y = 0; y < 3; y++) {
-                    if (xpos >= xp[x] && xpos <= (xp[x] + 8) && ypos >= yp[y] && ypos <= (yp[y] + 8)) {
+                    if (xpos >= xp[x] && xpos < (xp[x] + 8) && ypos >= yp[y] && ypos < (yp[y] + 8)) {
                             error = FPC_1020_DEADPIXEL_DETECT_ZONE_ERROR;
                               goto out;
                     }
@@ -2028,11 +2034,12 @@ static int fpc1020_test_deadpixels(fpc1020_data_t *fpc1020)
     if (error)
         goto out;
 
-    error = wait_event_interruptible(
+    error = wait_event_interruptible_timeout(
             fpc1020->capture.wq_data_avail,
-            (fpc1020->capture.available_bytes > 0));
+            (fpc1020->capture.available_bytes > 0),
+            TEST_DEADPIXELS_CAPTURE_TIMEOUT);
 
-    if (error)
+    if (error <= 0)
         goto out;
 
     if (fpc1020->capture.last_error != 0) {
@@ -2059,11 +2066,12 @@ static int fpc1020_test_deadpixels(fpc1020_data_t *fpc1020)
     if (error)
         goto out;
 
-    error = wait_event_interruptible(
+    error = wait_event_interruptible_timeout(
             fpc1020->capture.wq_data_avail,
-            (fpc1020->capture.available_bytes > 0));
+            (fpc1020->capture.available_bytes > 0),
+            TEST_DEADPIXELS_CAPTURE_TIMEOUT);
 
-    if (error)
+    if (error <= 0)
         goto out;
 
     if (fpc1020->capture.last_error != 0) {
@@ -2176,7 +2184,7 @@ static u8 fpc1020_selftest_short(fpc1020_data_t *fpc1020)
         goto out;
         }
     if (gpio_is_valid(fpc1020->moduleID_gpio))
-        printk("fingerprint module ID = %d \n",gpio_get_value(fpc1020->moduleID_gpio));
+        printk("fingerprint module ID = %d \n",gpio_get_value_cansleep(fpc1020->moduleID_gpio));
 
     fpc1020_setup_defaults(fpc1020);
 
@@ -2634,7 +2642,7 @@ static void fpc1020_start_navigation(fpc1020_data_t *fpc1020)
         goto out;
     }
 
-    if(fpc1020->diag.navigation_enable == 1)
+    if(fpc1020->diag.navigation_enable == 1 && atomic_read(&fpc1020->state)!=fp_LCD_POWEROFF)
     {
         fpc1020_new_job(fpc1020, FPC1020_WORKER_INPUT_MODE);
     }

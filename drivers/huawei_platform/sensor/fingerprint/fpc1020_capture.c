@@ -185,6 +185,7 @@ int fpc1020_capture_task(fpc1020_data_t *fpc1020)
         if (error < 0)
             goto out_error;
 
+        fpc1020->finger_status = FPC1020_FINGER_DOWN;
         dev_dbg(&fpc1020->spi->dev, "Finger down\n");
 
         if (mode == FPC1020_MODE_WAIT_FINGER_DOWN) {
@@ -247,6 +248,9 @@ int fpc1020_capture_task(fpc1020_data_t *fpc1020)
         error = fpc1020_capture_wait_finger_up(fpc1020);
         if (error < 0)
             goto out_error;
+
+        fpc1020->finger_status= FPC1020_FINGER_UP;
+        dev_dbg(&fpc1020->spi->dev, "Finger down\n");
 
         if (mode == FPC1020_MODE_WAIT_FINGER_UP) {
             fpc1020->capture.available_bytes = 4;

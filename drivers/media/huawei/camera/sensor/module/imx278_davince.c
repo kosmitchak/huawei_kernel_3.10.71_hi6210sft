@@ -245,10 +245,18 @@ imx278_davince_match_id(
     uint16_t sensor_id = 0;
     uint8_t modue_id = 0;
     char *sensor_name[4]={"imx278_sunny","imx278_liteon","imx278_lg","imx278"};
+    uint8_t retry = 0;
 
     cam_info("%s TODO.", __func__);
-
-    misp_get_module_info(sensor->board_info->sensor_index,&sensor_id,&modue_id);
+    for(retry = 0;retry < 2; retry++){
+        misp_get_module_info(sensor->board_info->sensor_index,&sensor_id,&modue_id);
+        if(sensor_id==0){
+            cam_info("%s try to read camera id again",__func__);
+            continue;
+        }else{
+            break;
+        }
+    }
 
      if (sensor_id == 0x278) {
         cdata->data = sensor->board_info->sensor_index;

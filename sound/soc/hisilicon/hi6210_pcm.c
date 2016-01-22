@@ -138,8 +138,8 @@ __DRV_AUDIO_MAILBOX_WORK__   : leave mailbox's work to workqueue
 /* CAPTURE SUPPORT RATES : 48/96kHz */
 #define HI6210_CP_RATES    ( SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_96000 )
 
-#define HI6210_CP_MIN_CHANNELS  ( 2 )
-#define HI6210_CP_MAX_CHANNELS  ( 2 )
+#define HI6210_CP_MIN_CHANNELS  ( 1 )
+#define HI6210_CP_MAX_CHANNELS  ( 4 )
 /* Assume the FIFO size */
 #define HI6210_CP_FIFO_SIZE     ( 32 )
 #define HI6210_MODEM_RATES      ( SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000 )
@@ -170,6 +170,47 @@ __DRV_AUDIO_MAILBOX_WORK__   : leave mailbox's work to workqueue
 #define STATIC  static
 #endif
 
+#ifdef PLATFORM_3630
+
+#define PCM_DMA_BUF_PLAYBACK_LEN    (0x00020000)
+#define PCM_DMA_BUF_0_PLAYBACK_BASE (0x2DB00000)
+#define PCM_DMA_BUF_0_PLAYBACK_LEN  (PCM_DMA_BUF_PLAYBACK_LEN)
+#define PCM_DMA_BUF_0_CAPTURE_BASE  (PCM_DMA_BUF_0_PLAYBACK_BASE+PCM_DMA_BUF_0_PLAYBACK_LEN)
+#define PCM_DMA_BUF_0_CAPTURE_LEN   (PCM_DMA_BUF_PLAYBACK_LEN)
+
+#define PCM_DMA_BUF_1_PLAYBACK_BASE (PCM_DMA_BUF_0_CAPTURE_BASE+PCM_DMA_BUF_0_CAPTURE_LEN)
+#define PCM_DMA_BUF_1_PLAYBACK_LEN  (PCM_DMA_BUF_PLAYBACK_LEN)
+#define PCM_DMA_BUF_1_CAPTURE_BASE  (PCM_DMA_BUF_1_PLAYBACK_BASE+PCM_DMA_BUF_1_PLAYBACK_LEN)
+#define PCM_DMA_BUF_1_CAPTURE_LEN   (PCM_DMA_BUF_PLAYBACK_LEN)
+
+
+#define PCM_DMA_BUF_2_PLAYBACK_BASE (PCM_DMA_BUF_1_CAPTURE_BASE+PCM_DMA_BUF_1_CAPTURE_LEN)
+#define PCM_DMA_BUF_2_PLAYBACK_LEN  (PCM_DMA_BUF_PLAYBACK_LEN)
+#define PCM_DMA_BUF_2_CAPTURE_BASE  (PCM_DMA_BUF_2_PLAYBACK_BASE+PCM_DMA_BUF_2_PLAYBACK_LEN)
+#define PCM_DMA_BUF_2_CAPTURE_LEN   (PCM_DMA_BUF_PLAYBACK_LEN)
+
+#define PCM_DMA_BUF_3_PLAYBACK_BASE (PCM_DMA_BUF_2_CAPTURE_BASE+PCM_DMA_BUF_2_CAPTURE_LEN)
+#define PCM_DMA_BUF_3_PLAYBACK_LEN  (PCM_DMA_BUF_PLAYBACK_LEN)
+#define PCM_DMA_BUF_3_CAPTURE_BASE  (PCM_DMA_BUF_3_PLAYBACK_BASE+PCM_DMA_BUF_3_PLAYBACK_LEN)
+#define PCM_DMA_BUF_3_CAPTURE_LEN   (PCM_DMA_BUF_PLAYBACK_LEN)
+
+
+#define PCM_STREAM_MAX              (2)
+#define PCM_DEVICE_MAX              (4)
+typedef struct pcm_dma_buf_config
+{
+    unsigned int       pcm_dma_buf_base;
+    unsigned int       pcm_dma_buf_len;
+ } PCM_DMA_BUF_CONFIG;
+
+PCM_DMA_BUF_CONFIG  g_pcm_dma_buf_config[PCM_DEVICE_MAX][PCM_STREAM_MAX] =
+{
+{{PCM_DMA_BUF_0_PLAYBACK_BASE,PCM_DMA_BUF_0_PLAYBACK_LEN},{PCM_DMA_BUF_0_CAPTURE_BASE,PCM_DMA_BUF_0_CAPTURE_LEN}},
+{{PCM_DMA_BUF_1_PLAYBACK_BASE,PCM_DMA_BUF_1_PLAYBACK_LEN},{PCM_DMA_BUF_1_CAPTURE_BASE,PCM_DMA_BUF_1_CAPTURE_LEN}},
+{{PCM_DMA_BUF_2_PLAYBACK_BASE,PCM_DMA_BUF_2_PLAYBACK_LEN},{PCM_DMA_BUF_2_CAPTURE_BASE,PCM_DMA_BUF_2_CAPTURE_LEN}},
+{{PCM_DMA_BUF_3_PLAYBACK_BASE,PCM_DMA_BUF_3_PLAYBACK_LEN},{PCM_DMA_BUF_3_CAPTURE_BASE,PCM_DMA_BUF_3_CAPTURE_LEN}}
+};
+#endif
 /*****************************************************************************
   2 全局变量定义
 *****************************************************************************/
@@ -861,7 +902,8 @@ STATIC int hi6210_notify_pcm_hw_params( unsigned short pcm_mode,
 
     /* CHECK SUPPORT CHANNELS : mono or stereo */
     params_value = params_channels(params);
-    if ( (2 == params_value) || (1 == params_value) )
+    if (HI6210_CP_MIN_CHANNELS <= params_value
+		&& HI6210_CP_MAX_CHANNELS >= params_value)
     {
         msg_body.channel_num = params_value;
     }
@@ -1664,6 +1706,59 @@ static struct snd_pcm_ops hi6210_pcm_ops = {
     .trigger    = hi6210_pcm_trigger,
     .pointer    = hi6210_pcm_pointer,
 };
+
+#ifdef PLATFORM_3630
+
+static int preallocate_dma_buffer(struct snd_pcm *pcm, int stream)
+{
+	struct snd_pcm_substream 	*substream 			= pcm->streams[stream].substream;
+	struct snd_dma_buffer 		*buf 	   			= &substream->dma_buffer;
+	//size_t 					 size 	   			= HI6210_MAX_BUFFER_SIZE;
+	unsigned int 				 pcm_dma_buf_base	= g_pcm_dma_buf_config[pcm->device][stream].pcm_dma_buf_base;
+	unsigned int 				 pcm_dma_buf_len	= g_pcm_dma_buf_config[pcm->device][stream].pcm_dma_buf_len;
+
+	pr_debug("Entered %s\n", __func__);
+
+	buf->dev.type 		= SNDRV_DMA_TYPE_DEV;
+	buf->dev.dev 		= pcm->card->dev;
+	buf->private_data 	= NULL;
+	buf->area 			= ioremap(pcm_dma_buf_base, pcm_dma_buf_len);
+	buf->addr			= pcm_dma_buf_base;
+
+	if (!buf->area){
+		return -ENOMEM;
+	}
+
+	buf->bytes = pcm_dma_buf_len;
+	return 0;
+}
+
+static void free_dma_buffers(struct snd_pcm *pcm)
+{
+	struct snd_pcm_substream *substream;
+	struct snd_dma_buffer *buf;
+	int stream;
+
+	pr_debug("Entered %s\n", __func__);
+
+	for (stream = 0; stream < 2; stream++) {
+		substream = pcm->streams[stream].substream;
+		if (!substream)
+			continue;
+
+		buf = &substream->dma_buffer;
+		if (!buf->area)
+			continue;
+
+		iounmap(buf->area);
+
+		buf->area = NULL;
+		buf->addr = 0;
+	}
+}
+
+#endif
+
 static int hi6210_pcm_new(struct snd_soc_pcm_runtime *rtd)
 {
     int ret = 0;
@@ -1683,6 +1778,9 @@ static int hi6210_pcm_new(struct snd_soc_pcm_runtime *rtd)
         logi("dev->coherent_dma_mask not set\n");
         card->dev->coherent_dma_mask = hi6210_pcm_dmamask;
     }
+
+#ifndef PLATFORM_3630
+    logi("PLATFORM_3630 not set\n");
     if (pcm->device == 0)
     {
         ret = snd_pcm_lib_preallocate_pages_for_all(pcm, SNDRV_DMA_TYPE_DEV,
@@ -1713,7 +1811,41 @@ static int hi6210_pcm_new(struct snd_soc_pcm_runtime *rtd)
             return ret;
         }
     }
+#endif
+#ifdef PLATFORM_3630
+    logi("PLATFORM_3630 set\n");
+	if (pcm->device == 0)
+    {
+        /* 注册核间通信数据接收函数 */
+        ret = hi6210_notify_isr_register( (void*)hi6210_notify_recv_isr );
+        if (ret)
+        {
+            loge("notify Isr register error : %d\n", ret);
+			goto out;
+        }
+    }
 
+	logi("pcm-device = %d\n", pcm->device);
+	if(pcm->device > PCM_DEVICE_MAX-1){
+            logi("We just alloc space for the first four device \n");
+	    goto out;
+	}
+
+	if (pcm->streams[SNDRV_PCM_STREAM_PLAYBACK].substream) {
+		ret = preallocate_dma_buffer(pcm,
+			SNDRV_PCM_STREAM_PLAYBACK);
+		if (ret)
+			goto out;
+	}
+
+	if (pcm->streams[SNDRV_PCM_STREAM_CAPTURE].substream) {
+		ret = preallocate_dma_buffer(pcm,
+			SNDRV_PCM_STREAM_CAPTURE);
+		if (ret)
+			goto out;
+	}
+#endif
+out:
     OUT_FUNCTION;
 
     return ret;
@@ -1722,12 +1854,15 @@ static int hi6210_pcm_new(struct snd_soc_pcm_runtime *rtd)
 static void hi6210_pcm_free(struct snd_pcm *pcm)
 {
     IN_FUNCTION;
-
+#ifndef PLATFORM_3630
     if (pcm->device == 0) {
         logi("pcm->device = 0\n");
     }
     snd_pcm_lib_preallocate_free_for_all(pcm);
-
+#endif
+#ifdef PLATFORM_3630
+	free_dma_buffers(pcm);
+#endif
     OUT_FUNCTION;
 }
 

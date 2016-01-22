@@ -110,36 +110,69 @@ static const u8 tuning_blk_pattern_8bit[] = {
 
 static int hs_timing_config[][9][TUNING_INIT_CONFIG_NUM] = {
 /* bus_clk, div, drv_sel, sam_dly, sam_phase_max, sam_phase_min, input_clk */
-	{ { 19200000   , 11 , 1 , 0 , 23 , 23 , 1600000 }   , /* 0: LEGACY 400k */
-	  { 360000000  , 6  , 1 , 0 , 1  , 1  , 52000000 }  , /* 1: MMC_HS*/
-	  { 0 },                                              /* 2: SD_HS */
-	  { 0 },                                              /* 3: SDR12 */
-	  { 0 },                                              /* 4: SDR25 */
-	  { 0 },                                              /* 5: SDR50 */
-	  { 0 },                                              /* 6: SDR104 */
-	  { 720000000  , 6  , 0 , 4 , 6  , 0  , 102000000 } , /* 7: DDR50 */
-	  { 1440000000 , 7  , 0 , 2 , 15 , 0  , 180000000 } , /* 8: HS200 */
-	}              ,
-	{ { 90000000   , 15 , 1 , 0 , 31 , 31 , 5600000 }   , /* 0: LEGACY 400k */
-	  { 0 },                                              /* 1: MMC_HS */
-	  { 360000000  , 6  , 1 , 0 , 1  , 1  , 50000000 }  , /* 2: SD_HS */
-	  { 180000000  , 6  , 1 , 2 , 13 , 13 , 25000000 }  , /* 3: SDR12 */
-	  { 360000000  , 6  , 1 , 0 , 1  , 1  , 50000000 }  , /* 4: SDR25 */
-	  { 720000000  , 6  , 0 , 3 , 13 , 0  , 100000000 } , /* 5: SDR50 */
-	  { 1440000000 , 6  , 0 , 3 , 13 , 0  , 200000000 } , /* 6: SDR104 */
-	  { 720000000  , 15 , 0 , 5 , 11 , 1  , 45000000 }  , /* 7: DDR50 */
-	  { 0 },                                              /* 8: HS200 */
-	}              ,
-	{ { 90000000   , 15 , 1 , 0 , 31 , 31 , 5600000 }   , /* 0: LEGACY 400k */
-	  { 0 },                                              /* 1: MMC_HS */
-	  { 360000000  , 6  , 1 , 0 , 1  , 1  , 50000000 }  , /* 2: SD_HS, same as SDR25 */
-	  { 180000000  , 6  , 1 , 2 , 13 , 13 , 25000000 }  , /* 3: SDR12 */
-	  { 360000000  , 6  , 1 , 0 , 1  , 1  , 50000000 }  , /* 4: SDR25 */
-	  { 720000000  , 6  , 0 , 2 , 9  , 1  , 100000000 } , /* 5: SDR50 */
-	  { 1440000000 , 7  , 0 , 3 , 15 , 0  , 180000000 } , /* 6: SDR104 */
-	  { 720000000  , 15 , 0 , 5 , 11 , 1  , 45000000 }  , /* 7: DDR50 */
-	  { 0 },                                              /* 8: HS200 */
+#ifdef CONFIG_ARCH_HI3630
+	{ { 360000000, 9, 1, 0, 0, 0, 36000000 },    /* 0: LEGACY 100k */
+	  { 360000000, 6, 1, 0, 1, 1, 52000000 },    /* 1: MMC_HS*/
+	  { 0 },				     /* 2: SD_HS */
+	  { 0 },				     /* 3: SDR12 */
+	  { 0 },				     /* 4: SDR25 */
+	  { 0 },				     /* 5: SDR50 */
+	  { 0 },				     /* 6: SDR104 */
+	  { 720000000, 6, 0, 4, 6, 0, 102000000 },   /* 7: DDR50 */
+	  { 1440000000, 7, 0, 3, 15, 0, 180000000 }, /* 8: HS200 */
+	},
+	{ { 360000000, 9, 1, 0, 0, 0, 36000000 },    /* 0: LEGACY 400k */
+	  { 0 },				     /* 1: MMC_HS */
+	  { 360000000, 6, 1, 0, 1, 1, 50000000 },    /* 2: SD_HS */
+	  { 180000000, 6, 1, 2, 13, 13, 25000000 },  /* 3: SDR12 */
+	  { 360000000, 6, 1, 0, 1, 1, 50000000 },    /* 4: SDR25 */
+	  { 720000000, 6, 0, 3, 9, 0, 100000000 },   /* 5: SDR50 */
+	  { 1440000000, 7, 0, 5, 15, 0, 180000000 }, /* 6: SDR104 */
+	  { 0 },				     /* 7: DDR50 */
+	  { 0 },				     /* 8: HS200 */
+	},
+	{ { 360000000, 9, 1, 0, 0, 0, 36000000 },    /* 0: LEGACY 400k */
+	  { 0 },				     /* 1: MMC_HS */
+	  { 360000000, 6, 1, 0, 1, 1, 50000000 },    /* 2: SD_HS */
+	  { 180000000, 6, 1, 2, 0, 0, 25000000 },    /* 3: SDR12 */
+	  { 360000000, 6, 1, 0, 1, 1, 50000000 },    /* 4: SDR25 */
+	  { 720000000, 6, 0, 2, 9, 0, 100000000 },   /* 5: SDR50 */
+	  { 1440000000, 7, 0, 4, 15, 0, 180000000 }, /* 6: SDR104 */
+	  { 720000000, 15, 0, 5, 11, 1, 45000000 },  /* 7: DDR50 */
+	  { 0 },				     /* 8: HS200 */
 	}
+#else
+	{ { 19200000, 11, 1, 0, 23, 23, 1600000 },   /* 0: LEGACY 400k */
+	  { 360000000, 6, 1, 0, 1, 1, 52000000 },    /* 1: MMC_HS*/
+	  { 0 },				     /* 2: SD_HS */
+	  { 0 },				     /* 3: SDR12 */
+	  { 0 },				     /* 4: SDR25 */
+	  { 0 },				     /* 5: SDR50 */
+	  { 0 },				     /* 6: SDR104 */
+	  { 720000000, 6, 0, 4, 6, 0, 102000000 },   /* 7: DDR50 */
+	  { 1440000000, 7, 0, 2, 15, 0, 180000000 }, /* 8: HS200 */
+	},
+	{ { 90000000, 15, 1, 0, 31, 31, 5600000 },   /* 0: LEGACY 400k */
+	  { 0 },				     /* 1: MMC_HS */
+	  { 360000000, 6, 1, 0, 1, 1, 50000000 },    /* 2: SD_HS */
+	  { 180000000, 6, 1, 2, 13, 13, 25000000 },  /* 3: SDR12 */
+	  { 360000000, 6, 1, 0, 1, 1, 50000000 },    /* 4: SDR25 */
+	  { 720000000, 6, 0, 3, 13, 0, 100000000 },  /* 5: SDR50 */
+	  { 1440000000, 6, 0, 3, 13, 0, 200000000 }, /* 6: SDR104 */
+	  { 720000000, 15, 0, 5, 11, 1, 45000000 },  /* 7: DDR50 */
+	  { 0 },				     /* 8: HS200 */
+	},
+	{ { 90000000, 15, 1, 0, 31, 31, 5600000 }, /* 0: LEGACY 400k */
+	  { 0 },				   /* 1: MMC_HS */
+	  { 360000000, 6, 1, 0, 1, 1, 50000000 },  /* 2: SD_HS, same as SDR25 */
+	  { 180000000, 6, 1, 2, 13, 13, 25000000 },  /* 3: SDR12 */
+	  { 360000000, 6, 1, 0, 1, 1, 50000000 },    /* 4: SDR25 */
+	  { 720000000, 6, 0, 2, 9, 1, 100000000 },   /* 5: SDR50 */
+	  { 1440000000, 7, 0, 3, 15, 0, 180000000 }, /* 6: SDR104 */
+	  { 720000000, 15, 0, 5, 11, 1, 45000000 },  /* 7: DDR50 */
+	  { 0 },				     /* 8: HS200 */
+	}
+#endif
 };
 
 static void dw_mci_hs_set_timing(struct dw_mci *host, int id, int timing,
@@ -164,7 +197,11 @@ static void dw_mci_hs_set_timing(struct dw_mci *host, int id, int timing,
 	}
 	drive_sel = hs_timing_config[id][timing][2];
 	sam_dly = hs_timing_config[id][timing][3] + d_value;
+#ifdef CONFIG_ARCH_HI3630
+	sam_phase_max = hs_timing_config[id][timing][4];
+#else
 	sam_phase_max = hs_timing_config[id][timing][4] + 2 * d_value;
+#endif
 	sam_phase_min = hs_timing_config[id][timing][5];
 
 	if (sam_phase == -1)
@@ -172,6 +209,7 @@ static void dw_mci_hs_set_timing(struct dw_mci *host, int id, int timing,
 	else
 		sam_phase_val = sam_phase;
 
+#ifndef CONFIG_ARCH_HI3630
 	/* enable_shift and use_sam_dly setting code */
 	/* warning! different with K3V3 */
 	switch(id){
@@ -239,8 +277,7 @@ static void dw_mci_hs_set_timing(struct dw_mci *host, int id, int timing,
 		break;
 	}
 
-
-	/*
+#else
 	if (timing == MMC_TIMING_LEGACY)
 		enable_shift = 1;
 
@@ -280,7 +317,7 @@ static void dw_mci_hs_set_timing(struct dw_mci *host, int id, int timing,
 			use_sam_dly = 0;
 		}
 	}
-	*/
+#endif
 
 	/* first disabl clk */
 	/* mci_writel(host, GPIO, ~GPIO_CLK_ENABLE); */
@@ -317,6 +354,7 @@ static void dw_mci_hs_set_parent(struct dw_mci *host, int timing)
 	mci_writel(host, GPIO, reg_value & ~GPIO_CLK_ENABLE);
 	udelay(1);
 
+#ifndef CONFIG_ARCH_HI3630
 	/* select 19.2M clk */
 	if (timing == MMC_TIMING_LEGACY) {
 		clk_parent = clk_get_parent_by_index(host->parent_clk, 0);
@@ -333,18 +371,17 @@ static void dw_mci_hs_set_parent(struct dw_mci *host, int timing)
 
 		clk_set_parent(host->parent_clk, clk_parent);
 	}
-
-	/* enable internal GPIO div clock */
-	mci_writel(host, GPIO, reg_value | GPIO_CLK_ENABLE);
-
-	/*
+#else
 	clk_parent = clk_get_parent_by_index(host->parent_clk, 4);
 	if (IS_ERR_OR_NULL(clk_parent)) {
 		dev_err(host->dev, " fail to get parent clk. \n");
 	}
 
 	clk_set_parent(host->parent_clk, clk_parent);
-	*/
+#endif
+
+	/* enable internal GPIO div clock */
+	mci_writel(host, GPIO, reg_value | GPIO_CLK_ENABLE);
 }
 
 #ifdef CONFIG_HUAWEI_DSM
@@ -527,10 +564,11 @@ static void dw_mci_hs_set_ios(struct dw_mci *host, struct mmc_ios *ios)
 		if (ret)
 			dev_err(host->dev, "clk_set_rate failed\n");
 
-		host->tuning_init_sample =
-		    (hs_timing_config[id][ios->timing][4] +
-		     hs_timing_config[id][ios->timing][5]) /
-		    2;
+		if (!priv->in_suspend)
+			host->tuning_init_sample =
+			    (hs_timing_config[id][ios->timing][4] +
+			     hs_timing_config[id][ios->timing][5]) /
+			    2;
 
 		if (host->sd_reinit == 0)
 			host->current_div =
@@ -1434,6 +1472,10 @@ static const struct of_device_id dw_mci_hs_match[] = {
 		.compatible 	= "hisilicon,hi3635-dw-mshc",
 		.data 		= &hs_drv_data,
 	},
+	{
+		.compatible 	= "hisilicon,hi3630-dw-mshc",
+		.data 		= &hs_drv_data,
+	},
 	{},
 };
 
@@ -1479,6 +1521,8 @@ static int dw_mci_hs_suspend(struct device *dev)
 	dev_info(host->dev, " %s ++ \n", __func__);
 
 	pm_runtime_get_sync(dev);
+
+	priv->in_suspend = true;
 
 	if (priv->gpio_cd) {
 			disable_irq_nosync(gpio_to_irq(priv->gpio_cd));
@@ -1539,6 +1583,8 @@ static int dw_mci_hs_resume(struct device *dev)
 			enable_irq(gpio_to_irq(priv->gpio_cd));
 			dev_info(host->dev, " enable gpio detect \n");
 		}
+
+	priv->in_suspend = false;
 
 	pm_runtime_mark_last_busy(dev);
 	pm_runtime_put_autosuspend(dev);

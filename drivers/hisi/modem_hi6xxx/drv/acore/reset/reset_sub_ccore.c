@@ -308,36 +308,6 @@ void ccoreset_ccpu_freq(void)
 	return;
 
 }
-/**
- *	mkdir recursive, change owner and group at the same time
- */
-static int reset_log_mkdirs(const char *path, umode_t umode, uid_t user, gid_t group)
-{
-    char cur_path[RESET_LOG_FILE_PATH_SIZE] = {0};
-    int index = 0;
-    int iret = 0;
-
-    if (*path != '/') {
-        return -1;
-    }
-    cur_path[index++] = *path++;
-
-    while (*path != '\0') {
-        if (*path == '/') {
-            iret = sys_mkdir(cur_path, umode);
-            /*the dir may exist if the result is not equal to 0, so needn't return*/
-            if (0 != iret) {
-               printk(KERN_ERR" Fail to create the dir %s!, result is %d\n", cur_path, iret);
-            }else{
-                sys_chown((const char __user *)cur_path, user, group);
-            }
-        }
-        cur_path[index] = *path;
-        path++;
-        index++;
-    }
-    return 0;
-}
 
 /**
  *	reset_log_fsave - create a file
@@ -369,13 +339,19 @@ static int reset_log_fsave(char *dir, char *name, void *data, int length)
 
     fs = get_fs();
     set_fs(KERNEL_DS);
-    ret = reset_log_mkdirs(dir, RESET_LOG_CPDIR_PROVALUE, RESET_LOG_OWNER_UID, RESET_LOG_OWNER_GID);
-    if(ret < 0) {
-        printk(KERN_ERR "mkdir fail");
-        set_fs(fs);
-        return ret;
+    
+    fd = sys_open(dir, O_DIRECTORY, 0);
+    if (fd < 0) { /* if dir is not exist,then create new dir */
+	fd = sys_mkdir(dir, 0774);
+	if (fd < 0) {
+		printk(KERN_ERR "mkdir fd is 0x%x\n", fd);
+		set_fs(fs);
+		return fd;
+	}
     }
-
+    
+    sys_close((unsigned int)fd);
+        
     strncpy(filename, dir, strlen(dir));
     *(filename + strlen(dir)) = '\0';
     strncat(filename, "/", strlen("/"));
@@ -754,7 +730,10 @@ int ccorereset_task(void *arg)
 #endif
         if (modem_reset_reason)
         {
-            apr_upload_modemcrash();
+			if(himntn_modem_resetlog==1)
+			{
+				apr_upload_modemcrash();
+			}			
         }
     }
 }

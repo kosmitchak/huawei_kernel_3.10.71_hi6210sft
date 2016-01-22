@@ -884,6 +884,7 @@ struct max98925_priv {
 	unsigned int iv_status;
 	//unsigned int irq_gpio;
 	struct max98925_cdata dai[1];
+	struct mutex  lock;
 };
 
 #endif

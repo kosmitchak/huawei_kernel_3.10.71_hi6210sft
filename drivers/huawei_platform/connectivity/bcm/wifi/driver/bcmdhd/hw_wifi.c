@@ -308,12 +308,12 @@ static void parse_ipv4_packet(struct sk_buff *skb)
 	printk("src ip:%d.%d.%d.%d, dst ip:%d.%d.%d.%d\n", IPADDR(iph->saddr), IPADDR(iph->daddr));
 	if (iph->protocol == IPPROTO_UDP){
 		uh = (struct udphdr *)(skb->data + iphdr_len);
-		printk("receive UDP packet, src port:%d, dst port:%d.\n", htons(uh->source), htons(uh->dest));
-		wlan_send_nl_event(skb->dev, uh->dest);
+		printk("receive UDP packet, src port:%d, dst port:%d.\n", ntohs(uh->source), ntohs(uh->dest));
+		wlan_send_nl_event(skb->dev, ntohs(uh->dest));
 	}else if(iph->protocol == IPPROTO_TCP){
 		th = (struct tcphdr *)(skb->data + iphdr_len);
-		printk("receive TCP packet, src port:%d, dst port:%d.\n", htons(th->source), htons(th->dest));
-		wlan_send_nl_event(skb->dev, th->dest);
+		printk("receive TCP packet, src port:%d, dst port:%d.\n", ntohs(th->source), ntohs(th->dest));
+		wlan_send_nl_event(skb->dev, ntohs(th->dest));
 	}else if(iph->protocol == IPPROTO_ICMP){
 		icmph = (struct icmphdr *)(skb->data + iphdr_len);
 		printk("receive ICMP packet, type(%d):%s, code:%d.\n", icmph->type,
@@ -495,7 +495,7 @@ static void parse_8021x_packet(struct sk_buff *skb)
 {
 	struct ieee8021x_hdr *hdr = (struct ieee8021x_hdr *)(skb->data);
 
-	printk("receive 802.1x frame: version:%d, type:%d, length:%d\n", hdr->version, hdr->type, htons(hdr->length));
+	printk("receive 802.1x frame: version:%d, type:%d, length:%d\n", hdr->version, hdr->type, ntohs(hdr->length));
 
 	return;
 }

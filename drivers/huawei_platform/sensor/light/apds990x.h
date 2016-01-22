@@ -115,6 +115,8 @@ struct apds990x_data {
 	struct regulator *apds990x_vdd;
 	struct regulator *apds990x_io_vdd;
 	struct wake_lock wake_lock;
+	struct hrtimer timer;
+	int irq_count;
 #if defined(CONFIG_FB)
 	struct notifier_block fb_notify;
 #endif

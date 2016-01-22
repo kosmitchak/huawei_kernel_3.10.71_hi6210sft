@@ -54,9 +54,8 @@
 static struct snd_soc_jack hs_jack;
 #endif
 
-#ifdef CONFIG_DEBUG_FS
+
 struct snd_soc_codec *g_hi6402_codec;
-#endif
 
 /* codec private data */
 struct hi6402_priv {
@@ -82,6 +81,8 @@ struct hi6402_priv {
 	struct wake_lock		wake_lock;
 	struct workqueue_struct *codec_reg_ref_delay_wq;
 	struct delayed_work		codec_reg_ref_delay_work;
+
+	int mic_num;
 };
 
 static const struct of_device_id hi6402_codec_match[] = {
@@ -401,6 +402,31 @@ int hi6402_rec_power_mode_event(struct snd_soc_dapm_widget *w,
 		break;
 	case SND_SOC_DAPM_POST_PMD:
 		hi6402_set_rec_pll(codec, REC_BIT, false);
+		break;
+	default :
+		pr_warn("%s : power mode event err : %d\n", __FUNCTION__, event);
+		break;
+	}
+
+	return 0;
+}
+
+int hi6402_audio_clk_power_mode_event(struct snd_soc_dapm_widget *w,
+		struct snd_kcontrol *kcontrol, int event)
+{
+	struct snd_soc_codec *codec = w->codec;
+	pr_info("%s : power mode event: 0x%x\n", __FUNCTION__, event);
+
+	BUG_ON(NULL == codec);
+
+	switch (event) {
+	case SND_SOC_DAPM_PRE_PMU:
+		hi6402_dapm_reg_set_bit(codec, HI6402_CODEC_DP_CLKEN,
+							HI6402_CODEC_DP_CLKEN_BIT);
+		break;
+	case SND_SOC_DAPM_POST_PMD:
+		hi6402_dapm_reg_clr_bit(codec, HI6402_CODEC_DP_CLKEN,
+							HI6402_CODEC_DP_CLKEN_BIT);
 		break;
 	default :
 		pr_warn("%s : power mode event err : %d\n", __FUNCTION__, event);
@@ -1659,11 +1685,22 @@ int hi6402_mic3_micbias_power_mode_event(struct snd_soc_dapm_widget *w,
 
 /* SOUND KCONTROLS */
 static const struct snd_kcontrol_new hi6402_snd_controls[] = {
+	/* s1 wordlength */
+	SOC_SINGLE("S1 WORDLEN SEL",
+		HI6402_S1_PORT_CFG_H, HI6402_WORD_LENGTH_BIT, 3, 0),
+	/* s3 wordlength */
+	SOC_SINGLE("S3 WORDLEN SEL",
+		HI6402_S3_PORT_CFG_H, HI6402_WORD_LENGTH_BIT, 3, 0),
+
 	/* s1 port cfg */
 	SOC_SINGLE("S1 IF CLK EN",
 		HI6402_S1_FS_CFG_L, HI6402_PORT_CLK_EN, 1, 0),
 	SOC_SINGLE("S1 IF FS CFG",
 		HI6402_S1_FS_CFG_L, HI6402_PORT_FS_CFG, 7, 0),
+	SOC_SINGLE("S1 IF IN SRC CFG",
+		HI6402_S1_FS_CFG_H, HI6402_DSP_IF_IN_SRC_CFG, 7, 0),
+	SOC_SINGLE("S1 IF OUT SRC CFG",
+		HI6402_S1_FS_CFG_H, HI6402_DSP_IF_OUT_SRC_CFG, 7, 0),
 	/* s2 port cfg */
 	SOC_SINGLE("S2 IF CLK EN",
 		HI6402_S2_FS_CFG_L, HI6402_PORT_CLK_EN, 1, 0),
@@ -1690,6 +1727,10 @@ static const struct snd_kcontrol_new hi6402_snd_controls[] = {
 		HI6402_S3_FS_CFG_L, HI6402_PORT_CLK_EN, 1, 0),
 	SOC_SINGLE("S3 IF FS CFG",
 		HI6402_S3_FS_CFG_L, HI6402_PORT_FS_CFG, 7, 0),
+	SOC_SINGLE("S3 IF IN SRC CFG",
+		HI6402_S3_FS_CFG_H, HI6402_DSP_IF_IN_SRC_CFG, 7, 0),
+	SOC_SINGLE("S3 IF OUT SRC CFG",
+		HI6402_S3_FS_CFG_H, HI6402_DSP_IF_OUT_SRC_CFG, 7, 0),
 	/* s4 port cfg */
 	SOC_SINGLE("S4 IF CLK EN",
 		HI6402_S4_FS_CFG_L, HI6402_PORT_CLK_EN, 1, 0),
@@ -2627,8 +2668,8 @@ static const struct snd_soc_dapm_widget hi6402_dapm_widgets[] = {
 		hi6402_rec_power_mode_event,
 		SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
 	SND_SOC_DAPM_SUPPLY_S("AUDIO CLK",
-		2, HI6402_CODEC_DP_CLKEN, HI6402_CODEC_DP_CLKEN_BIT, 0,
-		NULL, 0),
+		2, SND_SOC_NOPM, 0, 0,
+		hi6402_audio_clk_power_mode_event, SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
 	SND_SOC_DAPM_SUPPLY_S("S1 TX CLK",
 		4, SND_SOC_NOPM, 0, 0,
 		hi6402_s1_tx_clk_power_mode_event,
@@ -3351,6 +3392,149 @@ static const struct snd_soc_dapm_route route_map[] = {
 	{"SP L OUT",			NULL,			"SP IL SWITCH"},
 	{"SP R OUT",			NULL,			"SP IL SWITCH"},
 };
+/* reset audio clk, this function just for 3mic */
+#define HI6402_DP_CLK_BIT       0x0
+#define HI6402_3MIC_SENCE_BIT   0x1
+
+#define MAX98925_MUTE_ENABLE            0x1
+extern void smartpa_digital_mute(int mute);
+
+void hi6402_digital_clk_disable()
+{
+	pr_info("%s\n",__func__);
+	/* disable audio clk */ 
+	hi6402_dapm_reg_clr_bit(g_hi6402_codec, HI6402_CODEC_DP_CLKEN,
+							HI6402_CODEC_DP_CLKEN_BIT);
+}
+
+void hi6402_digital_clk_enable()
+{
+	pr_info("%s\n",__func__);
+	/* enable audio clk */	
+	hi6402_dapm_reg_set_bit(g_hi6402_codec, HI6402_CODEC_DP_CLKEN,
+							HI6402_CODEC_DP_CLKEN_BIT);
+}
+
+void hi6402_3mic_fade_out(void)
+{
+	pr_info("%s++\n",__func__);
+	/* -60db */
+	hi6402_dapm_reg_write(g_hi6402_codec, HI6402_DACL_PGA_GAIN_CFG_REG, 0xC4);
+	hi6402_dapm_reg_write(g_hi6402_codec, HI6402_DACR_PGA_GAIN_CFG_REG, 0xC4);
+	mdelay(80);
+
+	/* enable headphone mute */
+	hi6402_dapm_reg_set_bit(g_hi6402_codec, HI6402_HPL_PGA_CFG_REG,HI6402_HPL_PGA_MUTE_BIT);
+	hi6402_dapm_reg_set_bit(g_hi6402_codec, HI6402_HPR_PGA_CFG_REG,HI6402_HPR_PGA_MUTE_BIT);
+
+	/* enable smartpa mute */
+	smartpa_digital_mute(MAX98925_MUTE_ENABLE);
+
+	pr_info("%s--\n",__func__);
+}
+
+void hi6402_3mic_audio_clk(int mode)
+{
+	pr_info("%s++:mode:%d\n",__func__,mode);
+
+	if(mode & (1<<HI6402_DP_CLK_BIT)) {
+		/* enable dp clk */
+		hi6402_digital_clk_enable();
+
+		/* disable headphone mute */
+		hi6402_dapm_reg_clr_bit(g_hi6402_codec, HI6402_HPL_PGA_CFG_REG,HI6402_HPL_PGA_MUTE_BIT);
+		hi6402_dapm_reg_clr_bit(g_hi6402_codec, HI6402_HPR_PGA_CFG_REG,HI6402_HPR_PGA_MUTE_BIT);
+		/* -9db */
+		hi6402_dapm_reg_write(g_hi6402_codec, HI6402_DACL_PGA_GAIN_CFG_REG, 0xF7);
+		hi6402_dapm_reg_write(g_hi6402_codec, HI6402_DACR_PGA_GAIN_CFG_REG, 0xF7);
+
+		/* disable smartpa mute */
+		smartpa_digital_mute(!MAX98925_MUTE_ENABLE);
+	} else {
+		/* disable dac clk */
+		hi6402_dapm_reg_clr_bit(g_hi6402_codec, HI6402_DAC_ADC_CLK_REG,
+								HI6402_ADC0L_EN_BIT);
+		hi6402_dapm_reg_clr_bit(g_hi6402_codec, HI6402_DAC_ADC_CLK_REG,
+								HI6402_ADC0R_EN_BIT);
+		hi6402_dapm_reg_clr_bit(g_hi6402_codec, HI6402_DAC_ADC_CLK_REG,
+								HI6402_ADC1L_EN_BIT);
+		hi6402_dapm_reg_clr_bit(g_hi6402_codec, HI6402_DAC_ADC_CLK_REG,
+								HI6402_ADC1R_EN_BIT);
+
+		/* disable i2s src clk */
+		hi6402_dapm_reg_clr_bit(g_hi6402_codec, HI6402_S1_MODULE_CLK_REG,
+								HI6402_S1_SRC_OL_EN_BIT);
+		hi6402_dapm_reg_clr_bit(g_hi6402_codec, HI6402_S1_MODULE_CLK_REG,
+								HI6402_S1_SRC_OR_EN_BIT);
+		hi6402_dapm_reg_clr_bit(g_hi6402_codec, HI6402_S3_MODULE_CLK_REG,
+								HI6402_S3_SRC_OL_EN_BIT);
+		hi6402_dapm_reg_clr_bit(g_hi6402_codec, HI6402_S3_MODULE_CLK_REG,
+								HI6402_S3_SRC_OR_EN_BIT);
+
+		/* disable i2s pga clk */
+		hi6402_dapm_reg_clr_bit(g_hi6402_codec, HI6402_S1_MODULE_CLK_REG,
+								HI6402_S1_PGA_OL_EN_BIT);
+		hi6402_dapm_reg_clr_bit(g_hi6402_codec, HI6402_S1_MODULE_CLK_REG,
+								HI6402_S1_PGA_OR_EN_BIT);
+		hi6402_dapm_reg_clr_bit(g_hi6402_codec, HI6402_S3_MODULE_CLK_REG,
+								HI6402_S3_PGA_OL_EN_BIT);
+		hi6402_dapm_reg_clr_bit(g_hi6402_codec, HI6402_S3_MODULE_CLK_REG,
+								HI6402_S3_PGA_OR_EN_BIT);
+
+		/* disable i2s port clk*/
+		hi6402_dapm_reg_clr_bit(g_hi6402_codec, HI6402_S1_FS_CFG_L,
+								HI6402_PORT_CLK_EN);
+		hi6402_dapm_reg_clr_bit(g_hi6402_codec, HI6402_S3_FS_CFG_L,
+								HI6402_PORT_CLK_EN);
+
+		/* disable dp clk */
+		hi6402_digital_clk_disable();
+
+		/* enable dac clk */
+		hi6402_dapm_reg_set_bit(g_hi6402_codec, HI6402_DAC_ADC_CLK_REG,
+								HI6402_ADC0L_EN_BIT);
+		hi6402_dapm_reg_set_bit(g_hi6402_codec, HI6402_DAC_ADC_CLK_REG,
+								HI6402_ADC0R_EN_BIT);
+		hi6402_dapm_reg_set_bit(g_hi6402_codec, HI6402_DAC_ADC_CLK_REG,
+								HI6402_ADC1L_EN_BIT);
+		hi6402_dapm_reg_set_bit(g_hi6402_codec, HI6402_DAC_ADC_CLK_REG,
+								HI6402_ADC1R_EN_BIT);
+		if(!(mode & (1<<HI6402_3MIC_SENCE_BIT))) {
+			/* enable i2s src clk */
+			hi6402_dapm_reg_set_bit(g_hi6402_codec, HI6402_S1_MODULE_CLK_REG,
+									HI6402_S1_SRC_OL_EN_BIT);
+			hi6402_dapm_reg_set_bit(g_hi6402_codec, HI6402_S1_MODULE_CLK_REG,
+									HI6402_S1_SRC_OR_EN_BIT);
+		
+			hi6402_dapm_reg_set_bit(g_hi6402_codec, HI6402_S3_MODULE_CLK_REG,
+									HI6402_S3_SRC_OL_EN_BIT);
+			hi6402_dapm_reg_set_bit(g_hi6402_codec, HI6402_S3_MODULE_CLK_REG,
+									HI6402_S3_SRC_OR_EN_BIT);
+		}
+		/* enable i2s pga clk */
+		hi6402_dapm_reg_set_bit(g_hi6402_codec, HI6402_S1_MODULE_CLK_REG,
+								HI6402_S1_PGA_OL_EN_BIT);
+		hi6402_dapm_reg_set_bit(g_hi6402_codec, HI6402_S1_MODULE_CLK_REG,
+								HI6402_S1_PGA_OR_EN_BIT);
+		
+		hi6402_dapm_reg_set_bit(g_hi6402_codec, HI6402_S3_MODULE_CLK_REG,
+								HI6402_S3_PGA_OL_EN_BIT);
+		hi6402_dapm_reg_set_bit(g_hi6402_codec, HI6402_S3_MODULE_CLK_REG,
+								HI6402_S3_PGA_OR_EN_BIT);
+		
+		/* enable i2s port clk*/
+		hi6402_dapm_reg_set_bit(g_hi6402_codec, HI6402_S1_FS_CFG_L,
+								HI6402_PORT_CLK_EN);
+		hi6402_dapm_reg_set_bit(g_hi6402_codec, HI6402_S3_FS_CFG_L,
+								HI6402_PORT_CLK_EN);
+
+	}
+
+	pr_info("%s--:mode:%d\n",__func__,mode);
+}
+EXPORT_SYMBOL(hi6402_3mic_audio_clk);
+EXPORT_SYMBOL(hi6402_3mic_fade_out);
+
 
 static int hi6402_audio_hw_params(struct snd_pcm_substream *substream,
 				struct snd_pcm_hw_params *params,
@@ -3384,8 +3568,18 @@ static int hi6402_audio_hw_params(struct snd_pcm_substream *substream,
 	return ret;
 }
 
+static int hi6402_free_audio_hw_params(struct snd_pcm_substream *substream,
+				struct snd_pcm_hw_params *params,
+				struct snd_soc_dai *dai)
+{
+	int ret = 0;
+	pr_info("free audio\n");
+	return ret;
+}
+
 struct snd_soc_dai_ops hi6402_audio_dai_ops = {
 	.hw_params = hi6402_audio_hw_params,
+	.hw_free = hi6402_free_audio_hw_params,
 };
 
 static int hi6402_voice_hw_params(struct snd_pcm_substream *substream,
@@ -3397,6 +3591,10 @@ static int hi6402_voice_hw_params(struct snd_pcm_substream *substream,
 	int ret = 0;
 
 	BUG_ON(NULL == codec);
+
+	struct hi6402_priv *priv = snd_soc_codec_get_drvdata(codec);
+
+	BUG_ON(NULL == priv);
 
 	rate = params_rate(params);
 	switch (rate) {
@@ -3411,6 +3609,17 @@ static int hi6402_voice_hw_params(struct snd_pcm_substream *substream,
 		hi6402_dapm_reg_set_bit(codec, HI6402_S3_IN_SRC_SEL, HI6402_S3_IL_SRC_BIT);
 		hi6402_dapm_reg_set_bit(codec, HI6402_S3_OUT_SRC_SEL, HI6402_S3_OL_SRC_BIT);
 		hi6402_dapm_reg_set_bit(codec, HI6402_S3_OUT_SRC_SEL, HI6402_S3_OR_SRC_BIT);
+		if (3 == priv->mic_num || 4 == priv->mic_num) {
+			hi6402_dapm_reg_clr_bit(codec, HI6402_S1_OUT_SRC_SEL, HI6402_S1_OL_SRC_BIT);
+			hi6402_dapm_reg_clr_bit(codec, HI6402_S1_OUT_SRC_SEL, HI6402_S1_OR_SRC_BIT);
+			hi6402_dapm_reg_write_bits(codec, HI6402_S1_FS_CFG_L, 0x00, 0x07);
+			hi6402_dapm_reg_write_bits(codec, HI6402_S1_FS_CFG_H, 0x00, 0x70);
+			hi6402_dapm_reg_write_bits(codec, HI6402_S1_SRC_OUT_MODE_CGF, 0x24, 0x36);
+			hi6402_dapm_reg_set_bit(codec, HI6402_S1_OUT_SRC_SEL, HI6402_S1_OL_SRC_BIT);
+			hi6402_dapm_reg_set_bit(codec, HI6402_S1_OUT_SRC_SEL, HI6402_S1_OR_SRC_BIT);
+		} else {
+
+		}
 		break;
 	case 16000:
 		hi6402_dapm_reg_write_bits(codec, HI6402_S3_FS_CFG_L, 0x01, 0x07);
@@ -3423,6 +3632,17 @@ static int hi6402_voice_hw_params(struct snd_pcm_substream *substream,
 		hi6402_dapm_reg_set_bit(codec, HI6402_S3_IN_SRC_SEL, HI6402_S3_IL_SRC_BIT);
 		hi6402_dapm_reg_set_bit(codec, HI6402_S3_OUT_SRC_SEL, HI6402_S3_OL_SRC_BIT);
 		hi6402_dapm_reg_set_bit(codec, HI6402_S3_OUT_SRC_SEL, HI6402_S3_OR_SRC_BIT);
+		if (3 == priv->mic_num || 4 == priv->mic_num) {
+			hi6402_dapm_reg_clr_bit(codec, HI6402_S1_OUT_SRC_SEL, HI6402_S1_OL_SRC_BIT);
+			hi6402_dapm_reg_clr_bit(codec, HI6402_S1_OUT_SRC_SEL, HI6402_S1_OR_SRC_BIT);
+			hi6402_dapm_reg_write_bits(codec, HI6402_S1_FS_CFG_L, 0x01, 0x07);
+			hi6402_dapm_reg_write_bits(codec, HI6402_S1_FS_CFG_H, 0x10, 0x70);
+			hi6402_dapm_reg_write_bits(codec, HI6402_S1_SRC_OUT_MODE_CGF, 0x00, 0x36);
+			hi6402_dapm_reg_set_bit(codec, HI6402_S1_OUT_SRC_SEL, HI6402_S1_OL_SRC_BIT);
+			hi6402_dapm_reg_set_bit(codec, HI6402_S1_OUT_SRC_SEL, HI6402_S1_OR_SRC_BIT);
+		} else {
+
+		}
 		break;
 	case 32000:
 		hi6402_dapm_reg_write_bits(codec, HI6402_S3_FS_CFG_L, 0x02, 0x07);
@@ -3436,8 +3656,18 @@ static int hi6402_voice_hw_params(struct snd_pcm_substream *substream,
 	return ret;
 }
 
+static int hi6402_free_voice_hw_params(struct snd_pcm_substream *substream,
+				struct snd_pcm_hw_params *params,
+				struct snd_soc_dai *dai)
+{
+	int ret = 0;
+	pr_info("free voice\n");
+	return ret;
+}
+
 struct snd_soc_dai_ops hi6402_voice_dai_ops = {
 	.hw_params = hi6402_voice_hw_params,
+	.hw_free = hi6402_free_voice_hw_params,
 };
 
 struct snd_soc_dai_driver hi6402_dai[] = {
@@ -3451,8 +3681,8 @@ struct snd_soc_dai_driver hi6402_dai[] = {
 			.formats	= HI6402_FORMATS},
 		.capture = {
 			.stream_name	= "Capture",
-			.channels_min	= 2,
-			.channels_max	= 2,
+			.channels_min	= 1,
+			.channels_max	= 4,
 			.rates		= HI6402_RATES,
 			.formats	= HI6402_FORMATS},
 		.ops = &hi6402_audio_dai_ops,
@@ -3495,6 +3725,9 @@ static void hi6402_init_chip(struct snd_soc_codec *codec)
 	hi6402_dapm_reg_write(codec, 0x1238, 0x000000C4);
 	hi6402_dapm_reg_write(codec, 0x1248, 0x000000C4);
 	hi6402_dapm_reg_write(codec, 0x1258, 0x000000C4);
+
+	/* GPIO 0 CFG */
+	hi6402_dapm_reg_set_bit(codec, HI6402_GPIO_0_CFG_REG, HI6402_GPIO_PD_BIT);
 
 	/* S1 PORT IN */
 	hi6402_dapm_reg_write(codec, HI6402_S1_PORT_CFG_L, 0x00);
@@ -3690,7 +3923,7 @@ static void hi6402_init_chip(struct snd_soc_codec *codec)
 	/* uplink ADC fix in LOWPOWER MODE  */
 	hi6402_dapm_reg_write(codec, HI6402_ANA_REG29, 0x0);
 	hi6402_dapm_reg_write(codec, HI6402_ANA_REG30, 0x0);
-	hi6402_dapm_reg_write(codec, HI6402_ANA_REG31, 0x0);
+	hi6402_dapm_reg_write(codec, HI6402_ANA_REG31, 0x5);
 	hi6402_dapm_reg_write(codec, HI6402_ANA_REG35, 0x0);
 
 	/* cp2 clk init */
@@ -3709,6 +3942,10 @@ static void hi6402_init_chip(struct snd_soc_codec *codec)
 	/* s2 pga always on */
 	hi6402_dapm_reg_set_bit(codec, HI6402_S2_MODULE_CLK_REG, HI6402_S2_PGA_IL_EN_BIT);
 	hi6402_dapm_reg_set_bit(codec, HI6402_S2_MODULE_CLK_REG, HI6402_S2_PGA_IR_EN_BIT);
+
+	/* enable dac pga fadein/fadeout */
+	hi6402_dapm_reg_write(g_hi6402_codec, HI6402_DACL_PGA_MODE_CFG_REG1,0x80);
+	hi6402_dapm_reg_write(g_hi6402_codec, HI6402_DACR_PGA_MODE_CFG_REG1,0x80);
 }
 
 static int hi6402_soc_probe(struct snd_soc_codec *codec)
@@ -3725,9 +3962,7 @@ static int hi6402_soc_probe(struct snd_soc_codec *codec)
 
 	priv->codec = codec;
 
-#ifdef CONFIG_DEBUG_FS
 	g_hi6402_codec = codec;
-#endif
 
 	priv->ref_voice_clk = 0;
 	priv->ref_audio_tx = 0;
@@ -3777,8 +4012,11 @@ static int hi6402_codec_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct hi6402_priv *priv = NULL;
 	struct device_node *node = NULL;
+	const struct of_device_id *match = NULL;
+
 	int ret = 0;
 	int temp = 0;
+	int mic_num = 0;
 
 	pr_info("%s\n",__FUNCTION__);
 
@@ -3792,6 +4030,18 @@ static int hi6402_codec_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
+	match = of_match_device(hi6402_codec_match, dev);
+	if (!match) {
+		pr_err("get device info err\n");
+		return -ENOENT;
+	} else {
+		struct device_node *node = dev->of_node;
+		if (!of_property_read_u32(node, "hisilicon,mic_num", &mic_num))
+			priv->mic_num = mic_num;
+		else
+			priv->mic_num = 2;
+	}
+	pr_info("mic num %d\n",priv->mic_num);
 	/* get clk & regulator */
 	priv->p_irq = dev_get_drvdata(pdev->dev.parent);
 	if (!priv->p_irq) {

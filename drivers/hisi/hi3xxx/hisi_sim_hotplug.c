@@ -443,7 +443,8 @@ static void hisi_sim_det_msg_to_ccore(struct hisi_sim_hotplug_info *info, u8 sim
 #ifdef CONFIG_HISI_BALONG_MODEM
 	u32 channel_id = 0;
 	int det_gpio_state = 0;
-
+	int len = 0;
+	
 	if (NULL == info)
 	{
 		pr_err("%s: input param is null, just return.\n", __func__);
@@ -484,8 +485,13 @@ static void hisi_sim_det_msg_to_ccore(struct hisi_sim_hotplug_info *info, u8 sim
 		return;
 	}
 
-	pr_info("%s: sim_id=%d, sim_state=%s \n", __func__, info->sim_id, s_sim_state_tbl[sim_state].sim_state_str);
-	bsp_icc_send(ICC_CPU_MODEM, channel_id, &sim_state, sizeof(sim_state));
+	pr_info("%s: sim_id=%d, sim_state=%s \n", __func__, info->sim_id, s_sim_state_tbl[sim_state].sim_state_str);	
+	len = bsp_icc_send(ICC_CPU_MODEM, channel_id, &sim_state, sizeof(sim_state));
+	if( len != sizeof(sim_state))
+	{
+		pr_err("%s: bsp_icc_send failed! len = %d, expected len = %d\n", __func__, len, sizeof(sim_state));
+		return;
+	}
 	update_sim_state_info(info->sim_id, sim_state);
 	pr_info("%s: end \n", __func__);
 #else
@@ -572,6 +578,7 @@ static irqreturn_t sim_det_irq_handler(int irq, void *data)
 		return IRQ_HANDLED;
 	}
 
+	pr_info("[%s] %d, sim_hotplug_det_wk1 begin.\n", __func__, __LINE__);
 	queue_work(sim_hotplug_info->sim_hotplug_det_wq, &sim_hotplug_info->sim_hotplug_det_wk1);
 
 	return IRQ_HANDLED;
@@ -899,7 +906,7 @@ static int hisi_sim_hotplug_probe(struct platform_device *pdev)
 		memset(g_log_org, 0xFF, MAX_SIM_HOTPLUG_LOG * sizeof(sim_log));
 		g_rdr_flag = 1;
 
-		pr_info("%s, g_log_org=0x%.8x, rdr_int=0x%x\n", __func__, g_log_org, rdr_int);
+		pr_info("%s, g_log_org=%p, rdr_int=0x%x\n", __func__, g_log_org, rdr_int);
 	}
 #endif
 

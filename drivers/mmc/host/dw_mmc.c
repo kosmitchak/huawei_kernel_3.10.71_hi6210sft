@@ -67,6 +67,7 @@
 #define DW_MCI_RECV_STATUS	2
 #define DW_MCI_DMA_THRESHOLD	4
 
+
 #ifdef CONFIG_ARCH_HI3XXX
 #define DW_MCI_DESC_SZ 1
 #else
@@ -1222,6 +1223,9 @@ static void __dw_mci_start_request(struct dw_mci *host,
 	host->data_status = 0;
 	host->cmd_status = 0;
 	host->dir_status = 0;
+#ifdef CONFIG_HUAWEI_EMMC_DSM
+	host->dmd_cmd_status = 0;
+#endif
 
 	data = cmd->data;
 	if (data) {
@@ -1615,12 +1619,13 @@ static const struct mmc_host_ops dw_mci_ops = {
 };
 
 #ifdef CONFIG_HUAWEI_EMMC_DSM
-static inline void dw_mci_dsm_host_error_filter(struct mmc_request *mrq, u32 *error_bits) {
-	if (mrq && mrq->cmd) {
-		if (mrq->cmd->opcode == MMC_SEND_TUNING_BLOCK_HS200)
+static inline void dw_mci_dsm_host_error_filter(struct dw_mci *host, struct mmc_request *mrq, u32 *error_bits) {
+	if (mrq->data && mrq->data->flags & MMC_DATA_WRITE)
+		*error_bits &= ~SDMMC_INT_SBE;
+	else if (mrq->cmd) {
+		if ((mrq->cmd->opcode == MMC_SEND_TUNING_BLOCK_HS200) ||
+			((host->cur_slot->mmc->f_init <= 400000UL) && ((mrq->cmd->opcode == SD_IO_RW_DIRECT) || (mrq->cmd->opcode == SD_SEND_IF_COND) || (mrq->cmd->opcode == SD_IO_SEND_OP_COND) || (mrq->cmd->opcode == MMC_APP_CMD))))
 			*error_bits = 0;
-		else if (mrq->data && mrq->data->flags & MMC_DATA_WRITE)
-			*error_bits &= ~SDMMC_INT_SBE;
 	}
 }
 #endif
@@ -1639,22 +1644,23 @@ static void dw_mci_request_end(struct dw_mci *host, struct mmc_request *mrq)
 
 #ifdef CONFIG_HUAWEI_EMMC_DSM
 	if(DWMMC_EMMC_ID == host->hw_mmc_id) {
-		u32 error_bits = (host->data_status | host->cmd_status) & SDMMC_INT_ERROR;
+		u32 error_bits = (host->data_status | host->dmd_cmd_status) & SDMMC_INT_ERROR;
+		host->dmd_cmd_status = 0;
 		if (error_bits) {
-			dw_mci_dsm_host_error_filter(mrq, &error_bits);
+			dw_mci_dsm_host_error_filter(host, mrq, &error_bits);
 			if (error_bits) {
-				host->para = (error_bits | ((((mrq && mrq->cmd) ? mrq->cmd->opcode : 0) & 0x3f) << 16) | 0x80000000);
+				host->para = (error_bits | (((mrq->cmd ? mrq->cmd->opcode : 0) & 0x3f) << 16) | 0x80000000);
 				queue_work(host->card_workqueue, &host->dmd_work); /* The following request maybe get lost */
 			}
 		}
 	}
 #endif
 
-	del_timer(&host->timer);
 #ifdef CONFIG_HUAWEI_EMMC_DSM
 	if(DWMMC_EMMC_ID == host->hw_mmc_id)
 		del_timer(&host->rw_to_timer);
 #endif
+	del_timer(&host->timer);
 	if (host->cur_slot->mrq == NULL || host->mrq == NULL)
 		return;
 
@@ -1783,6 +1789,9 @@ static void dw_mci_command_complete(struct dw_mci *host, struct mmc_command *cmd
 {
 	u32 status = host->cmd_status;
 
+#ifdef CONFIG_HUAWEI_EMMC_DSM
+	host->dmd_cmd_status = host->cmd_status;
+#endif
 	host->cmd_status = 0;
 
 	/* Read the response from the card (up to 16 bytes) */
@@ -2064,9 +2073,12 @@ static void dw_mci_tasklet_func(unsigned long priv)
 
 			if (host->mrq->stop)
 				dw_mci_command_complete(host, host->mrq->stop);
-			else
+			else {
+#ifdef CONFIG_HUAWEI_EMMC_DSM
+				host->dmd_cmd_status = host->cmd_status;
+#endif
 				host->cmd_status = 0;
-
+			}
 			dw_mci_request_end(host, host->mrq);
 			goto unlock;
 
@@ -2641,17 +2653,23 @@ static irqreturn_t dw_mci_interrupt(int irq, void *dev_id)
 
 #ifdef CONFIG_HUAWEI_EMMC_DSM
 static void dw_mci_dmd_work(struct work_struct *work) {
+	struct mmc_card *card = NULL;
 	struct dw_mci *host = container_of(work, struct dw_mci, dmd_work);
 	u32 error_bits, opcode;
-	u32 para = host->para;
+	u32 para;
+	spin_lock_bh(&host->lock);
+	para = host->para;
+	if(host->cur_slot && host->cur_slot->mmc && host->cur_slot->mmc->card)
+		card = host->cur_slot->mmc->card;
+	spin_unlock_bh(&host->lock);
 	error_bits = para & 0xffff;
 	opcode = ((para >> 16) & 0x3f);
 	if(para & 0x80000000) {
-		DSM_EMMC_LOG(NULL, DSM_EMMC_HOST_ERR,
+		DSM_EMMC_LOG(card, DSM_EMMC_HOST_ERR,
 			"opcode:%d failed, status:%x\n",
 			opcode, error_bits);
 	} else {
-		DSM_EMMC_LOG(NULL, DSM_EMMC_RW_TIMEOUT_ERR,
+		DSM_EMMC_LOG(card, DSM_EMMC_RW_TIMEOUT_ERR,
 			"opcode:%d failed, status:%x\n",
 			opcode, error_bits);
 	}
@@ -2659,8 +2677,11 @@ static void dw_mci_dmd_work(struct work_struct *work) {
 
 static void dw_mci_rw_timeout_timer(unsigned long data) {
 	struct dw_mci *host = (struct dw_mci *)data;
-	u32 error_bits = (host->data_status | host->cmd_status) & SDMMC_INT_ERROR;
-	host->para = (error_bits | (((host->cmd ? host->cmd->opcode : 0) & 0x3f) << 16));
+	u32 error_bits;
+	spin_lock_bh(&host->lock);
+	error_bits = (host->data_status | host->dmd_cmd_status) & SDMMC_INT_ERROR;
+	host->para = (error_bits | ((((host->mrq && host->mrq->cmd) ? host->mrq->cmd->opcode : 0) & 0x3f) << 16));
+	spin_unlock_bh(&host->lock);
 	queue_work(host->card_workqueue, &host->dmd_work);
 }
 #endif
@@ -2789,11 +2810,11 @@ static void dw_mci_work_routine_card(struct work_struct *work)
 					if (mrq->stop)
 						mrq->stop->error = -ENOMEDIUM;
 
-					del_timer(&host->timer);
 #ifdef CONFIG_HUAWEI_EMMC_DSM
 					if(DWMMC_EMMC_ID == host->hw_mmc_id)
 						del_timer(&host->rw_to_timer);
 #endif
+					del_timer(&host->timer);
 					spin_unlock(&host->lock);
 					mmc_request_done(slot->mmc, mrq);
 					spin_lock(&host->lock);
@@ -3268,26 +3289,25 @@ static struct dw_mci_board *dw_mci_parse_dt(struct dw_mci *host)
 	if (of_find_property(np, "caps2-mmc-hs200-1_2v", NULL))
 		pdata->caps2 |= MMC_CAP2_HS200_1_2V_SDR;
 
-	if (of_find_property(np, "caps2-mmc-cache-ctrl", NULL))
-	{
+	if (of_find_property(np, "caps2-mmc-cache-ctrl", NULL)) {
 		dev_info(dev, "caps2-mmc-cache-ctrl is set in dts.\n");
-		if(!runmode_is_factory())
-		{
+#ifdef CONFIG_ARCH_HI3630
+		pdata->caps2 |= MMC_CAP2_CACHE_CTRL;
+#else /*CONFIG_ARCH_HI3XXX*/
+		if (!runmode_is_factory()) {
 			dev_info(dev, "normal mode cache ctrl on\n");
 			pdata->caps2 |= MMC_CAP2_CACHE_CTRL;
-		}
-		else
-		{
+		} else {
 			dev_info(dev, "factory mode cache ctrl off\n");
 		}
+#endif
 	}
 
 	if (of_find_property(np, "caps2-mmc-poweroff-notify", NULL))
 		pdata->caps2 |= MMC_CAP2_POWEROFF_NOTIFY;
 
-	if (of_find_property(np, "caps2-mmc-detect-on-error", NULL)) {
+	if (of_find_property(np, "caps2-mmc-detect-on-error", NULL))
 		pdata->caps2 |= MMC_CAP2_DETECT_ON_ERR;
-	}
 
 	if (of_find_property(np, "caps2-mmc-ddr50-notify", NULL))
 	{
@@ -3589,11 +3609,11 @@ void dw_mci_remove(struct dw_mci *host)
 	mci_writel(host, CLKENA, 0);
 	mci_writel(host, CLKSRC, 0);
 
-	del_timer_sync(&host->timer);
 #ifdef CONFIG_HUAWEI_EMMC_DSM
 	if(DWMMC_EMMC_ID == host->hw_mmc_id)
 		del_timer_sync(&host->rw_to_timer);
 #endif
+	del_timer_sync(&host->timer);
 	destroy_workqueue(host->card_workqueue);
 
 	if (host->use_dma && host->dma_ops->exit)

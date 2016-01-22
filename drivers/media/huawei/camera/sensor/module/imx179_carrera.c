@@ -46,31 +46,6 @@ struct sensor_power_setting imx179_carrera_power_setting[] = {
         .delay = 1,
     },
 
-    //MCAM1 AFVDD 2.85V
-    {
-        .seq_type = SENSOR_VCM_AVDD2,
-        .data = (void*)"cameravcm-vcc",
-        .config_val = LDO_VOLTAGE_V2P85V,
-        .sensor_index = SENSOR_INDEX_INVALID,
-        .delay = 0,
-    },
-
-    //MCAM1 AVDD 2.85V
-    {
-        .seq_type = SENSOR_AVDD2,
-        .data = (void*)"main-sensor-avdd",
-        .config_val = LDO_VOLTAGE_V2P85V,
-        .sensor_index = SENSOR_INDEX_INVALID,
-        .delay = 0,
-    },
-
-    //MCAM1 DVDD 1.0V
-    {
-        .seq_type = SENSOR_DVDD2,
-        .config_val = LDO_VOLTAGE_1P05V,
-        .sensor_index = SENSOR_INDEX_INVALID,
-        .delay = 0,
-    },
     //SCAM AVDD 2.85V
     {
         .seq_type = SENSOR_AVDD,
@@ -203,16 +178,23 @@ static int
     struct sensor_cfg_data *cdata = (struct sensor_cfg_data *)data;
     uint16_t sensor_id = 0;
     uint8_t modue_id = 0;
-    char * sensor_name = "imx179";
+    char *sensor_name[2]={"imx179_sunny","imx179_liteon"};
 
     cam_info("%s TODO.", __func__);
     misp_get_module_info(sensor->board_info->sensor_index,&sensor_id,&modue_id);
 
     if(sensor_id == 0x179) {
-        strncpy(cdata->cfg.name, sensor_name, DEVICE_NAME_SIZE);
         cdata->data = sensor->board_info->sensor_index;
-        hwsensor_writefile(sensor->board_info->sensor_index,
-        cdata->cfg.name);
+        if(modue_id == 0x01) {
+            strncpy(cdata->cfg.name, sensor_name[0], DEVICE_NAME_SIZE);
+            hwsensor_writefile(sensor->board_info->sensor_index, cdata->cfg.name);
+        } else if (modue_id == 0x03) {
+            strncpy(cdata->cfg.name, sensor_name[1], DEVICE_NAME_SIZE);
+            hwsensor_writefile(sensor->board_info->sensor_index, cdata->cfg.name);
+        } else {
+            cdata->data = SENSOR_INDEX_INVALID;
+            cam_info("%s module id not match",__func__);
+        }
     } else {
         cdata->data = SENSOR_INDEX_INVALID;
     }

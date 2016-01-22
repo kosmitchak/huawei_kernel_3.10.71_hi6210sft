@@ -105,6 +105,8 @@ static int ois_done = 0;
 static int ois_check = 0;
 wait_queue_head_t ois_queue;
 
+static int extisp_type = EXTISP_NULL;
+
 #define OIS_TEST_TIMEOUT        (HZ * 8)
 //---
 extern struct hisi_pmic_ctrl_t ncp6925_ctrl;
@@ -140,6 +142,10 @@ int altek6045_matchid(const hwextisp_intf_t* i, hwextisp_config_data_t *data)
 	return rc;
 }
 
+int altek6045_get_chipid(void)
+{
+    return extisp_type;
+}
 extern unsigned int get_boot_into_recovery_flag(void);
 int altek6045_exec_cmd(const hwextisp_intf_t* i, hwextisp_config_data_t *data)
 {
@@ -161,7 +167,6 @@ int altek6045_exec_cmd(const hwextisp_intf_t* i, hwextisp_config_data_t *data)
 	out_len = (data->cmd & EXTISP_CMD_OUT_LEN_MASK)>>EXTISP_CMD_OUT_LEN_SHIT;
 	in_len = (data->cmd & EXTISP_CMD_IN_LEN_MASK)>>EXTISP_CMD_IN_LEN_SHIT;
 	opcode = (data->cmd & EXTISP_CMD_OPCODE_MASK)>>EXTISP_CMD_OPCODE_SHIT;
-	cam_info("%s :dir_type %d, block_response %d, out_len %d, in_len %d, opcode %x ", __func__, dir_type, block_response, out_len, in_len, opcode);
 	out_buf = in_buf = data->u.buf;
 	out_to_block = (EXTISP_BLOCK_RESPONSE_CMD == block_response)? true: false;
 	out_from_block = (EXTISP_BLOCK_WRITE_CMD == block_response) ? true : false;
@@ -589,6 +594,15 @@ int altel6045_get_dt_data(const hwextisp_intf_t *i, struct device_node *of_node)
         return ret;
     }
 #endif
+
+    ret = of_property_read_u32(of_node, "hisi,chip-type",
+        &extisp_type);
+    cam_info("%s hisi,chip-type %d, ret %d\n", __func__,
+        extisp_type, ret);
+    if (ret < 0) {
+        cam_err("%s failed %d\n", __func__, __LINE__);
+    }
+
 	return ret;
 }
 

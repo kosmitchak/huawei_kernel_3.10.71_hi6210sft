@@ -4073,13 +4073,15 @@ void i915_gem_release(struct drm_device *dev, struct drm_file *file)
 static int
 i915_gpu_is_active(struct drm_device *dev)
 {
-	drm_i915_private_t *dev_priv = dev->dev_private;
-	int lists_empty;
+	if (!mutex_is_locked(mutex))
+		return false;
 
-	lists_empty = list_empty(&dev_priv->mm.flushing_list) &&
-		      list_empty(&dev_priv->mm.active_list);
-
-	return !lists_empty;
+#if defined(CONFIG_SMP) && !defined(CONFIG_DEBUG_MUTEXES)
+	return mutex->owner == task;
+#else
+	/* Since UP may be pre-empted, we cannot assume that we own the lock */
+	return false;
+#endif
 }
 
 static int

@@ -30,7 +30,7 @@ static DEFINE_MUTEX(shared_buf_rel_lock);
 static DEFINE_MUTEX(prealloc_lock);
 /************global reference end*************/
 static void *g_mem_pre_allocated = NULL;
-#define PRE_ALLOCATE_SIZE (1024*1024)
+#define PRE_ALLOCATE_SIZE (1024*1024*2)
 
 int tc_mem_free(TC_NS_Shared_MEM *shared_mem)
 {

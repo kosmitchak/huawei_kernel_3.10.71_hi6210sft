@@ -61,7 +61,7 @@ static void k3_led_set_disable(u8 id)
 	clear_bit(id, &k3_leds_status);
 }
 
-static void k3_led_panic_handler(void)
+static int k3_led_panic_handler(void)
 {
     int index;
 
@@ -70,6 +70,7 @@ static void k3_led_panic_handler(void)
     {
         k3_led_set_disable(index);
 	}
+	return 0;
 }
 
 static struct notifier_block panic_led = {

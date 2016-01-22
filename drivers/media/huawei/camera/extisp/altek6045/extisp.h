@@ -298,5 +298,6 @@ void parser_dmd_error(u32 err, char* out_err_name, char* out_err_num);
 void altek6045_notify_cmd_done( uint32_t cmd, uint32_t result);
 void altek6045_notify_dump( uint32_t type);
 void altek6045_notify_error( uint32_t id);
+int altek6045_get_chipid(void);
 #endif
 

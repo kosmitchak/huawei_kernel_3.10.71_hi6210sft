@@ -18,6 +18,9 @@
 /*******************************************************************************
 **
 */
+extern int g_ext_num ;
+extern bool g_enable_extra_data;
+
 static int dpe_init(struct hisi_fb_data_type *hisifd)
 {
 	BUG_ON(hisifd == NULL);
@@ -434,7 +437,9 @@ static int dpe_set_fastboot(struct platform_device *pdev)
 
 	HISI_FB_DEBUG("fb%d, +.\n", hisifd->index);
 
+#ifndef CONFIG_FB_3630
 	dpe_regulator_enable(hisifd);
+#endif
 	enable_clk_pdp(hisifd);
 
 	/* data_gate_en: mipi command LCD open */
@@ -746,17 +751,28 @@ static int dpe_set_display_region(struct platform_device *pdev,
 	HISI_FB_DEBUG("index=%d, enter!\n", hisifd->index);
 
 	addr = hisifd->dss_base + DSS_DPE0_OFFSET + DFS_FRM_SIZE;
-	outp32(addr, dirty->w * dirty->h);
+	if (true == g_enable_extra_data) {
+		outp32(addr, dirty->w * (dirty->h+g_ext_num));
+	} else {
+		outp32(addr, dirty->w * dirty->h);
+	}
 	addr = hisifd->dss_base + DSS_DPE0_OFFSET + DFS_FRM_HSIZE;
 	outp32(addr, DSS_WIDTH(dirty->w));
 
 	addr = hisifd->dss_base + DSS_DPP_IFBC_OFFSET + IFBC_SIZE;
-	outp32(addr, ((DSS_WIDTH(dirty->w) << 16) | DSS_HEIGHT(dirty->h)));
-
+	if (true == g_enable_extra_data) {
+		outp32(addr, ((DSS_WIDTH(dirty->w) << 16) | DSS_HEIGHT(dirty->h+g_ext_num)));
+	} else {
+		outp32(addr, ((DSS_WIDTH(dirty->w) << 16) | DSS_HEIGHT(dirty->h)));
+	}
 	addr = hisifd->dss_base + PDP_LDI_DPI0_HRZ_CTRL1;
 	outp32(addr, DSS_WIDTH(dirty->w) | (DSS_WIDTH(hisifd->panel_info.ldi.h_pulse_width) << 16));
 	addr = hisifd->dss_base + PDP_LDI_VRT_CTRL1;
-	outp32(addr, DSS_HEIGHT(dirty->h) | (DSS_HEIGHT(hisifd->panel_info.ldi.v_pulse_width) << 16));
+	if (true == g_enable_extra_data) {
+		outp32(addr, DSS_HEIGHT(dirty->h+g_ext_num) | (DSS_HEIGHT(hisifd->panel_info.ldi.v_pulse_width) << 16));
+	} else {
+		outp32(addr, DSS_HEIGHT(dirty->h) | (DSS_HEIGHT(hisifd->panel_info.ldi.v_pulse_width) << 16));
+	}
 
 	ret = panel_next_set_display_region(pdev, dirty);
 
@@ -997,7 +1013,7 @@ static ssize_t dpe_lcd_color_temperature_store(struct platform_device *pdev,
 
 	HISI_FB_DEBUG("fb%d, +.\n", hisifd->index);
 
-	cur = buf;
+	cur = (char *)buf;
 	while (token = strsep(&cur, ",")) {
 		csc_value[i++] = simple_strtol(token, NULL, 0);
 	}
@@ -1045,7 +1061,7 @@ static ssize_t dpe_led_rg_lcd_color_temperature_store(struct platform_device *pd
 
 	HISI_FB_DEBUG("fb%d, +.\n", hisifd->index);
 
-	cur = buf;
+	cur = (char *)buf;
 	while (token = strsep(&cur, ",")) {
 		csc_value[i++] = simple_strtol(token, NULL, 0);
 	}
@@ -1151,6 +1167,46 @@ static ssize_t dpe_lcd_starlight_mode_store(struct platform_device *pdev,
 
 	return count;
 }
+
+static ssize_t dpe_acm_state_show(struct platform_device *pdev, char *buf)
+{
+	ssize_t ret = 0;
+	struct hisi_fb_data_type *hisifd = NULL;
+
+	BUG_ON(pdev == NULL);
+	hisifd = platform_get_drvdata(pdev);
+	BUG_ON(hisifd == NULL);
+
+	HISI_FB_DEBUG("fb%d, +.\n", hisifd->index);
+	ret = dpe_show_acm_state(buf);
+	HISI_FB_DEBUG("fb%d, -.\n", hisifd->index);
+	return ret;
+}
+static ssize_t dpe_acm_state_store(struct platform_device *pdev,
+	const char *buf, size_t count)
+{
+	struct hisi_fb_data_type *hisifd = NULL;
+	struct hisi_panel_info *pinfo = NULL;
+	unsigned int val = 0;
+	BUG_ON(pdev == NULL);
+	hisifd = platform_get_drvdata(pdev);
+	BUG_ON(hisifd == NULL);
+
+	pinfo = &(hisifd->panel_info);
+
+	HISI_FB_DEBUG("fb%d, +.\n", hisifd->index);
+
+	if (pinfo->acm_color_enhancement_mode_support && pinfo->acm_support){        
+	      val = simple_strtoul(buf, NULL, 0);	
+          dpe_update_g_acm_state(val);
+          dpe_set_acm_state(hisifd);
+	}
+
+	HISI_FB_DEBUG("fb%d, -.\n", hisifd->index);
+
+	return count;
+}
+
 static ssize_t dpe_lcd_voltage_enable_store(struct platform_device *pdev,
 	const char *buf, size_t count)
 {
@@ -1227,6 +1283,22 @@ static ssize_t dpe_amoled_acl_store(struct platform_device *pdev,
 	return ret;
 }
 
+static ssize_t dpe_amoled_hbm_show(struct platform_device *pdev, char *buf)
+{
+	ssize_t ret = 0;
+	struct hisi_fb_data_type *hisifd = NULL;
+
+	BUG_ON(pdev == NULL);
+	hisifd = platform_get_drvdata(pdev);
+	BUG_ON(hisifd == NULL);
+
+	HISI_FB_DEBUG("fb%d, +.\n", hisifd->index);
+	ret = panel_next_amoled_hbm_show(pdev, buf);
+	HISI_FB_DEBUG("fb%d, -.\n", hisifd->index);
+
+	return ret;
+}
+
 static ssize_t dpe_amoled_hbm_store(struct platform_device *pdev,
 	const char *buf, size_t count)
 {
@@ -1239,6 +1311,59 @@ static ssize_t dpe_amoled_hbm_store(struct platform_device *pdev,
 
 	HISI_FB_DEBUG("fb%d, +.\n", hisifd->index);
 	ret = panel_next_amoled_hbm_store(pdev, buf, count);
+	HISI_FB_DEBUG("fb%d, -.\n", hisifd->index);
+
+	return ret;
+}
+
+static ssize_t dpe_lcd_test_config_show(struct platform_device *pdev, char *buf)
+{
+	ssize_t ret = 0;
+	struct hisi_fb_data_type *hisifd = NULL;
+
+	BUG_ON(pdev == NULL);
+	hisifd = platform_get_drvdata(pdev);
+	BUG_ON(hisifd == NULL);
+
+	HISI_FB_DEBUG("fb%d, +.\n", hisifd->index);
+	ret = panel_next_lcd_test_config_show(pdev, buf);
+	HISI_FB_DEBUG("fb%d, -.\n", hisifd->index);
+
+	return ret;
+}
+
+static ssize_t dpe_lcd_test_config_store(struct platform_device *pdev,
+	const char *buf, size_t count)
+{
+	ssize_t ret = 0;
+	struct hisi_fb_data_type *hisifd = NULL;
+
+	BUG_ON(pdev == NULL);
+	hisifd = platform_get_drvdata(pdev);
+	BUG_ON(hisifd == NULL);
+
+	HISI_FB_DEBUG("fb%d, +.\n", hisifd->index);
+	ret = panel_next_lcd_test_config_store(pdev, buf, count);
+	HISI_FB_DEBUG("fb%d, -.\n", hisifd->index);
+
+	return ret;
+}
+
+#ifdef CONFIG_FB_3630
+extern int fastboot_set_needed;
+#endif
+
+static ssize_t dpe_lcd_filter_show(struct platform_device *pdev, char *buf)
+{
+	ssize_t ret = 0;
+	struct hisi_fb_data_type *hisifd = NULL;
+
+	BUG_ON(pdev == NULL);
+	hisifd = platform_get_drvdata(pdev);
+	BUG_ON(hisifd == NULL);
+
+	HISI_FB_DEBUG("fb%d, +.\n", hisifd->index);
+	ret = panel_next_lcd_filter_show(pdev, buf);
 	HISI_FB_DEBUG("fb%d, -.\n", hisifd->index);
 
 	return ret;
@@ -1385,6 +1510,12 @@ static int dpe_regulator_clk_irq_setup(struct platform_device *pdev)
 
 	//hisi_irqaffinity_register(hisifd->dpe_irq, 1);
 
+#ifdef CONFIG_FB_3630
+	if (fastboot_set_needed && hisifd->index == PRIMARY_PANEL_IDX) {
+		dpe_regulator_enable(hisifd);
+	}
+#endif
+
 	return 0;
 }
 
@@ -1455,12 +1586,18 @@ static int dpe_probe(struct platform_device *pdev)
 	pdata->lcd_comform_mode_store = dpe_lcd_comform_mode_store;
 	pdata->lcd_starlight_mode_show = dpe_lcd_starlight_mode_show;
 	pdata->lcd_starlight_mode_store = dpe_lcd_starlight_mode_store;
+	pdata->lcd_acm_state_show = dpe_acm_state_show;
+	pdata->lcd_acm_state_store = dpe_acm_state_store;
 	pdata->lcd_voltage_enable_store = dpe_lcd_voltage_enable_store;
 	pdata->lcd_bist_check = dpe_lcd_bist_check;
 	pdata->amoled_pcd_errflag_check = dpe_amoled_pcd_errflag_check;
 	pdata->amoled_acl_show = dpe_amoled_acl_show;
 	pdata->amoled_acl_store = dpe_amoled_acl_store;
+	pdata->amoled_hbm_show = dpe_amoled_hbm_show;
 	pdata->amoled_hbm_store = dpe_amoled_hbm_store;
+	pdata->lcd_test_config_show = dpe_lcd_test_config_show;
+	pdata->lcd_test_config_store = dpe_lcd_test_config_store;
+	pdata->lcd_filter_show = dpe_lcd_filter_show;
 	pdata->next = pdev;
 
 	/* get/set panel info */

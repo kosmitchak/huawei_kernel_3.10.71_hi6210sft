@@ -130,14 +130,14 @@ static ssize_t show_phys_addr(struct device *dev, struct device_attribute *attr,
 
 	if(!tgt_task) {
 		size += snprintf(buf+size, PAGE_SIZE - size, "[ddr_debug] tgt_task is NULL!\n");
-		return ;
+		return size;
 	}
 
 	for(i = (virt_len*1024/PAGE_SIZE + 1);i > 0;i--)
 	{
 		if(!find_vma(tgt_task->mm, va_addr)) {
 			size += snprintf(buf+size, PAGE_SIZE - size, "[ddr_debug] cannot find vma!\n");
-			return ;
+			return size;
 		}
 		size += snprintf(buf+size, PAGE_SIZE - size, "[ddr_debug]i:%d\n", i);
 
@@ -250,16 +250,20 @@ static ssize_t store_virt_addr(struct device *dev, struct device_attribute *attr
 
 		switch (args) {
 		case 0:
-			sscanf(head, "%u", &pid);
+			if(-1 == sscanf(head, "%u", &pid)){
+				pr_err("[%s]:%d invalid pid!\n", __func__, __LINE__);
+			}
 			break;
 		case 1:
-			sscanf(head, "%lx", &virt_addr);
+			if(-1 == sscanf(head, "%lx", &virt_addr)){
+				pr_err("[%s]:%d invalid virt_addr!\n", __func__, __LINE__);
+			}
 			break;
 		case 2:
-			sscanf(head, "%u", &virt_len);
+			if(-1 == sscanf(head, "%u", &virt_len)){
+				pr_err("[%s]:%d invalid virt_len!\n", __func__, __LINE__);
+			}
 			break;
-		default:
-			pr_err("[%s]:%d invalid args!\n", __func__, __LINE__);
 		}
 
 		head = head + argl + 1;

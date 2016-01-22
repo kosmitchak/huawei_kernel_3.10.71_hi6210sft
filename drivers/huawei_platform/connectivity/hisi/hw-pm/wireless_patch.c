@@ -2289,7 +2289,7 @@ int32 patch_get_cfg(uint8 *cfg, int32 type)
 
 
 }
-EXPORT_SYMBOL(patch_get_cfg);
+
 /*****************************************************************************
  Prototype    : patch_download_info
  Description  : download patch
