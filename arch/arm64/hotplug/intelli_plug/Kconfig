@@ -1,0 +1,10 @@
+config INTELLI_PLUG
+        bool "Enable intelli-plug cpu hotplug driver"
+        default n
+        help
+          Generic Intelli-plug cpu hotplug driver for ARM SOCs
+
+config INTELLI_PLUG_PERF_BOOST
+        bool "perf_boost sysfs entry (expremental)"
+        default n
+

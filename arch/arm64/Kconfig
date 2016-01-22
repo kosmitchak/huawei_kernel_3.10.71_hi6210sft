@@ -498,6 +498,12 @@ config SECCOMP
 
 endmenu
 
+menu "Hotplug"
+
+source "arch/arm64/hotplug/intelli_plug/Kconfig"
+
+endmenu
+
 menu "Boot options"
 
 config CMDLINE
