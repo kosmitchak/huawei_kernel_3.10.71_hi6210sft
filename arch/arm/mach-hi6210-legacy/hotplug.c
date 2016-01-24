@@ -39,7 +39,7 @@
 })
 
 /*acpu ipc sem id */
-#if CONFIG_INTELLI_PLUG_CPUS == 8
+//#if CONFIG_INTELLI_PLUG_CPUS == 8
 IPC_SEM_ID_E acpu_ipc_sem_id[ARM_ACPU_CORE_NUM] =
 {
     IPC_SEM_SMP_CPU0,
@@ -66,7 +66,7 @@ unsigned int g_acpu_core_sc_baseaddr[ARM_ACPU_CORE_NUM] =
      SOC_ACPU_SCTRL_ACPU_SC_CPU6_CTRL_ADDR(IO_ADDRESS(SOC_ACPU_SCTRL_BASE_ADDR)),
      SOC_ACPU_SCTRL_ACPU_SC_CPU7_CTRL_ADDR(IO_ADDRESS(SOC_ACPU_SCTRL_BASE_ADDR))
 };
-#else
+/*#else
 IPC_SEM_ID_E acpu_ipc_sem_id[ARM_ACPU_CORE_NUM] =
 {
     IPC_SEM_SMP_CPU0,
@@ -85,7 +85,7 @@ unsigned int g_acpu_core_sc_baseaddr[ARM_ACPU_CORE_NUM] =
      SOC_ACPU_SCTRL_ACPU_SC_CPU2_CTRL_ADDR(IO_ADDRESS(SOC_ACPU_SCTRL_BASE_ADDR)),
      SOC_ACPU_SCTRL_ACPU_SC_CPU3_CTRL_ADDR(IO_ADDRESS(SOC_ACPU_SCTRL_BASE_ADDR))
 };
-#endif
+#endif*/
 
 typedef struct acpu_core_sc_stru_s
 {

@@ -29,6 +29,10 @@ config APM_POWER
 	  Say Y here to enable support APM status emulation using
 	  battery class devices.
 
+source "drivers/power/avs/Kconfig"
+
+source "drivers/power/reset/Kconfig"
+
 config GENERIC_ADC_BATTERY
 	tristate "Generic battery support using IIO"
 	depends on IIO
@@ -384,7 +388,3 @@ source "drivers/power/huawei/Kconfig"
 endif
 
 endif # POWER_SUPPLY
-source "drivers/power/reset/Kconfig"
-
-
-source "drivers/power/avs/Kconfig"
