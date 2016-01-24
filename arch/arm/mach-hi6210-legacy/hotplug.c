@@ -66,29 +66,6 @@ unsigned int g_acpu_core_sc_baseaddr[ARM_ACPU_CORE_NUM] =
      SOC_ACPU_SCTRL_ACPU_SC_CPU6_CTRL_ADDR(IO_ADDRESS(SOC_ACPU_SCTRL_BASE_ADDR)),
      SOC_ACPU_SCTRL_ACPU_SC_CPU7_CTRL_ADDR(IO_ADDRESS(SOC_ACPU_SCTRL_BASE_ADDR))
 };
-#elif CONFIG_INTELLI_PLUG_CPUS == 6
-IPC_SEM_ID_E acpu_ipc_sem_id[ARM_ACPU_CORE_NUM] =
-{
-    IPC_SEM_SMP_CPU0,
-    IPC_SEM_SMP_CPU1,
-    IPC_SEM_SMP_CPU2,
-    IPC_SEM_SMP_CPU3,
-    IPC_SEM_SMP_CPU4,
-    IPC_SEM_SMP_CPU5,
-};
-
-unsigned int acpu_load_res[ARM_ACPU_CORE_NUM] =
-{0,0,0,0,0,0};
-
-unsigned int g_acpu_core_sc_baseaddr[ARM_ACPU_CORE_NUM] = 
-{
-     SOC_ACPU_SCTRL_ACPU_SC_CPU0_CTRL_ADDR(IO_ADDRESS(SOC_ACPU_SCTRL_BASE_ADDR)),
-     SOC_ACPU_SCTRL_ACPU_SC_CPU1_CTRL_ADDR(IO_ADDRESS(SOC_ACPU_SCTRL_BASE_ADDR)),
-     SOC_ACPU_SCTRL_ACPU_SC_CPU2_CTRL_ADDR(IO_ADDRESS(SOC_ACPU_SCTRL_BASE_ADDR)),
-     SOC_ACPU_SCTRL_ACPU_SC_CPU3_CTRL_ADDR(IO_ADDRESS(SOC_ACPU_SCTRL_BASE_ADDR)),
-     SOC_ACPU_SCTRL_ACPU_SC_CPU4_CTRL_ADDR(IO_ADDRESS(SOC_ACPU_SCTRL_BASE_ADDR)),
-     SOC_ACPU_SCTRL_ACPU_SC_CPU5_CTRL_ADDR(IO_ADDRESS(SOC_ACPU_SCTRL_BASE_ADDR))
-};
 #else
 IPC_SEM_ID_E acpu_ipc_sem_id[ARM_ACPU_CORE_NUM] =
 {
@@ -124,7 +101,7 @@ typedef struct acpu_core_sc_stru_s
     unsigned int acpu_sc_mtcmos_dis;
     unsigned int acpu_sc_mtcmos_stat;
     unsigned int acpu_sc_mtcmos_ack_stat;
-     unsigned int acpu_sc_isoen;
+    unsigned int acpu_sc_isoen;
     unsigned int acpu_sc_isodis;
     unsigned int acpu_sc_isostat;
 }acpu_core_sc_stru;
