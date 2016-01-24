@@ -500,7 +500,15 @@ endmenu
 
 menu "Hotplug"
 
-source "arch/arm64/hotplug/intelli_plug/Kconfig"
+source "arch/arm64/hotplugs/alucard/Kconfig"
+
+source "arch/arm64/hotplugs/autosmp/Kconfig"
+
+source "arch/arm64/hotplugs/intelli_plug/Kconfig"
+
+source "arch/arm64/hotplugs/thunder_plug/Kconfig"
+
+source "arch/arm64/hotplugs/zendecision/Kconfig"
 
 endmenu
 
