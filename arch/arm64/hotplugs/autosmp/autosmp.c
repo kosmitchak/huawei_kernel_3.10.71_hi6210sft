@@ -288,6 +288,8 @@ static struct attribute_group asmp_stats_attr_group = {
 	.name = "stats",
 };
 #endif
+static void register_power_suspend(struct power_suspend *handler);
+//void unregister_power_suspend(struct power_suspend *handler);
 /****************************** SYSFS END ******************************/
 
 static int __init asmp_init(void) {
