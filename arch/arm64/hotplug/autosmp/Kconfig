@@ -7,7 +7,7 @@ config ASMP
       based on cpu load and suspend state
 
 config POWERSUSPEND_NEW
-    bool "New powersuspend (experemental)"
+    bool "New powersuspend"
     depends on ASMP && POWERSUSPEND
-    default n
+    default y
 

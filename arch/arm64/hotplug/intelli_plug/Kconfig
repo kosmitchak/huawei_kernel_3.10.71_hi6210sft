@@ -11,7 +11,7 @@ config INTELLI_PLUG_CPUS
 	default "8"
 
 config INTELLI_PLUG_PERF_BOOST
-        bool "perf_boost sysfs entry (expremental)"
+        bool "perf_boost sysfs entry"
 	depends on INTELLI_PLUG
-        default n
+        default y
 
