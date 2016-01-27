@@ -21,7 +21,7 @@
  */
 
 #include <linux/moduleparam.h>
-#include <linux/new_exp_suspend.h>
+#include <linux/powersuspend.h>
 #include <linux/cpufreq.h>
 #include <linux/workqueue.h>
 #include <linux/cpu.h>
@@ -288,8 +288,6 @@ static struct attribute_group asmp_stats_attr_group = {
 	.name = "stats",
 };
 #endif
-static void register_power_suspend(struct power_suspend *handler);
-//void unregister_power_suspend(struct power_suspend *handler);
 /****************************** SYSFS END ******************************/
 
 static int __init asmp_init(void) {

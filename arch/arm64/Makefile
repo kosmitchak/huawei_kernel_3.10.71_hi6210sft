@@ -47,11 +47,9 @@ endif
 export	TEXT_OFFSET GZFLAGS
 
 core-y		+= arch/arm64/kernel/ arch/arm64/mm/
-core-$(CONFIG_ALUCARD_HOTPLUG)	+= arch/arm64/hotplugs/alucard/
-core-$(CONFIG_ASMP)		+= arch/arm64/hotplugs/autosmp/
-core-$(CONFIG_INTELLI_PLUG)	+= arch/arm64/hotplugs/intelli_plug/
-core-$(CONFIG_THUNDERPLUG_CONTROL)	+= arch/arm64/hotplugs/thunder_plug/
-core-$(CONFIG_ZEN_DECISION)	+= arch/arm64/hotplugs/zendecision/
+core-$(CONFIG_INTELLI_PLUG)	+= arch/arm64/hotplug/intelli_plug/
+core-$(CONFIG_ASMP)	+= arch/arm64/hotplug/autosmp/
+core-$(CONFIG_MAKO_HOTPLUG)	+= arch/arm64/hotplug/mako/
 core-$(CONFIG_KVM) += arch/arm64/kvm/
 core-$(CONFIG_CRYPTO) += arch/arm64/crypto/
 libs-y		:= arch/arm64/lib/ $(libs-y)

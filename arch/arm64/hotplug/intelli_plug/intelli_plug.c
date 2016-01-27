@@ -559,6 +559,47 @@ int __init intelli_plug_init(void)
 	struct ip_cpu_info *l_ip_info;
 #endif
 
+#ifdef CONFIG_INTELLI_PLUG_PERF_BOOST
+/* sysfs interface for performance boost (BEGIN) */
+	ssize_t intelli_plug_perf_boost_store(struct kobject *kobj,
+			struct kobj_attribute *attr, const char *buf,
+			size_t count)
+{
+
+	int boost_req;
+
+	sscanf(buf, "%du", &boost_req);
+
+	switch(boost_req) {
+		case 0:
+			intelli_plug_perf_boost(0);
+			return count;
+		case 1:
+			intelli_plug_perf_boost(1);
+			return count;
+		default:
+			return -EINVAL;
+	}
+}
+
+	struct kobj_attribute intelli_plug_perf_boost_attribute =
+	__ATTR(perf_boost, 0220,
+		NULL,
+		intelli_plug_perf_boost_store);
+
+	struct attribute *intelli_plug_perf_boost_attrs[] = {
+	&intelli_plug_perf_boost_attribute.attr,
+	NULL,
+};
+
+	struct attribute_group intelli_plug_perf_boost_attr_group = {
+	.attrs = intelli_plug_perf_boost_attrs,
+};
+
+	struct kobject *intelli_plug_perf_boost_kobj;
+/* sysfs interface for performance boost (END) */
+#endif
+
 	nr_possible_cores = num_possible_cpus();
 
 	pr_info("intelli_plug: version %d.%d by faux123\n",
@@ -595,6 +636,21 @@ int __init intelli_plug_init(void)
 	INIT_DELAYED_WORK(&intelli_plug_boost, intelli_plug_boost_fn);
 	queue_delayed_work_on(0, intelliplug_wq, &intelli_plug_work,
 		msecs_to_jiffies(10));
+
+#ifdef CONFIG_INTELLI_PLUG_PERF_BOOST
+	intelli_plug_perf_boost_kobj
+		= kobject_create_and_add("intelli_plug", kernel_kobj);
+
+	if (!intelli_plug_perf_boost_kobj) {
+		return -ENOMEM;
+	}
+
+	rc = sysfs_create_group(intelli_plug_perf_boost_kobj,
+				&intelli_plug_perf_boost_attr_group);
+
+	if (rc)
+		kobject_put(intelli_plug_perf_boost_kobj);
+#endif
 
 	return 0;
 }
