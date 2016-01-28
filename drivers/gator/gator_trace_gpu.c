@@ -19,7 +19,7 @@
 #include "mali_linux_trace.h"
 #else
 /* Old DDK Directory structure with kernel/drivers/gpu/arm/t6xx*/
-#include "linux/mali_linux_trace.h"
+#include "../gpu/arm/mali4_64/r5p0_01rel0/linux/mali_linux_trace.h"
 #endif
 #endif
 

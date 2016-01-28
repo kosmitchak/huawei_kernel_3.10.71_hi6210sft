@@ -12,7 +12,7 @@
 #include <linux/time.h>
 #include <linux/math64.h>
 
-#include "linux/mali_linux_trace.h"
+#include "../gpu/arm/mali4_64/r5p0_01rel0/linux/mali_linux_trace.h"
 
 #include "gator_events_mali_common.h"
 #include "gator_events_mali_4xx.h"

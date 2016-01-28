@@ -34,7 +34,7 @@
 #define DEFAULT_LOAD_THRESHOLD 80
 #define DEFAULT_HIGH_LOAD_COUNTER 10
 #define DEFAULT_MAX_LOAD_COUNTER 20
-#define DEFAULT_CPUFREQ_UNPLUG_LIMIT 1800000
+#define DEFAULT_CPUFREQ_UNPLUG_LIMIT 1500000
 #define DEFAULT_MIN_TIME_CPU_ONLINE 1
 #define DEFAULT_TIMER 1
 
@@ -103,7 +103,7 @@ static inline void cpus_online_work(void)
 {
 	unsigned int cpu;
 
-	for (cpu = 2; cpu < 4; cpu++) {
+	for (cpu = 4; cpu < 8; cpu++) {
 		if (cpu_is_offline(cpu))
 			cpu_up(cpu);
 	}
@@ -115,7 +115,7 @@ static inline void cpus_offline_work(void)
 {
 	unsigned int cpu;
 
-	for (cpu = 3; cpu > 1; cpu--) {
+	for (cpu = 5; cpu > 3; cpu--) {
 		if (cpu_online(cpu))
 			cpu_down(cpu);
 	}
@@ -135,7 +135,7 @@ static inline bool cpus_cpufreq_work(void)
 			return false;
 	}
 
-	for (cpu = 2; cpu < 4; cpu++)
+	for (cpu = 4; cpu < 8; cpu++)
 		current_freq += cpufreq_quick_get(cpu);
 
 	current_freq >>= 1;
@@ -219,9 +219,9 @@ static void __ref decide_hotplug_func(struct work_struct *work)
 		goto reschedule;
 
 	/*
-	 * reschedule early when the user doesn't want more than 2 cores online
+	 * reschedule early when the user doesn't want more than 4 cores online
 	 */
-	if (unlikely(t->load_threshold == 100 && online_cpus == 2))
+	if (unlikely(t->load_threshold == 100 && online_cpus == 4))
 		goto reschedule;
 
 	/*
@@ -232,7 +232,7 @@ static void __ref decide_hotplug_func(struct work_struct *work)
 		goto reschedule;
 	}
 
-	for (cpu = 0; cpu < 2; cpu++)
+	for (cpu = 0; cpu < 4; cpu++)
 		cur_load += cpufreq_quick_get_util(cpu);
 
 	cur_load >>= 1;
@@ -241,13 +241,13 @@ static void __ref decide_hotplug_func(struct work_struct *work)
 		if (hotplug_stats.counter < t->max_load_counter)
 			++hotplug_stats.counter;
 
-		if (online_cpus <= 2)
+		if (online_cpus <= 4)
 			cpu_revive(cur_load);
 	} else {
 		if (hotplug_stats.counter)
 			--hotplug_stats.counter;
 
-		if (online_cpus > 2)
+		if (online_cpus > 4)
 			cpu_smash(cur_load);
 	}
 
