@@ -115,7 +115,7 @@ static inline void cpus_offline_work(void)
 {
 	unsigned int cpu;
 
-	for (cpu = 5; cpu > 3; cpu--) {
+	for (cpu = 7; cpu > 5; cpu--) {
 		if (cpu_online(cpu))
 			cpu_down(cpu);
 	}
