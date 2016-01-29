@@ -1,3 +1,4 @@
+ifeq ($(PLATFORM_VERSION),)
 #Android makefile to build kernel as a part of Android Build
 ifeq ($(BALONG_TOPDIR),)
 export BALONG_TOPDIR       := $(shell pwd)/vendor/hisi
@@ -164,3 +165,4 @@ zImage Image:$(TARGET_PREBUILT_KERNEL)
 	@cp -fp $(TARGET_PREBUILT_KERNEL) $(INSTALLED_KERNEL_TARGET)
 pclint_kernel: $(KERNEL_CONFIG)
 	$(hide) $(MAKE) -C kernel O=../$(KERNEL_OUT) ARCH=$(KERNEL_ARCH_PREFIX) CROSS_COMPILE=$(CROSS_COMPILE_PREFIX) pc_lint_all
+endif
